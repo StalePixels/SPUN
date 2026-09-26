@@ -4,3 +4,4 @@ scratchpad
 .claude/settings.json
 /data
 .CLAUDE.md
+tools/nbnget
