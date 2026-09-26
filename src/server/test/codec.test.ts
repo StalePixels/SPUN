@@ -10,9 +10,20 @@ import {
   type FindPage,
   type InfoPage,
 } from "../src/codec.js";
+import { hexString, settings } from "./settings.js";
 
 const hex = (...parts: string[]): string => parts.join("");
 const bytes = (value: string): Uint8Array => Uint8Array.from(Buffer.from(value, "hex"));
+const user = settings.publisher;
+
+// The username is a setting, so a block that holds it gets its size and
+// checksum from here: u16 little-endian length, then the byte sum mod 256.
+const blockSize = (body: string): string => {
+  const length = body.length / 2;
+  return hex((length & 255).toString(16).padStart(2, "0"), (length >> 8).toString(16).padStart(2, "0"));
+};
+const blockSum = (body: string): string =>
+  (Buffer.from(body, "hex").reduce((sum, byte) => sum + byte, 0) % 256).toString(16).padStart(2, "0");
 
 // Golden bytes were computed outside the codec (Python), from the layout in the plan.
 const FIND_PAGE: FindPage = {
@@ -22,18 +33,31 @@ const FIND_PAGE: FindPage = {
   apps: [
     {
       id: "tst001" as AppId,
-      username: "TestPublisher",
+      username: user,
       title: "Test App",
       latest: { serial: 1, version: "test-upload-01" },
     },
     {
       id: "tst002" as AppId,
-      username: "TestPublisher",
+      username: user,
       title: "3",
       latest: { serial: 2, version: "1.1" },
     },
   ],
 };
+
+const FIND_BODY = hex(
+  "747374303031", // tst001
+  hexString(user), // username\0
+  "546573742041707000", // Test App\0
+  "0100", // latest serial 1
+  "746573742d75706c6f61642d303100", // test-upload-01\0
+  "747374303032", // tst002
+  hexString(user), // username\0
+  "3300", // 3\0
+  "0200", // latest serial 2
+  "312e3100", // 1.1\0
+);
 
 const FIND_HEX = hex(
   "02", // version
@@ -41,22 +65,13 @@ const FIND_HEX = hex(
   "0100", // page
   "02", // entries on this page
   "0100", // total pages
-  "4a00", // block size
-  "747374303031", // tst001
-  "546573745075626c697368657200", // TestPublisher\0
-  "546573742041707000", // Test App\0
-  "0100", // latest serial 1
-  "746573742d75706c6f61642d303100", // test-upload-01\0
-  "747374303032", // tst002
-  "546573745075626c697368657200", // TestPublisher\0
-  "3300", // 3\0
-  "0200", // latest serial 2
-  "312e3100", // 1.1\0
-  "1c", // checksum
+  blockSize(FIND_BODY),
+  FIND_BODY,
+  blockSum(FIND_BODY),
 );
 
 const INFO_PAGE: InfoPage = {
-  app: { username: "TestPublisher", title: "Test App", description: "A test app" },
+  app: { username: user, title: "Test App", description: "A test app" },
   total: 2,
   page: 1,
   pages: 1,
@@ -68,7 +83,7 @@ const INFO_PAGE: InfoPage = {
 
 const INFO_HEX = hex(
   "02", // version
-  "546573745075626c697368657200", // TestPublisher\0
+  hexString(user), // username\0
   "546573742041707000", // Test App\0
   "4120746573742061707000", // A test app\0
   "0200", // total releases

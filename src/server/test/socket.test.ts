@@ -8,8 +8,10 @@ import type { Catalogue } from "../src/catalogue.js";
 import { checksum, decodeFind, decodeInfo } from "../src/codec.js";
 import { fakeCatalogue, type AppRow, type ReleaseRow, type Tables } from "./fakeCatalogue.js";
 import { SpoofClient, startSpunServer } from "./harness.js";
+import { hexString, settings } from "./settings.js";
 
 const BLOCK = 4096;
+const user = settings.publisher;
 
 const pagerApps: AppRow[] = Array.from({ length: 45 }, (_, i) => ({
   id: `pg${String(i + 1).padStart(4, "0")}`,
@@ -42,8 +44,8 @@ const longReleases: ReleaseRow[] = Array.from({ length: 150 }, (_, i) => ({
 
 const tables: Tables = {
   users: [
-    { id: "u1", username: "TestPublisher" },
-    { id: "u2", username: "FannyClient" },
+    { id: "u1", username: user },
+    { id: "u2", username: settings.otherPublisher },
   ],
   apps: [
     { id: "tst001", userId: "u1", title: "Test App", description: "A test app" },
@@ -92,8 +94,8 @@ let client: SpoofClient;
 
 before(async () => {
   dataDir = mkdtempSync(path.join(tmpdir(), "spun-socket-"));
-  mkdirSync(path.join(dataDir, "TestPublisher"));
-  writeFileSync(path.join(dataDir, "TestPublisher", "tst001-0001.zip"), fileBytes);
+  mkdirSync(path.join(dataDir, user));
+  writeFileSync(path.join(dataDir, user, "tst001-0001.zip"), fileBytes);
   ({ server, port } = await startSpunServer(fakeCatalogue(tables), dataDir));
 });
 
@@ -124,8 +126,20 @@ describe("FIND", () => {
 
   test("sends the agreed bytes", async () => {
     client.send("FIND 1 zebra\n");
+    // The block holds the username, so its size and checksum come from the body.
+    const body =
+      "747374303032" + // tst002
+      hexString(user) + // username\0
+      "5a6562726100" + // Zebra\0
+      "0100" + // latest serial 1
+      "312e3000"; // 1.0\0
+    const length = body.length / 2;
+    const sum = Buffer.from(body, "hex").reduce((total, byte) => total + byte, 0) % 256;
     const expected =
-      "02010001000101002000747374303032546573745075626c6973686572005a65627261000100312e3000bf";
+      "0201000100010100" + // version, total 1, page 1, 1 entry, 1 page
+      Buffer.from([length & 255, length >> 8]).toString("hex") +
+      body +
+      sum.toString(16).padStart(2, "0");
     assert.equal((await client.read(expected.length / 2)).toString("hex"), expected);
     assert.equal((await client.drain()).length, 0);
   });
@@ -193,7 +207,7 @@ describe("INFO", () => {
   test("an app id in capitals sends the agreed bytes, without deleted releases", async () => {
     client.send("INFO TST001\n");
     const expected =
-      "02546573745075626c6973686572005465737420417070004120746573742061707000" +
+      "02" + hexString(user) + "5465737420417070004120746573742061707000" +
       "010001000101001c000100746573742d75706c6f61642d303100323032362d30392d323500f5";
     assert.equal((await client.read(expected.length / 2)).toString("hex"), expected);
     assert.equal((await client.drain()).length, 0);
@@ -216,7 +230,7 @@ describe("INFO", () => {
     client.send("INFO empty1\n");
     const page = await client.reply(decodeInfo);
     assert.deepEqual(page.app, {
-      username: "TestPublisher",
+      username: user,
       title: "Empty Shelf",
       description: "No releases here",
     });
@@ -241,7 +255,7 @@ describe("GET", () => {
   after(() => client.close());
 
   test("block handshake, with a retry after a checksum failure", async () => {
-    client.send("GET TestPublisher/tst001-0001.zip\n");
+    client.send(`GET ${user}/tst001-0001.zip\n`);
     const header = Buffer.concat([
       Buffer.from([2]),
       Buffer.from([0x64, 0x20, 0x00, 0x00]), // size 8292
@@ -271,7 +285,7 @@ describe("GET", () => {
   });
 
   test("a missing file gives NoFile_ERROR and keeps the session", async () => {
-    await expectError("GET TestPublisher/tst001-0002.zip\n", "NoFile_ERROR");
+    await expectError(`GET ${user}/tst001-0002.zip\n`, "NoFile_ERROR");
     await expectOpen();
   });
 });
@@ -330,7 +344,7 @@ describe("lines sent together", () => {
 
       client.send("INFO tst001\nDIR\n");
       const info =
-        "02546573745075626c6973686572005465737420417070004120746573742061707000" +
+        "02" + hexString(user) + "5465737420417070004120746573742061707000" +
         "010001000101001c000100746573742d75706c6f61642d303100323032362d30392d323500f5";
       assert.equal((await client.read(info.length / 2)).toString("hex"), info);
       assert.deepEqual(await client.read(dir.length), dir);
