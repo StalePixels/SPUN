@@ -37,8 +37,9 @@ running CMS.
 
 ## Gotchas
 
-- App code comments: none by default. Only a why the code cannot show, one
-  or two lines above the function. Tests may comment freely.
+- App code comments follow the existing user style: none by default; only a
+  why the code cannot show, in one or two lines above the function; almost
+  nothing inside function bodies. Tests may comment freely.
 - The repo is public. Committed files carry placeholders; real hosts,
   accounts and paths are only in the gitignored `.env` files.
 - Schema changes are made by hand on the database, then in `schema.ts`.
