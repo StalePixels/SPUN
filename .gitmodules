@@ -1,0 +1,3 @@
+[submodule "src/vendor/NBNtools"]
+	path = src/vendor/NBNtools
+	url = https://github.com/StalePixels/NBNtools.git
