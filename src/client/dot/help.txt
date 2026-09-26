@@ -1,0 +1,15 @@
+.spun [OPTIONS] COMMAND
+
+SPUN package manager
+
+commands:
+ find TEXT [PAGE]
+ info APPID [PAGE]
+ get APPID
+
+options:
+ -s xxxx Alternative Server
+ -p xxxx Alternative Port
+
+Put TEXT with spaces in quotes:
+ .spun find "two words" 2
