@@ -6,8 +6,8 @@ import { clientSteps, parseFixture, serverBytes } from "../src/fixture.js";
 import { fakeCatalogue } from "./fakeCatalogue.js";
 import { SpoofClient, startSpunServer } from "./harness.js";
 
-// A fixture is one session recorded by src/record.ts between a real Next
-// (.nbnget) and the Phase 2 CDNServer. The files that session downloaded go
+// A fixture is one session recorded by src/record.ts between .nbnget (the
+// POSIX build) and the Phase 2 CDNServer. The files that session downloaded go
 // in files/ beside it, at the same paths, so SPUNServer can serve them.
 const packageRoot = path.resolve(import.meta.dirname, "../../..");
 const fixture =
@@ -16,7 +16,7 @@ const files = path.join(path.dirname(fixture), "files");
 
 const missing = existsSync(fixture)
   ? false
-  : `no replay fixture at ${fixture}. Record one with src/record.ts and a real Next.`;
+  : `no replay fixture at ${fixture}. Record one with src/record.ts and .nbnget.`;
 
 test("SPUNServer answers a recorded .nbnget session with the recorded bytes", { skip: missing }, async () => {
   const chunks = parseFixture(readFileSync(fixture, "utf8"));
