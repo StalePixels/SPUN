@@ -1,0 +1,7 @@
+*
+!server/package.json
+!server/pnpm-lock.yaml
+!server/tsconfig.json
+!server/src
+!vendor/NBNtools/server/package.json
+!vendor/NBNtools/server/src

@@ -1,0 +1,13 @@
+services:
+  spun-server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    env_file: .env
+    environment:
+      NBN_FILEPATH: /data
+    ports:
+      - "${SPUN_PORT:-48128}:48128"
+    volumes:
+      - "${DATA_DIR_HOST:?set DATA_DIR_HOST in .env}:/data:ro"
+    restart: unless-stopped
