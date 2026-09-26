@@ -363,17 +363,16 @@ static unsigned char *spun_get(char *id) __z88dk_fastcall {
 
     for(;blocks>0;blocks--) {
         NET_PutCh(NBN_BLOCK_SUCCESS);
-        NET_Send("1\x0D\x0A", 3);
+        NET_Send("\x0D\x0A", 2);
 
         receive_block(NBN_MAX_BLOCKSIZE);
-
-        NET_PutCh(NBN_BLOCK_SUCCESS);
-        NET_Send("\x0D\x0A", 2);
     }
     NET_Send("!", 1);
     NET_Send("\x0D\x0A", 2);
 
     receive_block(remainder);
+    NET_PutCh(NBN_BLOCK_SUCCESS);
+    NET_Send("\x0D\x0A", 2);
 
     esxdos_f_close(file_out);
     file_out = 0;
