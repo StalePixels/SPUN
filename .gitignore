@@ -2,3 +2,5 @@
 .plandrop
 scratchpad
 .claude/settings.json
+/data
+.CLAUDE.md
