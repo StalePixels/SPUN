@@ -40,6 +40,8 @@ running CMS.
 - App code comments follow the existing user style: none by default; only a
   why the code cannot show, in one or two lines above the function; almost
   nothing inside function bodies. Tests may comment freely.
+- `throw` is for exceptions only, never routine behaviour such as quitting,
+  ending a session or an expected error reply.
 - The repo is public. Committed files carry placeholders; real hosts,
   accounts and paths are only in the gitignored `.env` files.
 - Schema changes are made by hand on the database, then in `schema.ts`.
