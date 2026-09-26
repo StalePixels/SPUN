@@ -375,6 +375,9 @@ static unsigned char *spun_get(char *id) __z88dk_fastcall {
 
     receive_block(remainder);
 
+    esxdos_f_close(file_out);
+    file_out = 0;
+
     printf("Transfer complete\n");
     return NULL;
 }
