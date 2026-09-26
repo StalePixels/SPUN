@@ -1,6 +1,6 @@
 import {
-  log,
   Server,
+  type Answer,
   type ServerClass,
   type Session,
 } from "../../vendor/NBNtools/server/src/index.js";
@@ -22,27 +22,15 @@ export class SPUNServer extends Server {
     this.catalogue = catalogue;
   }
 
-  public override command(cmd: string, params: readonly string[]): void {
+  public override async command(cmd: string, params: readonly string[]): Promise<Answer> {
     switch (cmd) {
       case "FIND":
-        this.reply(this.find(params));
-        break;
+        return { bytes: await this.find(params) };
       case "INFO":
-        this.reply(this.info(params));
-        break;
+        return { bytes: await this.info(params) };
       default:
-        super.command(cmd, params);
+        return super.command(cmd, params);
     }
-  }
-
-  private reply(answer: Promise<Uint8Array>): void {
-    answer.then(
-      (bytes) => this.session.socket.write(bytes),
-      (err: unknown) => {
-        log(err);
-        this.session.end("ServerException_ERROR");
-      },
-    );
   }
 
   private async find(params: readonly string[]): Promise<Uint8Array> {
