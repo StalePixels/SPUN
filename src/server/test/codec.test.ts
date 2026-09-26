@@ -21,14 +21,14 @@ const FIND_PAGE: FindPage = {
   pages: 1,
   apps: [
     {
-      id: "b5h5vu" as AppId,
-      username: "StalePixels",
-      title: "SPUN",
+      id: "tst001" as AppId,
+      username: "TestPublisher",
+      title: "Test App",
       latest: { serial: 1, version: "test-upload-01" },
     },
     {
-      id: "59jcz6" as AppId,
-      username: "StalePixels",
+      id: "tst002" as AppId,
+      username: "TestPublisher",
       title: "3",
       latest: { serial: 2, version: "1.1" },
     },
@@ -41,22 +41,22 @@ const FIND_HEX = hex(
   "0100", // page
   "02", // entries on this page
   "0100", // total pages
-  "4200", // block size
-  "623568357675", // b5h5vu
-  "5374616c65506978656c7300", // StalePixels\0
-  "5350554e00", // SPUN\0
+  "4a00", // block size
+  "747374303031", // tst001
+  "546573745075626c697368657200", // TestPublisher\0
+  "546573742041707000", // Test App\0
   "0100", // latest serial 1
   "746573742d75706c6f61642d303100", // test-upload-01\0
-  "35396a637a36", // 59jcz6
-  "5374616c65506978656c7300", // StalePixels\0
+  "747374303032", // tst002
+  "546573745075626c697368657200", // TestPublisher\0
   "3300", // 3\0
   "0200", // latest serial 2
   "312e3100", // 1.1\0
-  "f2", // checksum
+  "1c", // checksum
 );
 
 const INFO_PAGE: InfoPage = {
-  app: { username: "StalePixels", title: "SPUN", description: "Stale Pixels Updates Nexts" },
+  app: { username: "TestPublisher", title: "Test App", description: "A test app" },
   total: 2,
   page: 1,
   pages: 1,
@@ -68,9 +68,9 @@ const INFO_PAGE: InfoPage = {
 
 const INFO_HEX = hex(
   "02", // version
-  "5374616c65506978656c7300", // StalePixels\0
-  "5350554e00", // SPUN\0
-  "5374616c6520506978656c732055706461746573204e6578747300", // description\0
+  "546573745075626c697368657200", // TestPublisher\0
+  "546573742041707000", // Test App\0
+  "4120746573742061707000", // A test app\0
   "0200", // total releases
   "0100", // page
   "02", // releases on this page

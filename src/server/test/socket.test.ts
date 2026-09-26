@@ -42,25 +42,25 @@ const longReleases: ReleaseRow[] = Array.from({ length: 150 }, (_, i) => ({
 
 const tables: Tables = {
   users: [
-    { id: "u1", username: "StalePixels" },
+    { id: "u1", username: "TestPublisher" },
     { id: "u2", username: "FannyClient" },
   ],
   apps: [
-    { id: "b5h5vu", userId: "u1", title: "SPUN", description: "Stale Pixels Updates Nexts" },
-    { id: "59jcz6", userId: "u1", title: "Zebra", description: "Stripes" },
+    { id: "tst001", userId: "u1", title: "Test App", description: "A test app" },
+    { id: "tst002", userId: "u1", title: "Zebra", description: "Stripes" },
     { id: "empty1", userId: "u1", title: "Empty Shelf", description: "No releases here" },
     { id: "allgn1", userId: "u1", title: "All Gone", description: "" },
-    { id: "gone01", userId: "u1", title: "Spun Gone", description: "", deleted: true },
-    { id: "desc01", userId: "u2", title: "Other", description: "Made for SPUN users" },
+    { id: "gone01", userId: "u1", title: "Test App Gone", description: "", deleted: true },
+    { id: "desc01", userId: "u2", title: "Other", description: "Made for Test App users" },
     { id: "abc123", userId: "u2", title: "Mixed Case Title", description: "" },
     { id: "long01", userId: "u2", title: "Long History", description: "" },
     ...pagerApps,
     ...emptyPagers,
   ],
   releases: [
-    { appId: "b5h5vu", serial: 1, version: "test-upload-01", releaseDate: "2026-09-25" },
+    { appId: "tst001", serial: 1, version: "test-upload-01", releaseDate: "2026-09-25" },
     {
-      appId: "b5h5vu",
+      appId: "tst001",
       serial: 2,
       version: "test-upload-02",
       releaseDate: "2026-09-26",
@@ -70,7 +70,7 @@ const tables: Tables = {
     { appId: "abc123", serial: 2, version: "1.1", releaseDate: "2026-09-21" },
     { appId: "abc123", serial: 3, version: "1.2", releaseDate: "2026-09-22", deleted: true },
     { appId: "desc01", serial: 1, version: "0.1", releaseDate: "2026-09-01" },
-    { appId: "59jcz6", serial: 1, version: "1.0", releaseDate: "2026-09-01" },
+    { appId: "tst002", serial: 1, version: "1.0", releaseDate: "2026-09-01" },
     { appId: "allgn1", serial: 1, version: "1.0", releaseDate: "2026-09-01", deleted: true },
     { appId: "gone01", serial: 1, version: "1.0", releaseDate: "2026-09-20" },
     ...longReleases,
@@ -92,8 +92,8 @@ let client: SpoofClient;
 
 before(async () => {
   dataDir = mkdtempSync(path.join(tmpdir(), "spun-socket-"));
-  mkdirSync(path.join(dataDir, "StalePixels"));
-  writeFileSync(path.join(dataDir, "StalePixels", "b5h5vu-0001.zip"), fileBytes);
+  mkdirSync(path.join(dataDir, "TestPublisher"));
+  writeFileSync(path.join(dataDir, "TestPublisher", "tst001-0001.zip"), fileBytes);
   ({ server, port } = await startSpunServer(fakeCatalogue(tables), dataDir));
 });
 
@@ -125,17 +125,17 @@ describe("FIND", () => {
   test("sends the agreed bytes", async () => {
     client.send("FIND 1 zebra\n");
     const expected =
-      "02010001000101001e0035396a637a365374616c65506978656c73005a65627261000100312e3000dd";
+      "02010001000101002000747374303032546573745075626c6973686572005a65627261000100312e3000bf";
     assert.equal((await client.read(expected.length / 2)).toString("hex"), expected);
     assert.equal((await client.drain()).length, 0);
   });
 
   test("matches title and description, ignoring case, sorted by title", async () => {
-    client.send("FIND 1 sPuN\x0A\x0D");
+    client.send("FIND 1 tEsT aPp\x0A\x0D");
     const page = await client.reply(decodeFind);
     assert.deepEqual(
       page.apps.map((app) => app.id),
-      ["desc01", "b5h5vu"],
+      ["desc01", "tst001"],
     );
     assert.deepEqual([page.total, page.page, page.pages], [2, 1, 1]);
   });
@@ -191,9 +191,9 @@ describe("INFO", () => {
   after(() => client.close());
 
   test("an app id in capitals sends the agreed bytes, without deleted releases", async () => {
-    client.send("INFO B5H5VU\n");
+    client.send("INFO TST001\n");
     const expected =
-      "025374616c65506978656c73005350554e005374616c6520506978656c732055706461746573204e6578747300" +
+      "02546573745075626c6973686572005465737420417070004120746573742061707000" +
       "010001000101001c000100746573742d75706c6f61642d303100323032362d30392d323500f5";
     assert.equal((await client.read(expected.length / 2)).toString("hex"), expected);
     assert.equal((await client.drain()).length, 0);
@@ -216,7 +216,7 @@ describe("INFO", () => {
     client.send("INFO empty1\n");
     const page = await client.reply(decodeInfo);
     assert.deepEqual(page.app, {
-      username: "StalePixels",
+      username: "TestPublisher",
       title: "Empty Shelf",
       description: "No releases here",
     });
@@ -231,7 +231,7 @@ describe("INFO", () => {
   });
 
   test("a bad page number gives BadQuery_ERROR and keeps the session", async () => {
-    await expectError("INFO b5h5vu 0\n", "BadQuery_ERROR");
+    await expectError("INFO tst001 0\n", "BadQuery_ERROR");
     await expectOpen();
   });
 });
@@ -241,13 +241,13 @@ describe("GET", () => {
   after(() => client.close());
 
   test("block handshake, with a retry after a checksum failure", async () => {
-    client.send("GET StalePixels/b5h5vu-0001.zip\n");
+    client.send("GET TestPublisher/tst001-0001.zip\n");
     const header = Buffer.concat([
       Buffer.from([2]),
       Buffer.from([0x64, 0x20, 0x00, 0x00]), // size 8292
       Buffer.from([0x02, 0x00, 0x00, 0x00]), // two full blocks
       Buffer.from([0x64, 0x00]), // 100 bytes in the last block
-      Buffer.from("b5h5vu-0001.zip\0"),
+      Buffer.from("tst001-0001.zip\0"),
     ]);
     assert.deepEqual(await client.read(header.length), header);
 
@@ -271,7 +271,7 @@ describe("GET", () => {
   });
 
   test("a missing file gives NoFile_ERROR and keeps the session", async () => {
-    await expectError("GET StalePixels/b5h5vu-0002.zip\n", "NoFile_ERROR");
+    await expectError("GET TestPublisher/tst001-0002.zip\n", "NoFile_ERROR");
     await expectOpen();
   });
 });
@@ -297,5 +297,46 @@ describe("a database failure", () => {
     await client.drain();
     assert.equal(client.closed, true);
     client.close();
+  });
+});
+
+describe("lines sent together", () => {
+  let slow: net.Server;
+  let slowPort: number;
+
+  // A slow database makes INFO finish after a DIR sent behind it, unless the
+  // session handles DIR only after INFO has answered.
+  before(async () => {
+    const fast = fakeCatalogue(tables);
+    const later = <T>(value: Promise<T>): Promise<T> =>
+      new Promise((resolve) => setTimeout(() => resolve(value), 100));
+    const delayed: Catalogue = {
+      find: (...args) => later(fast.find(...args)),
+      app: (...args) => later(fast.app(...args)),
+      releases: (...args) => later(fast.releases(...args)),
+    };
+    ({ server: slow, port: slowPort } = await startSpunServer(delayed, dataDir));
+  });
+
+  after(() => slow.close());
+
+  test("INFO then DIR in one write are answered in that order", async () => {
+    client = await SpoofClient.connect(slowPort);
+    try {
+      client.send("DIR\n");
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const dir = await client.drain();
+      assert.ok(dir.length > 0);
+
+      client.send("INFO tst001\nDIR\n");
+      const info =
+        "02546573745075626c6973686572005465737420417070004120746573742061707000" +
+        "010001000101001c000100746573742d75706c6f61642d303100323032362d30392d323500f5";
+      assert.equal((await client.read(info.length / 2)).toString("hex"), info);
+      assert.deepEqual(await client.read(dir.length), dir);
+      assert.equal((await client.drain()).length, 0);
+    } finally {
+      client.close();
+    }
   });
 });
