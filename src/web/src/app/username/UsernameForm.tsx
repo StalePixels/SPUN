@@ -1,0 +1,37 @@
+"use client";
+
+import { FormError } from "../FormError";
+import { useActionState } from "react";
+import Button from "react-bootstrap/Button";
+import Form from "react-bootstrap/Form";
+import { USERNAME_MAX, USERNAME_UI_MIN } from "@/lib/rules";
+import { chooseUsername, type FormState } from "../actions";
+import { Field, FieldRow } from "../Field";
+
+export function UsernameForm() {
+  const [state, formAction, pending] = useActionState<FormState, FormData>(chooseUsername, {});
+  return (
+    <Form action={formAction}>
+      <FormError problem={state.error} />
+      <Field
+        controlId="username"
+        label="Username"
+        required
+        help={`${USERNAME_UI_MIN} to ${USERNAME_MAX} letters, numbers, - or _. You cannot change it later.`}
+      >
+        <Form.Control
+          name="username"
+          required
+          minLength={USERNAME_UI_MIN}
+          maxLength={USERNAME_MAX}
+          pattern="[A-Za-z0-9_\-]+"
+        />
+      </Field>
+      <FieldRow>
+        <Button type="submit" disabled={pending}>
+          Save username
+        </Button>
+      </FieldRow>
+    </Form>
+  );
+}

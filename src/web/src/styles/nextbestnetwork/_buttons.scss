@@ -1,0 +1,6 @@
+// Plain submit and button inputs look like Bootstrap secondary buttons.
+
+input[type=submit], input[type=button] {
+  @extend .btn;
+  @extend .btn-secondary;
+}

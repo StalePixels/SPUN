@@ -1,0 +1,9 @@
+node_modules
+.next
+.env
+.env.*
+!.env.example
+build
+e2e
+playwright.config.ts
+tsconfig.tsbuildinfo

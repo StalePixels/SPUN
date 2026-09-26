@@ -1,0 +1,29 @@
+// As on the wiki, the footer element also has the bg-primary class, which
+// wins over the background set here.
+
+#footer {
+  display: block;
+  background: $gray-200;
+  margin-top: auto !important;
+  padding-top: $spacer;
+  padding-bottom: $spacer * 3;
+  font-size: $font-size-xs;
+
+  a {
+    color: $gray-600;
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover {
+      color: $gray-800;
+      cursor: pointer;
+    }
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: $spacer 0;
+    color: $gray-600;
+  }
+}

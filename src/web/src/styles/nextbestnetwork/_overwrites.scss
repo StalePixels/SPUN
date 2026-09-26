@@ -1,0 +1,24 @@
+// Rules that are in the live wiki's CSS but not in the wiki skin repository.
+
+code {
+  border: 1px solid var(--#{$prefix}border-color) !important;
+  border-radius: 2px;
+  padding: 1px 4px;
+}
+
+code,
+pre {
+  background-color: var(--#{$prefix}secondary-bg) !important;
+  color: var(--#{$prefix}body-color) !important;
+}
+
+pre {
+  border: 1px solid var(--#{$prefix}border-color) !important;
+  padding: 1em;
+}
+
+pre code {
+  background-color: transparent !important;
+  border: none !important;
+  color: inherit !important;
+}

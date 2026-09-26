@@ -1,0 +1,9 @@
+services:
+  cms:
+    build: .
+    env_file: .env
+    ports:
+      - "${CMS_PORT:-48180}:3000"
+    volumes:
+      - "${DATA_DIR_HOST:?set DATA_DIR_HOST in .env}:${DATA_DIR:-/data}"
+    restart: unless-stopped
