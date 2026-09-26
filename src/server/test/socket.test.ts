@@ -87,6 +87,9 @@ const blockWithChecksum = (from: number, to: number): Buffer => {
   return Buffer.concat([block, Buffer.from([checksum(block)])]);
 };
 
+// Exactly two blocks, so the last block has no data, only its checksum.
+const exactBytes = Buffer.from(Array.from({ length: 2 * BLOCK }, (_, i) => (i * 13) % 256));
+
 let dataDir: string;
 let server: net.Server;
 let port: number;
@@ -96,6 +99,7 @@ before(async () => {
   dataDir = mkdtempSync(path.join(tmpdir(), "spun-socket-"));
   mkdirSync(path.join(dataDir, user));
   writeFileSync(path.join(dataDir, user, "tst001-0001.zip"), fileBytes);
+  writeFileSync(path.join(dataDir, user, "tst002-0001.zip"), exactBytes);
   ({ server, port } = await startSpunServer(fakeCatalogue(tables), dataDir));
 });
 
@@ -286,6 +290,41 @@ describe("GET", () => {
 
   test("a missing file gives NoFile_ERROR and keeps the session", async () => {
     await expectError(`GET ${user}/tst001-0002.zip\n`, "NoFile_ERROR");
+    await expectOpen();
+  });
+});
+
+// A whole GET as .spun does it: one "!" for the header and for each block.
+const expectFile = async (name: string, bytes: Buffer): Promise<void> => {
+  client.send(`GET ${user}/${name}\n`);
+  const header = Buffer.alloc(11);
+  header[0] = 2;
+  header.writeUInt32LE(bytes.length, 1);
+  header.writeUInt32LE(Math.floor(bytes.length / BLOCK), 5);
+  header.writeUInt16LE(bytes.length % BLOCK, 9);
+  const expected = Buffer.concat([header, Buffer.from(`${name}\0`)]);
+  assert.deepEqual(await client.read(expected.length), expected);
+
+  for (let from = 0; from <= bytes.length; from += BLOCK) {
+    const block = bytes.subarray(from, Math.min(from + BLOCK, bytes.length));
+    client.send("!\r\n");
+    assert.deepEqual(
+      await client.read(block.length + 1),
+      Buffer.concat([block, Buffer.from([checksum(block)])]),
+    );
+  }
+  client.send("!\r\n");
+};
+
+// .spun update downloads several apps on one connection.
+describe("two GETs on one connection", () => {
+  before(connect);
+  after(() => client.close());
+
+  test("the second GET, of a file with an empty last block, also arrives whole", async () => {
+    await expectFile("tst001-0001.zip", fileBytes);
+    await expectFile("tst002-0001.zip", exactBytes);
+    assert.equal((await client.drain()).length, 0);
     await expectOpen();
   });
 });
