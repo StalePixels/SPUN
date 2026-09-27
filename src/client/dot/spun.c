@@ -8,6 +8,7 @@
 #include <arch/zxn.h>
 #include <intrinsic.h>
 #include <arch/zxn/esxdos.h>
+#include <arch/zxn/sysvar.h>
 #endif
 
 #include <ctype.h>
@@ -84,7 +85,7 @@ static void shutdown() {
     NBN_Free();
 
 #ifdef __ZXNEXT
-    zx_border(7);
+    zx_border((SYSVAR_BORDCR >> 3) & 7);
     ZXN_NEXTREGA(REG_TURBO_MODE, old_cpu_speed);
 #endif
 }
