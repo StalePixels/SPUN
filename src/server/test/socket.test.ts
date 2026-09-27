@@ -230,15 +230,11 @@ describe("INFO", () => {
     assert.equal(page2.releases[0].serial, 50);
   });
 
-  test("an app with no releases has an empty list", async () => {
-    client.send("INFO empty1\n");
-    const page = await client.reply(decodeInfo);
-    assert.deepEqual(page.app, {
-      username: user,
-      title: "Empty Shelf",
-      description: "No releases here",
-    });
-    assert.deepEqual([page.total, page.pages, page.releases.length], [0, 0, 0]);
+  test("an app with no release, or only deleted releases, gives NoApp_ERROR and keeps the session", async () => {
+    for (const command of ["INFO empty1", "INFO allgn1"]) {
+      await expectError(`${command}\n`, "NoApp_ERROR");
+    }
+    await expectOpen();
   });
 
   test("unknown, deleted and malformed app ids give NoApp_ERROR and keep the session", async () => {

@@ -44,7 +44,8 @@ export function mysqlCatalogue(uri: string): Catalogue {
         `SELECT u.username, a.title, a.description
          FROM apps a
          JOIN users u ON u.id = a.user_id
-         WHERE a.id = ? AND a.deleted_at IS NULL`,
+         WHERE a.id = ? AND a.deleted_at IS NULL
+           AND EXISTS (SELECT 1 FROM releases WHERE app_id = a.id AND deleted_at IS NULL)`,
         [id],
       );
       return rows.length === 0 ? null : (rows[0] as AppInfo);

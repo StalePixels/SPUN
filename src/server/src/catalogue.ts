@@ -34,7 +34,7 @@ export interface Slice<T> {
 }
 
 // Hides deleted apps and deleted releases. The latest release is the highest
-// serial that is not deleted. find() lists only apps that have one.
+// serial that is not deleted. find() and app() show only apps that have one.
 export interface Catalogue {
   find(text: string, offset: number, limit: number): Promise<Slice<FoundApp>>;
   app(id: AppId): Promise<AppInfo | null>;

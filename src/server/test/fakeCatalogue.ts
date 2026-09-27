@@ -72,7 +72,7 @@ export function fakeCatalogue(tables: Tables): Catalogue {
 
     async app(id) {
       const app = liveApp(id);
-      if (!app) {
+      if (!app || liveReleases(id).length === 0) {
         return null;
       }
       return { username: username(app.userId), title: app.title, description: app.description };
