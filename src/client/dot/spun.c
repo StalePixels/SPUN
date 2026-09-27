@@ -53,9 +53,19 @@ static unsigned char version[17];
 static unsigned char date[11];
 static unsigned char serverError[33];
 
+static unsigned char catalogue[] = "/sys/spun.cat";
+static unsigned char catalogueTemp[] = "/sys/SPUNTEMP.$$$";
+static unsigned char spunList[] = "/tmp/SPUNLIST.TMP";
+static unsigned char entry[48];
+static bool lineEnd;
+static unsigned char entryApp[7];
+static uint16_t entrySerial;
+static uint16_t updates;
+
 uint32_t counter;
 
 unsigned char file_out;
+unsigned char file_in;
 
 #define SCREEN_WIDTH 32
 
@@ -70,6 +80,7 @@ static uint8_t pageArg = 0;
 static void shutdown() {
     NET_Close();
     if(file_out) esxdos_f_close(file_out);
+    if(file_in) esxdos_f_close(file_in);
     NBN_Free();
 
 #ifdef __ZXNEXT
@@ -188,12 +199,30 @@ static void read_counts(void) {
     NET_GetUInt16((uint8_t *)&totalPages);
 }
 
-static void read_block(void) {
-    NET_GetUInt16((uint8_t *)&blockSize);
-    if(blockSize > NBN_MAX_BLOCKSIZE) NBN_Fail(err_nbn_protocol);
+static unsigned char *send_query(bool info) __z88dk_fastcall {
+    unsigned char *error;
+    uint8_t retries = 3;
 
-    if(!NBN_GetBlock(blockSize)) NBN_Fail(err_transfer_error);
+    while(1) {
+        NET_Send(nbnBuff, strlen(nbnBuff));
+
+        if((error = check_version())) return error;
+        if(info) {
+            net_string(username, sizeof(username));
+            net_string(title, sizeof(title));
+            net_string(description, sizeof(description));
+        }
+        read_counts();
+
+        NET_GetUInt16((uint8_t *)&blockSize);
+        if(blockSize > NBN_MAX_BLOCKSIZE) NBN_Fail(err_nbn_protocol);
+        if(NBN_GetBlock(blockSize)) break;
+
+        retries--;
+        if(!retries) NBN_Fail(err_transfer_error);
+    }
     blockAt = 0;
+    return NULL;
 }
 
 // The block is paged over the screen at 0x4000, so page it out again before anything prints
@@ -226,29 +255,15 @@ static void block_string(unsigned char *dest, uint16_t length) {
 }
 
 static unsigned char *send_info(char *id) __z88dk_fastcall {
-    unsigned char *error;
-
     sprintf(nbnBuff, "INFO %s %u\x0A", id, page);
-    NET_Send(nbnBuff, strlen(nbnBuff));
-
-    if((error = check_version())) return error;
-    net_string(username, sizeof(username));
-    net_string(title, sizeof(title));
-    net_string(description, sizeof(description));
-    read_counts();
-    read_block();
-    return NULL;
+    return send_query(true);
 }
 
 static unsigned char *spun_find(char *text) __z88dk_fastcall {
     unsigned char *error;
 
     sprintf(nbnBuff, "FIND %u %s\x0A", page, text);
-    NET_Send(nbnBuff, strlen(nbnBuff));
-
-    if((error = check_version())) return error;
-    read_counts();
-    read_block();
+    if((error = send_query(false))) return error;
 
     if(!totalItems) {
         printf("0 found\n");
@@ -329,7 +344,189 @@ static void receive_block(uint16_t length) __z88dk_fastcall {
     if(!NBN_WriteBlock(file_out, length)) exit(errno);
 }
 
-static unsigned char *spun_get(char *id) __z88dk_fastcall {
+static void file_check(void) {
+    if(errno) exit(errno);
+}
+
+static bool open_in(unsigned char *name) __z88dk_fastcall {
+    uint8_t handle;
+
+    errno = 0;
+    handle = esxdos_f_open(name, ESXDOS_MODE_R);
+    if(errno) return false;
+
+    file_in = handle;
+    return true;
+}
+
+static void close_in(void) {
+    errno = 0;
+    esxdos_f_close(file_in);
+    file_in = 0;
+    file_check();
+}
+
+static void create_out(unsigned char *name) __z88dk_fastcall {
+    uint8_t handle;
+
+    errno = 0;
+    handle = esxdos_f_open(name, ESXDOS_MODE_W | ESXDOS_MODE_CT);
+    file_check();
+    file_out = handle;
+}
+
+static void close_out(void) {
+    errno = 0;
+    esxdos_f_close(file_out);
+    file_out = 0;
+    file_check();
+}
+
+static void write_out(void *text, uint16_t length) {
+    errno = 0;
+    esxdos_f_write(file_out, text, length);
+    file_check();
+}
+
+static bool read_byte(unsigned char *chr) __z88dk_fastcall {
+    int got;
+
+    errno = 0;
+    got = esxdos_f_read(file_in, chr, 1);
+    file_check();
+
+    return got;
+}
+
+static bool read_line(void) {
+    unsigned char chr;
+    uint8_t at = 0;
+    bool any = false;
+
+    lineEnd = false;
+    while(at + 1 < sizeof(entry)) {
+        if(!read_byte(&chr)) {
+            lineEnd = true;
+            break;
+        }
+
+        any = true;
+        if(chr == '\x0A') {
+            lineEnd = true;
+            break;
+        }
+        if(chr != '\x0D') entry[at++] = chr;
+    }
+    entry[at] = 0;
+
+    return any;
+}
+
+static void finish_line(bool copy) __z88dk_fastcall {
+    unsigned char chr;
+
+    while(!lineEnd && read_byte(&chr) && chr != '\x0A') {
+        if(copy && chr != '\x0D') write_out(&chr, 1);
+    }
+}
+
+static bool next_line(void) {
+    bool any = read_line();
+
+    finish_line(false);
+    return any;
+}
+
+static bool remove_file(unsigned char *name) __z88dk_fastcall {
+    uint8_t handle;
+
+    errno = 0;
+    handle = esxdos_f_open(name, ESXDOS_MODE_R);
+    if(errno) return false;
+
+    esxdos_f_close(handle);
+    errno = 0;
+    esxdos_f_unlink(name);
+    file_check();
+
+    return true;
+}
+
+static uint8_t parse_entry(void) {
+    uint8_t at;
+    unsigned char chr;
+
+    entrySerial = 0;
+    for(at = 0; at < 11; at++) {
+        chr = entry[at];
+        if(at < 6) {
+            if(!islower(chr) && !isdigit(chr)) return 0;
+            entryApp[at] = chr;
+        } else if(at == 6) {
+            if(chr != ' ') return 0;
+        } else {
+            if(!isxdigit(chr)) return 0;
+            entrySerial = (entrySerial << 4) | (isdigit(chr) ? chr - '0' : (chr | 0x20) - 'a' + 10);
+        }
+    }
+    entryApp[6] = 0;
+    if(entry[11] != ' ') return 0;
+
+    for(at = 12; entry[at] && entry[at] != ' '; at++) {
+        if(at - 12 == sizeof(version) - 1) return 0;
+        version[at - 12] = entry[at];
+    }
+    if(at == 12) return 0;
+    version[at - 12] = 0;
+
+    return at;
+}
+
+static void bad_line(uint16_t line) __z88dk_fastcall {
+    printf("Line %u: bad entry\n", line);
+}
+
+static void commit_catalogue(void) {
+    remove_file(catalogue);
+
+    errno = 0;
+    esx_f_rename(catalogueTemp, catalogue);
+    file_check();
+}
+
+static void write_catalogue(char *id) __z88dk_fastcall {
+    bool found = false;
+    uint8_t rest;
+
+    remove_file(catalogueTemp);
+    open_in(catalogue);
+    create_out(catalogueTemp);
+
+    sprintf(nbnBuff, "%s %04x %s", id, serial, version);
+
+    while(file_in && read_line()) {
+        if((rest = parse_entry()) && strcmp(entryApp, id) == 0) {
+            found = true;
+            write_out(nbnBuff, strlen(nbnBuff));
+            write_out(entry + rest, strlen(entry + rest));
+        } else {
+            write_out(entry, strlen(entry));
+        }
+        finish_line(true);
+        write_out("\x0A", 1);
+    }
+    if(!found) {
+        write_out(nbnBuff, strlen(nbnBuff));
+        write_out("\x0A", 1);
+    }
+
+    if(file_in) close_in();
+    close_out();
+
+    commit_catalogue();
+}
+
+static unsigned char *latest(char *id) __z88dk_fastcall {
     unsigned char *error;
 
     if((error = send_info(id))) return error;
@@ -337,8 +534,11 @@ static unsigned char *spun_get(char *id) __z88dk_fastcall {
     if(!pageItems) return err_no_release;
     serial = block_uint16();
     block_string(version, sizeof(version));
+    return NULL;
+}
 
-    printf("%s\n%s\n", title, version);
+static unsigned char *download(char *id) __z88dk_fastcall {
+    unsigned char *error;
 
     sprintf(nbnBuff, "GET %s/%s-%04x.zip\x0A", username, id, serial);
     NET_Send(nbnBuff, strlen(nbnBuff));
@@ -378,7 +578,117 @@ static unsigned char *spun_get(char *id) __z88dk_fastcall {
     file_out = 0;
 
     printf("Transfer complete\n");
+
+    write_catalogue(id);
     return NULL;
+}
+
+static unsigned char *spun_get(char *id) __z88dk_fastcall {
+    unsigned char *error;
+
+    if((error = latest(id))) return error;
+
+    printf("%s\n%s\n", title, version);
+    return download(id);
+}
+
+static void print_error(unsigned char *text) __z88dk_fastcall {
+    unsigned char chr;
+
+    do {
+        chr = *text++;
+        putchar(chr & 0x7F);
+    } while(!(chr & 0x80) && *text);
+    putchar('\n');
+}
+
+static unsigned char *list_updates(void) {
+    unsigned char *error;
+    uint16_t line = 0;
+
+    if(remove_file(spunList)) printf("Deleted a stale download list\n");
+
+    updates = 0;
+    create_out(spunList);
+    open_in(catalogue);
+
+    while(file_in && next_line()) {
+        line++;
+
+        if(!*entry || *entry == '#' || *entry == ';') continue;
+        if(!parse_entry()) {
+            bad_line(line);
+            continue;
+        }
+
+        if((error = latest(entryApp))) {
+            if(error == err_wrong_version) return error;
+
+            printf("%s ", entryApp);
+            print_error(error);
+            continue;
+        }
+        if(serial <= entrySerial) continue;
+
+        sprintf(nbnBuff, "%s %04x %s %s\x0A", entryApp, serial, version, username);
+        write_out(nbnBuff, strlen(nbnBuff));
+        printf("%s %s\n", title, version);
+        updates++;
+    }
+    if(file_in) close_in();
+    close_out();
+
+    if(!updates) {
+        printf("No updates\n");
+        remove_file(spunList);
+    } else {
+        printf("%u update(s)\n", updates);
+    }
+    return NULL;
+}
+
+static unsigned char *download_list(void) {
+    unsigned char *error;
+    uint16_t done = 0;
+    uint16_t skip;
+    uint8_t at;
+    uint8_t to;
+
+    while(open_in(spunList)) {
+        for(skip = done; skip && next_line(); skip--);
+        if(!next_line()) {
+            close_in();
+            break;
+        }
+        close_in();
+        done++;
+
+        if(!(at = parse_entry())) {
+            bad_line(done);
+            continue;
+        }
+        strcpy(appid, entryApp);
+        serial = entrySerial;
+
+        to = 0;
+        if(entry[at]) {
+            for(at++; entry[at] && to + 1 < sizeof(username); at++) username[to++] = entry[at];
+        }
+        username[to] = 0;
+
+        if((error = download(appid))) return error;
+    }
+
+    remove_file(spunList);
+    return NULL;
+}
+
+static unsigned char *spun_update(void) {
+    unsigned char *error;
+
+    if((error = list_updates())) return error;
+    if(!updates) return NULL;
+    return download_list();
 }
 
 int main(int argc, char** argv) {
@@ -437,18 +747,22 @@ int main(int argc, char** argv) {
         help_and_exit(NULL);
     }
 
-    if(!valueArg || !*argv[valueArg]) {
-        help_and_exit(err_invalid_option);
-    }
+    if (stricmp(argv[commandArg], "update") == 0) {
+        if(valueArg) help_and_exit(err_invalid_option);
+    } else {
+        if(!valueArg || !*argv[valueArg]) {
+            help_and_exit(err_invalid_option);
+        }
 
-    if (stricmp(argv[commandArg], "get") == 0) {
-        if(pageArg) help_and_exit(err_invalid_option);
-    } else if (stricmp(argv[commandArg], "find") != 0 && stricmp(argv[commandArg], "info") != 0) {
-        help_and_exit(err_invalid_option);
-    }
+        if (stricmp(argv[commandArg], "get") == 0) {
+            if(pageArg) help_and_exit(err_invalid_option);
+        } else if (stricmp(argv[commandArg], "find") != 0 && stricmp(argv[commandArg], "info") != 0) {
+            help_and_exit(err_invalid_option);
+        }
 
-    if (stricmp(argv[commandArg], "find") != 0) {
-        for(char *chr = argv[valueArg]; *chr; chr++) *chr = tolower(*chr);
+        if (stricmp(argv[commandArg], "find") != 0) {
+            for(char *chr = argv[valueArg]; *chr; chr++) *chr = tolower(*chr);
+        }
     }
 
     if(pageArg) parse_page(argv[pageArg]);
@@ -466,6 +780,8 @@ int main(int argc, char** argv) {
         error = spun_find(argv[valueArg]);
     } else if (stricmp(argv[commandArg], "info") == 0) {
         error = spun_info(argv[valueArg]);
+    } else if (stricmp(argv[commandArg], "update") == 0) {
+        error = spun_update();
     } else {
         error = spun_get(argv[valueArg]);
     }

@@ -6,6 +6,7 @@ commands:
  find TEXT [PAGE]
  info APPID [PAGE]
  get APPID
+ update
 
 options:
  -s xxxx Alternative Server
