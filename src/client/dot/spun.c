@@ -767,6 +767,14 @@ int main(int argc, char** argv) {
 
     if(pageArg) parse_page(argv[pageArg]);
 
+    if (stricmp(argv[commandArg], "update") == 0) {
+        if(!open_in(catalogue)) {
+            printf("No updates\n");
+            exit(0);
+        }
+        close_in();
+    }
+
     atexit(shutdown);
 
     if(!NBN_Malloc()) {
