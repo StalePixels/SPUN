@@ -5,7 +5,7 @@ COMMON ?= ../../vendor/NBNtools/clients/common
 SERVER ?= spun.nextbestnetwork.com
 PORT ?= 48128
 
-CRT := 1
+CRT := 30
 
 CC=zcc
 CCFLAGS=+zxn -vn -O3 -startup=$(CRT) -clib=new

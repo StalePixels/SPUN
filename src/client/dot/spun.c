@@ -698,8 +698,6 @@ int main(int argc, char** argv) {
     old_cpu_speed = ZXN_READ_REG(REG_TURBO_MODE);
 
     ZXN_NEXTREG(REG_TURBO_MODE, 3);
-
-    zx_cls(PAPER_WHITE);
 #endif
 
     counter = 0;
