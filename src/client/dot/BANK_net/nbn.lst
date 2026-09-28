@@ -1,0 +1,4 @@
+../../../vendor/NBNtools/clients/common/util.c
+../../../vendor/NBNtools/clients/common/uart.c
+../../../vendor/NBNtools/clients/common/net.c
+../../../vendor/NBNtools/clients/common/nbn.c
