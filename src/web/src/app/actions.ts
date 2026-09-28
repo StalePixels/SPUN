@@ -13,6 +13,7 @@ import {
   checkTitle,
   checkUsernameInput,
   checkVersion,
+  checkVersionUnused,
   MAX_UPLOAD_BYTES,
   SERIAL_MAX,
   usernameKey,
@@ -165,6 +166,14 @@ export async function uploadRelease(
       .for("update");
     if (!app) {
       return { error: { code: "app.notFound" } };
+    }
+    const existing = await tx
+      .select({ version: releases.version })
+      .from(releases)
+      .where(eq(releases.appId, appId));
+    const taken = checkVersionUnused(version, existing.map((row) => row.version));
+    if (taken) {
+      return { error: taken };
     }
     const [last] = await tx
       .select({ serial: max(releases.serial) })

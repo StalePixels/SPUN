@@ -50,6 +50,12 @@ export function checkVersion(value: string): Problem | null {
   return null;
 }
 
+// Case-insensitive, as the database's unique key on (app_id, version) is.
+export function checkVersionUnused(value: string, existing: string[]): Problem | null {
+  const key = value.toLowerCase();
+  return existing.some((version) => version.toLowerCase() === key) ? { code: "version.taken" } : null;
+}
+
 export function checkTitle(value: string): Problem | null {
   if (value.length < 1 || value.length > TITLE_MAX) {
     return { code: "title.length", min: 1, max: TITLE_MAX };

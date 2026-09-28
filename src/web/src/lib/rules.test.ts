@@ -9,6 +9,7 @@ import {
   checkTitle,
   checkUsernameInput,
   checkVersion,
+  checkVersionUnused,
   formatDay,
   isValidSlug,
   parseSerial,
@@ -164,5 +165,17 @@ describe("problem codes", () => {
   it("gives the length bounds", () => {
     expect(checkTitle("")).toEqual({ code: "title.length", min: 1, max: 32 });
     expect(checkVersion("x".repeat(17))).toEqual({ code: "version.length", min: 1, max: 16 });
+  });
+});
+
+describe("version already used", () => {
+  it("refuses a version that the app already has, in any case", () => {
+    expect(checkVersionUnused("1.0", ["0.9", "1.0"])).toEqual({ code: "version.taken" });
+    expect(checkVersionUnused("1.0-BETA", ["1.0-beta"])).toEqual({ code: "version.taken" });
+  });
+
+  it("accepts a new version", () => {
+    expect(checkVersionUnused("1.1", ["0.9", "1.0"])).toBeNull();
+    expect(checkVersionUnused("1.0", [])).toBeNull();
   });
 });

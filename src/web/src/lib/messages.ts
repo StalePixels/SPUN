@@ -35,6 +35,8 @@ export function problemMessage(problem: Problem): string {
       return `A version cannot use: ${characters(problem.chars)}`;
     case "version.length":
       return `The version must be ${min} to ${max} characters.`;
+    case "version.taken":
+      return "This app already has a release with this version, or had one that was deleted.";
     case "title.invalidCharacters":
       return `The title cannot use: ${characters(problem.chars)}`;
     case "title.length":
@@ -53,6 +55,8 @@ export function problemMessage(problem: Problem): string {
       return `The file is larger than ${MAX_UPLOAD_TEXT}.`;
     case "file.notZip":
       return "The file is not a readable zip. It can be damaged, cut short, or not a zip.";
+    case "file.incompatible":
+      return "A Next cannot install this zip.";
     case "app.notFound":
       return "App not found.";
     case "app.limitReached":

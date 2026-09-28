@@ -9,6 +9,7 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
   varchar,
 } from "drizzle-orm/mysql-core";
 import type { AppId } from "../lib/apps";
@@ -92,5 +93,9 @@ export const releases = mysqlTable(
     // Soft delete: the serial is never reused; only the file goes.
     deletedAt: timestamp("deleted_at"),
   },
-  (t) => [primaryKey({ columns: [t.appId, t.serial] })],
+  (t) => [
+    primaryKey({ columns: [t.appId, t.serial] }),
+    // Covers deleted releases too: a Next can have one installed.
+    unique("releases_app_id_version_unique").on(t.appId, t.version),
+  ],
 );
