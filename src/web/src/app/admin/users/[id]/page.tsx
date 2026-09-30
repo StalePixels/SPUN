@@ -4,7 +4,10 @@ import { formatDay, isoDay } from "@/lib/rules";
 import { defaultAppLimit } from "@/lib/settings";
 import { Breadcrumbs } from "../../../Breadcrumbs";
 import { DefaultAppLimit } from "../../DefaultAppLimit";
+import { DeleteUser } from "./DeleteUser";
 import { UserForm } from "./UserForm";
+import { UsernameForm } from "./UsernameForm";
+import { UserStatus } from "./UserStatus";
 
 export default async function AdminUserPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
@@ -30,7 +33,11 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
             <dt className="col-md-3">Email</dt>
             <dd className="col-md-9">{user.email}</dd>
             <dt className="col-md-3">Registered</dt>
-            <dd className="col-md-9 mb-0">{formatDay(isoDay(user.createdAt))}</dd>
+            <dd className="col-md-9">{formatDay(isoDay(user.createdAt))}</dd>
+            <dt className="col-md-3">Status</dt>
+            <dd className="col-md-9 mb-0" data-testid="user-status">
+              {user.disabledAt ? `Disabled ${formatDay(isoDay(user.disabledAt))}` : "Enabled"}
+            </dd>
           </dl>
         </div>
       </div>
@@ -42,6 +49,26 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
             isAdmin={user.isAdmin}
             defaultLimit={<DefaultAppLimit limit={defaultLimit} />}
           />
+        </div>
+      </div>
+      {user.username && (
+        <div className="card mb-4">
+          <div className="card-body">
+            <UsernameForm userId={user.id} username={user.username} />
+          </div>
+        </div>
+      )}
+      <div className="card border-danger mb-4">
+        <div className="card-header text-danger border-danger">
+          <i className="bi bi-exclamation-triangle me-1" />
+          Disable or delete
+        </div>
+        <div className="card-body">
+          <p>A disabled user cannot log in. Their apps stay public.</p>
+          <div className="mb-3">
+            <UserStatus key={user.disabledAt ? "disabled" : "enabled"} userId={user.id} disabled={user.disabledAt !== null} />
+          </div>
+          <DeleteUser userId={user.id} name={name} />
         </div>
       </div>
     </>

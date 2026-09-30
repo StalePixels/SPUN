@@ -10,6 +10,7 @@ import {
   releaseFile,
   skipBrowserChecks,
   test,
+  waitForHydration,
   todayUtc,
   uploadRelease,
 } from "../support/pages";
@@ -34,7 +35,7 @@ function daysFromToday(days: number): string {
 // The server answered with this error code, the page stays, and no release exists.
 async function expectRefused(page: Page, appId: string, code: string) {
   await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", code);
-  await expect(page).toHaveURL(new RegExp(`/apps/${appId}$`));
+  await expect(page).toHaveURL(new RegExp(`/publish/apps/${appId}$`));
   expect(await releaseRow(appId, 1)).toBeUndefined();
 }
 
@@ -54,7 +55,7 @@ test("a valid zip becomes Release 1, on disk and in the database", async ({ page
   const zip = makeZip(sampleEntries());
   await uploadRelease(page, { version: "1.0-beta", file: files.write("game.zip", zip) });
 
-  await expect(page).toHaveURL(new RegExp(`/apps/${id}/releases/1$`));
+  await expect(page).toHaveURL(new RegExp(`/publish/apps/${id}/releases/1$`));
   await expect(page.getByTestId("release-version")).toHaveText("1.0-beta");
   await expect(page.getByTestId("release-date")).toHaveText(formatDay(todayUtc()));
   await expect(page.getByTestId("release-file")).toHaveText(`/${client.username}/${id}-0001.zip`);
@@ -68,6 +69,7 @@ test("a historic release keeps its past date; the date is off until ticked", asy
   const id = await apps.create("Historic");
   const date = page.getByTestId("upload-date");
   await expect(date).toBeDisabled();
+  await waitForHydration(page.getByTestId("upload-historic"));
   await page.getByTestId("upload-historic").check();
   await expect(date).toBeEnabled();
   await page.getByTestId("upload-historic").uncheck();
@@ -78,7 +80,7 @@ test("a historic release keeps its past date; the date is off until ticked", asy
     historicDate: "2020-05-17",
     file: files.write("old.zip", makeZip(sampleEntries())),
   });
-  await expect(page).toHaveURL(new RegExp(`/apps/${id}/releases/1$`));
+  await expect(page).toHaveURL(new RegExp(`/publish/apps/${id}/releases/1$`));
   await expect(page.getByTestId("release-date")).toHaveText(formatDay("2020-05-17"));
   expect((await releaseRow(id, 1))?.release_date).toBe("2020-05-17");
 });

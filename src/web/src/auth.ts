@@ -11,6 +11,7 @@ declare module "next-auth" {
   }
   interface User {
     username?: string | null;
+    disabledAt?: Date | null;
   }
 }
 
@@ -49,6 +50,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
       },
     ],
     callbacks: {
+      // For a known account, user is the users row.
+      signIn({ user }) {
+        return !user.disabledAt;
+      },
       session({ session, user }) {
         return {
           ...session,

@@ -5,7 +5,7 @@ import {
   setUserAppLimit,
   userByUsername,
 } from "../support/db";
-import { test as base, deleteAppInUi, expect, formatDay, todayUtc, waitForHydration } from "../support/pages";
+import { test as base, clickHydrated, deleteAppInUi, expect, formatDay, todayUtc, waitForHydration } from "../support/pages";
 import { accounts } from "../support/settings";
 
 const admin = accounts.admin;
@@ -35,15 +35,15 @@ const test = base.extend<object, { start: StartState }>({
 async function saveDefaultLimit(page: Page, value: string) {
   await page.goto("/admin/settings");
   await page.getByTestId("setting-default-app-limit").fill(value);
-  await page.getByTestId("settings-submit").click();
+  await clickHydrated(page.getByTestId("settings-submit"));
   await expect(page.getByTestId("form-saved")).toBeVisible();
 }
 
-test("the Admin link leads to Settings, Users and Apps", async ({ page }) => {
+test("the Admin link leads to Settings, Users, Apps and Categories", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("nav-admin").click();
   await expect(page).toHaveURL(/\/admin$/);
-  for (const section of ["settings", "users", "apps"]) {
+  for (const section of ["settings", "users", "apps", "categories"]) {
     await page.getByTestId(`admin-link-${section}`).click();
     await expect(page).toHaveURL(new RegExp(`/admin/${section}$`));
     await page.goto("/admin");
@@ -80,11 +80,11 @@ test("with a default limit of 1, the New app form comes and goes", async ({ page
   expect(own.app_limit, "the admin account needs no own limit, so the default applies").toBeNull();
   await saveDefaultLimit(page, "1");
 
-  await page.goto("/");
+  await page.goto("/publish");
   await expect(page.getByTestId("app-submit")).toBeVisible();
   const id = await apps.create("Limit");
 
-  await page.goto("/");
+  await page.goto("/publish");
   await expect(page.getByTestId("app-limit-reached")).toBeVisible();
   await expect(page.getByTestId("app-submit")).toHaveCount(0);
 
@@ -108,6 +108,7 @@ test("users: set the client's own limit to 2, then clear it back to the default"
   await page.goto("/admin/users");
   await row.getByTestId("user-link").click();
   await expect(page).toHaveURL(new RegExp(`/admin/users/${clientUser.id}$`));
+  await waitForHydration(toggle);
   await expect(page.getByTestId("user-is-admin")).not.toBeChecked();
 
   // Ticked with no number is an error.
@@ -127,6 +128,7 @@ test("users: set the client's own limit to 2, then clear it back to the default"
 
   await row.getByTestId("user-link").click();
   await expect(toggle).toBeChecked();
+  await waitForHydration(toggle);
   await toggle.uncheck();
   await expect(number).toBeDisabled();
   await save.click();

@@ -5,14 +5,20 @@ import { useActionState } from "react";
 import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
+import type { Category } from "@/lib/categories";
 import { DESCRIPTION_MAX, TITLE_MAX } from "@/lib/rules";
 import { createApp, updateApp, type FormState } from "./actions";
 import { Field, FieldRow, RequiredNote } from "./Field";
 
-type Props = { app?: { id: string; title: string; description: string } };
+type Props = {
+  app?: { id: string; title: string; description: string };
+  categories: Category[];
+  selected?: number[];
+  save?: (prev: FormState, formData: FormData) => Promise<FormState>;
+};
 
-export function AppForm({ app }: Props) {
-  const action = app ? updateApp.bind(null, app.id) : createApp;
+export function AppForm({ app, categories, selected = [], save }: Props) {
+  const action = save ?? (app ? updateApp.bind(null, app.id) : createApp);
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, {});
   return (
     <Form action={formAction}>
@@ -30,6 +36,20 @@ export function AppForm({ app }: Props) {
           maxLength={DESCRIPTION_MAX}
           defaultValue={app?.description}
         />
+      </Field>
+      <Field controlId="categories" label="Categories" required help="Choose at least one.">
+        {categories.map((category) => (
+          <Form.Check
+            key={category.id}
+            data-testid={`app-category-${category.slug}`}
+            type="checkbox"
+            id={`category-${category.id}`}
+            name="categories"
+            value={category.id}
+            label={category.name}
+            defaultChecked={selected.includes(category.id)}
+          />
+        ))}
       </Field>
       <FieldRow>
         <Button data-testid="app-submit" type="submit" disabled={pending}>

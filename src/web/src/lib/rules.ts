@@ -5,13 +5,18 @@ export const USERNAME_UI_MIN = 8;
 export const VERSION_MAX = 16;
 export const TITLE_MAX = 32;
 export const DESCRIPTION_MAX = 256;
+export const CHANGELOG_MAX = 1024;
 export const SERIAL_MAX = 0xffff;
 export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 export const MAX_UPLOAD_TEXT = "4 MB";
+export const SCREENSHOT_SLOTS = 5;
+export const MAX_SCREENSHOT_BYTES = 16 * 1024 * 1024;
+export const MAX_SCREENSHOT_TEXT = "16 MB";
 
 const SLUG_CHAR = /[A-Za-z0-9_-]/;
 const VERSION_CHAR = /[A-Za-z0-9_.,#-]/;
 const PRINTABLE_ASCII_CHAR = /[\x20-\x7e]/;
+const CHANGELOG_CHAR = /[\x20-\x7e\n]/;
 const SLUG_RE = /^[A-Za-z0-9_-]+$/;
 
 export function invalidCharacters(value: string, allowed: RegExp): string[] {
@@ -78,6 +83,63 @@ export function checkDescription(value: string): Problem | null {
   return null;
 }
 
+export type ChangelogCheck = { ok: true; changelog: string | null } | { ok: false; error: Problem };
+
+// A browser sends CR LF from a textarea; the stored text uses LF only.
+export function checkChangelog(input: string): ChangelogCheck {
+  const value = input.replace(/\r\n/g, "\n");
+  const bad = invalidCharacters(value, CHANGELOG_CHAR);
+  if (bad.length > 0) {
+    return { ok: false, error: { code: "changelog.invalidCharacters", chars: bad } };
+  }
+  if (value.length > CHANGELOG_MAX) {
+    return { ok: false, error: { code: "changelog.length", max: CHANGELOG_MAX } };
+  }
+  return { ok: true, changelog: value === "" ? null : value };
+}
+
+export const CATEGORY_SLUG_MAX = 16;
+export const CATEGORY_NAME_MAX = 32;
+
+const CATEGORY_SLUG_CHAR = /[a-z0-9-]/;
+
+// Every top-level path of the site except apps, which is also a category, plus
+// index, whose .md copy is /index.md. A category slug is a top-level URL too.
+export const RESERVED_PATHS = ["admin", "api", "index", "llms.txt", "md", "my", "publish", "username"];
+
+export function checkCategorySlug(value: string): Problem | null {
+  if (RESERVED_PATHS.includes(value)) {
+    return { code: "category.reserved" };
+  }
+  const bad = invalidCharacters(value, CATEGORY_SLUG_CHAR);
+  if (bad.length > 0) {
+    return { code: "category.invalidCharacters", chars: bad };
+  }
+  if (value.length < 1 || value.length > CATEGORY_SLUG_MAX) {
+    return { code: "category.length", min: 1, max: CATEGORY_SLUG_MAX };
+  }
+  return null;
+}
+
+export function checkCategoryName(value: string): Problem | null {
+  if (value.length < 1 || value.length > CATEGORY_NAME_MAX) {
+    return { code: "category.length", min: 1, max: CATEGORY_NAME_MAX };
+  }
+  const bad = invalidCharacters(value, PRINTABLE_ASCII_CHAR);
+  if (bad.length > 0) {
+    return { code: "category.invalidCharacters", chars: bad };
+  }
+  return null;
+}
+
+export type CategoryChoice = { ok: true; ids: number[] } | { ok: false; error: Problem };
+
+// Only live categories count; an app needs at least one.
+export function checkCategoryChoice(values: string[], liveIds: number[]): CategoryChoice {
+  const ids = liveIds.filter((id) => values.includes(String(id)));
+  return ids.length > 0 ? { ok: true, ids } : { ok: false, error: { code: "category.missing" } };
+}
+
 export function releaseFileName(appId: string, serial: number): string {
   if (!Number.isInteger(serial) || serial < 1 || serial > SERIAL_MAX) {
     throw new RangeError(`Serial out of range: ${serial}`);
@@ -92,6 +154,38 @@ export function parseSerial(value: string): number | null {
   }
   const serial = Number(value);
   return serial <= SERIAL_MAX ? serial : null;
+}
+
+export function parseSlot(value: string): number | null {
+  const slot = Number(value);
+  return /^[1-9]$/.test(value) && slot <= SCREENSHOT_SLOTS ? slot : null;
+}
+
+export function screenshotUrl(appId: string, slot: number, updatedAt: Date): string {
+  return `/apps/${appId}/screenshots/${slot}?v=${updatedAt.getTime()}`;
+}
+
+export const CATALOGUE_PAGE_SIZE = 20;
+
+// Anything that is not a plain positive number gives page 1.
+export function parsePage(value: string | string[] | undefined): number {
+  return typeof value === "string" && /^[1-9][0-9]{0,8}$/.test(value) ? Number(value) : 1;
+}
+
+export function parseQuery(value: string | string[] | undefined): string {
+  return typeof value === "string" ? value : "";
+}
+
+export function catalogueHref(base: string, query: string, page: number): string {
+  const params = new URLSearchParams();
+  if (query !== "") {
+    params.set("q", query);
+  }
+  if (page > 1) {
+    params.set("page", String(page));
+  }
+  const search = params.toString();
+  return search === "" ? base : `${base}?${search}`;
 }
 
 export function isoDay(date: Date): string {

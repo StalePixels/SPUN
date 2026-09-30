@@ -7,7 +7,8 @@ import { formatDay, isoDay, parseSerial, releaseFileName } from "@/lib/rules";
 import { requirePublisher } from "@/lib/session";
 import { readRelease, releasePath } from "@/lib/storage";
 import { checkZip } from "@/lib/zip";
-import { Breadcrumbs } from "../../../../Breadcrumbs";
+import { Breadcrumbs } from "../../../../../Breadcrumbs";
+import { ChangelogForm } from "./ChangelogForm";
 import { DeleteRelease } from "./DeleteRelease";
 
 export default async function ReleasePage({
@@ -44,8 +45,8 @@ export default async function ReleasePage({
     <>
       <Breadcrumbs
         items={[
-          { label: "Your apps", href: "/" },
-          { label: app.title, href: `/apps/${app.id}` },
+          { label: "Your apps", href: "/publish" },
+          { label: app.title, href: `/publish/apps/${app.id}` },
           { label },
         ]}
       />
@@ -79,6 +80,16 @@ export default async function ReleasePage({
 
       {deleted ? null : (
         <>
+          <div className="card mb-4">
+            <div className="card-header">
+              <i className="bi bi-pencil me-1" />
+              Changelog
+            </div>
+            <div className="card-body">
+              <ChangelogForm appId={app.id} serial={serial} changelog={release.changelog ?? ""} />
+            </div>
+          </div>
+
           <h2 className="h5">Files in the zip</h2>
           {!zip?.ok ? (
             <p className="text-body-secondary mb-4">The file list is not available.</p>

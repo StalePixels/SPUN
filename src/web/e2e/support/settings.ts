@@ -44,11 +44,15 @@ function account(key: AccountKey): Account {
   };
 }
 
+const storageDir = required("E2E_STORAGE_DIR");
+
 export const settings = {
   baseUrl: required("E2E_BASE_URL"),
   nbnIdUrl: process.env.E2E_NBN_ID_URL || "https://id.nextbestnetwork.com/",
   databaseUrl: required("E2E_DATABASE_URL"),
-  dataDir: required("E2E_DATA_DIR"),
+  dataDir: path.join(storageDir, "public"),
+  binDir: path.join(storageDir, "bin"),
+  assetDir: path.join(storageDir, "assets"),
 };
 
 export const accounts: Record<AccountKey, Account> = {

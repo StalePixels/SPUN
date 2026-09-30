@@ -33,7 +33,7 @@ for (const account of Object.values(accounts)) {
     const context = await browser.newContext();
     const page = await context.newPage();
     await page.goto("/");
-    await page.getByTestId("login").click();
+    await page.getByTestId("nav-login").click();
     await page.waitForURL((url) => url.href.startsWith(settings.nbnIdUrl));
 
     await page.locator('input[type="email"][name="login"]').fill(account.email);

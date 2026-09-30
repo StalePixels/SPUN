@@ -5,5 +5,5 @@ services:
     ports:
       - "${CMS_PORT:-48180}:3000"
     volumes:
-      - "${DATA_DIR_HOST:?set DATA_DIR_HOST in .env}:${DATA_DIR:-/data}"
+      - "${STORAGE_DIR_HOST:?set STORAGE_DIR_HOST in .env}:${STORAGE_DIR:-/storage}"
     restart: unless-stopped

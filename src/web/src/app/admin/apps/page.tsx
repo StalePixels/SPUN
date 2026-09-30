@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Table from "react-bootstrap/Table";
 import { formatDay, isoDay } from "@/lib/rules";
 import { adminListApps, requireAdmin } from "@/lib/admin";
@@ -23,7 +24,11 @@ export default async function AdminAppsPage() {
         <tbody>
           {rows.map((app) => (
             <tr key={app.id} data-testid={`admin-app-${app.id}`} className={app.deletedAt ? "text-body-secondary" : undefined}>
-              <td>{app.title}</td>
+              <td>
+                <Link href={`/admin/apps/${app.id}`} data-testid="admin-app-link">
+                  {app.title}
+                </Link>
+              </td>
               <td>
                 <code>{app.id}</code>
               </td>

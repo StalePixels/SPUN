@@ -23,8 +23,11 @@ running CMS.
   database sessions. Each login stores the user's full claim set in Redis.
 - Data is Drizzle on MariaDB; `src/db/schema.ts` is the source of truth.
   Other components read these tables directly.
-- Uploads are written to `DATA_DIR/<username>/<appid>-<serial as 4 hex>.zip`.
-  That path is the public download path, so the layout is a contract.
+- `STORAGE_DIR` holds `public` (served by SPUNServer), `bin` (the recycle
+  bin) and `assets` (web assets). Zips are in
+  `public/<username>/<appid>-<serial as 4 hex>.zip` and screenshots in
+  `public/<username>/nxi/<appid>/<slot>`. These are public download paths,
+  so the layout is a contract.
 - `src/lib` holds the rules as plain, unit-tested functions. Server actions
   in `src/app/**/actions.ts` call them.
 - Validators and actions return `Problem` codes (`src/lib/problems.ts`); all

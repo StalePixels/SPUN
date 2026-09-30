@@ -1,5 +1,5 @@
 import type { Problem } from "./problems";
-import { MAX_UPLOAD_TEXT } from "./rules";
+import { MAX_SCREENSHOT_TEXT, MAX_UPLOAD_TEXT } from "./rules";
 
 // Behaviour and tests never depend on this wording.
 
@@ -45,6 +45,20 @@ export function problemMessage(problem: Problem): string {
       return `The description cannot use: ${characters(problem.chars)}`;
     case "description.length":
       return `The description must be ${max} characters or fewer.`;
+    case "changelog.invalidCharacters":
+      return `The changelog cannot use: ${characters(problem.chars)}`;
+    case "changelog.length":
+      return `The changelog must be ${max} characters or fewer.`;
+    case "category.invalidCharacters":
+      return `A category slug or name cannot use: ${characters(problem.chars)}`;
+    case "category.length":
+      return `A category slug or name must be ${min} to ${max} characters.`;
+    case "category.reserved":
+      return "That slug is a page of the site. Choose another.";
+    case "category.taken":
+      return "Another category has that slug, or had it before it was deleted.";
+    case "category.missing":
+      return "Choose at least one category.";
     case "releaseDate.invalid":
       return "The release date is not a real date.";
     case "releaseDate.future":
@@ -57,6 +71,14 @@ export function problemMessage(problem: Problem): string {
       return "The file is not a readable zip. It can be damaged, cut short, or not a zip.";
     case "file.incompatible":
       return "A Next cannot install this zip.";
+    case "screenshot.missing":
+      return "Choose an image file to upload.";
+    case "screenshot.tooLarge":
+      return `The image is larger than ${MAX_SCREENSHOT_TEXT}.`;
+    case "screenshot.notImage":
+      return "The file is not a PNG, JPEG, GIF or WebP image that the CMS can read.";
+    case "screenshot.badNxi":
+      return "An NXI file must be 49,664 bytes (256×192) or 82,432 bytes (320×256), with its palette first.";
     case "app.notFound":
       return "App not found.";
     case "app.limitReached":

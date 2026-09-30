@@ -6,6 +6,7 @@ const SECTIONS = [
   { href: "/admin/settings", icon: "bi-sliders", label: "Settings" },
   { href: "/admin/users", icon: "bi-people", label: "Users" },
   { href: "/admin/apps", icon: "bi-box-seam", label: "Apps" },
+  { href: "/admin/categories", icon: "bi-tags", label: "Categories" },
 ];
 
 export default async function AdminPage() {

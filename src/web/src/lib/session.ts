@@ -18,6 +18,14 @@ export async function requireUser(): Promise<{ id: string; username: string | nu
   return user;
 }
 
+// A logged-in user with no username has not finished registering.
+export async function requireRegistration(): Promise<void> {
+  const user = await currentUser();
+  if (user && !user.username) {
+    redirect("/username");
+  }
+}
+
 export async function requirePublisher(): Promise<{ id: string; username: string }> {
   const user = await requireUser();
   if (!user.username) {

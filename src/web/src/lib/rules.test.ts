@@ -1,8 +1,16 @@
+import { readdirSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   appLimitFor,
+  catalogueHref,
   invalidCharacters,
   canCreateApp,
+  CHANGELOG_MAX,
+  checkCategoryChoice,
+  checkCategoryName,
+  checkCategorySlug,
+  checkChangelog,
   checkReleaseDate,
   parseLimit,
   checkDescription,
@@ -12,8 +20,11 @@ import {
   checkVersionUnused,
   formatDay,
   isValidSlug,
+  parsePage,
+  parseQuery,
   parseSerial,
   releaseFileName,
+  RESERVED_PATHS,
   usernameKey,
 } from "./rules";
 
@@ -103,6 +114,45 @@ describe("parseSerial", () => {
   });
 });
 
+describe("parsePage", () => {
+  it("accepts a plain positive number", () => {
+    expect(parsePage("1")).toBe(1);
+    expect(parsePage("2")).toBe(2);
+    expect(parsePage("150")).toBe(150);
+  });
+
+  it("gives page 1 when the value is missing, zero, negative or not a number", () => {
+    for (const bad of [undefined, "", "0", "00", "-1", "-5", "abc", "2abc", "1.5", "1e2", " 2", "01", "9999999999"]) {
+      expect(parsePage(bad), String(bad)).toBe(1);
+    }
+  });
+
+  it("gives page 1 when the parameter is repeated", () => {
+    expect(parsePage(["2", "3"])).toBe(1);
+  });
+});
+
+describe("parseQuery", () => {
+  it("keeps the text as it is, and gives empty text when it is missing or repeated", () => {
+    expect(parseQuery("Next Test")).toBe("Next Test");
+    expect(parseQuery(undefined)).toBe("");
+    expect(parseQuery(["a", "b"])).toBe("");
+  });
+});
+
+describe("catalogueHref", () => {
+  it("leaves out page 1 and an empty search", () => {
+    expect(catalogueHref("/", "", 1)).toBe("/");
+    expect(catalogueHref("/games.md", "", 1)).toBe("/games.md");
+  });
+
+  it("keeps the search on every page", () => {
+    expect(catalogueHref("/", "", 2)).toBe("/?page=2");
+    expect(catalogueHref("/games", "a&b c", 1)).toBe("/games?q=a%26b+c");
+    expect(catalogueHref("/index.md", "zx", 3)).toBe("/index.md?q=zx&page=3");
+  });
+});
+
 describe("formatDay", () => {
   it("shows the stored day without a shift", () => {
     expect(formatDay("2026-09-26")).toBe("26 Sep 2026");
@@ -177,5 +227,107 @@ describe("version already used", () => {
   it("accepts a new version", () => {
     expect(checkVersionUnused("1.1", ["0.9", "1.0"])).toBeNull();
     expect(checkVersionUnused("1.0", [])).toBeNull();
+  });
+});
+
+describe("checkChangelog", () => {
+  it("changes CR LF to LF before the length check", () => {
+    const lines = "a\r\n".repeat(CHANGELOG_MAX / 2);
+    expect(lines.length).toBe(CHANGELOG_MAX * 1.5);
+    expect(checkChangelog(lines)).toEqual({ ok: true, changelog: "a\n".repeat(CHANGELOG_MAX / 2) });
+  });
+
+  it("passes exactly 1024 bytes and fails 1025", () => {
+    expect(checkChangelog("x".repeat(1024))).toEqual({ ok: true, changelog: "x".repeat(1024) });
+    expect(checkChangelog("x".repeat(1025))).toEqual({
+      ok: false,
+      error: { code: "changelog.length", max: 1024 },
+    });
+  });
+
+  it("refuses a tab or a non-ASCII character", () => {
+    expect(checkChangelog("one\ttwo")).toEqual({
+      ok: false,
+      error: { code: "changelog.invalidCharacters", chars: ["\t"] },
+    });
+    expect(checkChangelog("café")).toEqual({
+      ok: false,
+      error: { code: "changelog.invalidCharacters", chars: ["é"] },
+    });
+  });
+
+  it("keeps line breaks", () => {
+    expect(checkChangelog("Fixed\nAdded")).toEqual({ ok: true, changelog: "Fixed\nAdded" });
+  });
+
+  it("gives null for an empty changelog", () => {
+    expect(checkChangelog("")).toEqual({ ok: true, changelog: null });
+  });
+});
+
+describe("checkCategorySlug", () => {
+  it("accepts lowercase letters, digits and hyphens", () => {
+    expect(checkCategorySlug("games")).toBeNull();
+    expect(checkCategorySlug("sys-tool2")).toBeNull();
+    expect(checkCategorySlug("apps")).toBeNull();
+  });
+
+  it("names the rejected characters", () => {
+    expect(checkCategorySlug("Games")).toEqual({ code: "category.invalidCharacters", chars: ["G"] });
+    expect(checkCategorySlug("sys tool_")).toEqual({ code: "category.invalidCharacters", chars: [" ", "_"] });
+    expect(checkCategorySlug("demo.md")).toEqual({ code: "category.invalidCharacters", chars: ["."] });
+    expect(checkCategorySlug("caf\u00e9")).toEqual({ code: "category.invalidCharacters", chars: ["\u00e9"] });
+  });
+
+  it("allows 1 to 16 characters", () => {
+    expect(checkCategorySlug("a")).toBeNull();
+    expect(checkCategorySlug("a".repeat(16))).toBeNull();
+    expect(checkCategorySlug("")).toEqual({ code: "category.length", min: 1, max: 16 });
+    expect(checkCategorySlug("a".repeat(17))).toEqual({ code: "category.length", min: 1, max: 16 });
+  });
+
+  it.each(RESERVED_PATHS)("refuses the reserved name %s", (name) => {
+    expect(checkCategorySlug(name)).toEqual({ code: "category.reserved" });
+  });
+});
+
+describe("RESERVED_PATHS", () => {
+  it("matches the top-level folders of the app, except apps and [category], plus index", () => {
+    const appDir = path.join(__dirname, "..", "app");
+    const folders = readdirSync(appDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .filter((name) => name !== "apps" && name !== "[category]");
+    expect(RESERVED_PATHS.filter((name) => name !== "index").sort()).toEqual(folders.sort());
+  });
+});
+
+describe("checkCategoryName", () => {
+  it("accepts printable ASCII, 1 to 32 characters", () => {
+    expect(checkCategoryName("System tools")).toBeNull();
+    expect(checkCategoryName("x".repeat(32))).toBeNull();
+  });
+
+  it("refuses an empty or a long name", () => {
+    expect(checkCategoryName("")).toEqual({ code: "category.length", min: 1, max: 32 });
+    expect(checkCategoryName("x".repeat(33))).toEqual({ code: "category.length", min: 1, max: 32 });
+  });
+
+  it("names the rejected characters", () => {
+    expect(checkCategoryName("Tab\there \u{1F600}")).toEqual({
+      code: "category.invalidCharacters",
+      chars: ["\t", "\u{1F600}"],
+    });
+  });
+});
+
+describe("checkCategoryChoice", () => {
+  it("keeps only live categories", () => {
+    expect(checkCategoryChoice(["1", "3", "9"], [1, 2, 3])).toEqual({ ok: true, ids: [1, 3] });
+  });
+
+  it("refuses a choice with no live category", () => {
+    expect(checkCategoryChoice([], [1, 2])).toEqual({ ok: false, error: { code: "category.missing" } });
+    expect(checkCategoryChoice(["9", "x"], [1, 2])).toEqual({ ok: false, error: { code: "category.missing" } });
   });
 });

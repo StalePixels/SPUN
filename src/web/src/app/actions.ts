@@ -1,29 +1,30 @@
 "use server";
 
-import { and, eq, isNull, max } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { and, eq, isNull } from "drizzle-orm";
+import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 import { apps, releases, users } from "@/db/schema";
 import { allocateAppId, deleteApp, parseAppId, type AppId } from "@/lib/apps";
 import { db } from "@/lib/db";
+import { liveCategories, setAppCategories } from "@/lib/categories";
 import {
+  checkCategoryChoice,
+  checkChangelog,
   checkDescription,
-  checkReleaseDate,
   checkTitle,
   checkUsernameInput,
-  checkVersion,
-  checkVersionUnused,
-  MAX_UPLOAD_BYTES,
-  SERIAL_MAX,
-  usernameKey,
   canCreateApp,
   parseSerial,
+  parseSlot,
 } from "@/lib/rules";
 import { appCount, appLimit } from "@/lib/limits";
+import { addRelease, appBinStore, checkUpload } from "@/lib/releases";
+import { saveApp, unsaveApp } from "@/lib/saved";
+import { checkScreenshot, clearScreenshot, putScreenshot } from "@/lib/screenshots";
 import { requirePublisher, requireUser } from "@/lib/session";
-import { releasePath, removeFile, writeRelease } from "@/lib/storage";
-import { checkZip } from "@/lib/zip";
+import { binRelease } from "@/lib/storage";
+import { usernameTaken } from "@/lib/usernames";
 import type { Problem } from "@/lib/problems";
 
 export type FormState = { error?: Problem; saved?: boolean };
@@ -33,6 +34,11 @@ export type UploadState = { error?: Problem };
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
+}
+
+async function categoryChoice(formData: FormData) {
+  const values = formData.getAll("categories").filter((value) => typeof value === "string");
+  return checkCategoryChoice(values, (await liveCategories()).map((category) => category.id));
 }
 
 export async function logIn(): Promise<void> {
@@ -53,12 +59,7 @@ export async function chooseUsername(_prev: FormState, formData: FormData): Prom
   if (error) {
     return { error };
   }
-  const taken = await db()
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.usernameLower, usernameKey(username)))
-    .limit(1);
-  if (taken.length > 0) {
+  if (await usernameTaken(username)) {
     return { error: { code: "username.taken" } };
   }
   try {
@@ -83,6 +84,10 @@ export async function createApp(_prev: FormState, formData: FormData): Promise<F
   if (error) {
     return { error };
   }
+  const choice = await categoryChoice(formData);
+  if (!choice.ok) {
+    return { error: choice.error };
+  }
   const limit = await appLimit(user.id);
   if (!canCreateApp(await appCount(user.id), limit)) {
     return { error: { code: "app.limitReached", limit } };
@@ -93,8 +98,11 @@ export async function createApp(_prev: FormState, formData: FormData): Promise<F
       return rows.length > 0;
     },
   });
-  await db().insert(apps).values({ id, userId: user.id, title, description });
-  redirect(`/apps/${id}`);
+  await db().transaction(async (tx) => {
+    await tx.insert(apps).values({ id, userId: user.id, title, description });
+    await setAppCategories(tx, id, choice.ids);
+  });
+  redirect(`/publish/apps/${id}`);
 }
 
 async function ownedApp(userId: string, appId: AppId) {
@@ -121,8 +129,15 @@ export async function updateApp(
   if (error) {
     return { error };
   }
-  await db().update(apps).set({ title, description }).where(eq(apps.id, appId));
-  revalidatePath(`/apps/${appId}`);
+  const choice = await categoryChoice(formData);
+  if (!choice.ok) {
+    return { error: choice.error };
+  }
+  await db().transaction(async (tx) => {
+    await tx.update(apps).set({ title, description }).where(eq(apps.id, appId));
+    await setAppCategories(tx, appId, choice.ids);
+  });
+  revalidatePath(`/publish/apps/${appId}`);
   return { saved: true };
 }
 
@@ -136,96 +151,31 @@ export async function uploadRelease(
   if (!appId) {
     return { error: { code: "app.notFound" } };
   }
-  const version = text(formData, "version");
-  const versionError = checkVersion(version);
-  if (versionError) {
-    return { error: versionError };
+  const checked = await checkUpload(
+    text(formData, "version"),
+    text(formData, "releaseDate"),
+    text(formData, "changelog"),
+    formData.get("file"),
+  );
+  if (!checked.ok) {
+    return { error: checked.error };
   }
-  const date = checkReleaseDate(text(formData, "releaseDate"), new Date());
-  if (!date.ok) {
-    return { error: date.error };
-  }
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: { code: "file.missing" } };
-  }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return { error: { code: "file.tooLarge" } };
-  }
-  const data = Buffer.from(await file.arrayBuffer());
-  const zip = await checkZip(data);
-  if (!zip.ok) {
-    return { error: zip.error };
-  }
-
-  const result = await db().transaction(async (tx): Promise<{ error: Problem } | { serial: number }> => {
-    const [app] = await tx
-      .select()
-      .from(apps)
-      .where(and(eq(apps.id, appId), eq(apps.userId, user.id), isNull(apps.deletedAt)))
-      .for("update");
-    if (!app) {
-      return { error: { code: "app.notFound" } };
-    }
-    const existing = await tx
-      .select({ version: releases.version })
-      .from(releases)
-      .where(eq(releases.appId, appId));
-    const taken = checkVersionUnused(version, existing.map((row) => row.version));
-    if (taken) {
-      return { error: taken };
-    }
-    const [last] = await tx
-      .select({ serial: max(releases.serial) })
-      .from(releases)
-      .where(eq(releases.appId, appId));
-    const serial = (last?.serial ?? 0) + 1;
-    if (serial > SERIAL_MAX) {
-      return { error: { code: "app.releasesFull", max: SERIAL_MAX } };
-    }
-    const filePath = releasePath(user.username, appId, serial);
-    await writeRelease(filePath, data);
-    try {
-      await tx.insert(releases).values({ appId, serial, version, releaseDate: date.day });
-    } catch (err) {
-      await removeFile(filePath);
-      throw err;
-    }
-    return { serial };
-  });
+  const result = await addRelease(appId, user.id, checked.upload);
   if ("error" in result) {
     return { error: result.error };
   }
-  revalidatePath(`/apps/${appId}`);
-  redirect(`/apps/${appId}/releases/${result.serial}`);
+  revalidatePath(`/publish/apps/${appId}`);
+  redirect(`/publish/apps/${appId}/releases/${result.serial}`);
 }
 
 export async function removeApp(rawId: string): Promise<void> {
   const appId = parseAppId(rawId);
   const user = await requirePublisher();
   if (!appId || !(await ownedApp(user.id, appId))) {
-    redirect("/");
+    redirect("/publish");
   }
-  await deleteApp(
-    {
-      async markDeleted(id) {
-        await db()
-          .update(apps)
-          .set({ deletedAt: new Date() })
-          .where(eq(apps.id, id));
-      },
-      async releaseFilePaths(id) {
-        const rows = await db()
-          .select({ serial: releases.serial })
-          .from(releases)
-          .where(eq(releases.appId, id));
-        return rows.map((row) => releasePath(user.username, id, row.serial));
-      },
-      removeFile,
-    },
-    appId,
-  );
-  redirect("/");
+  await deleteApp(appBinStore(user.username), appId);
+  redirect("/publish");
 }
 
 export async function removeRelease(rawId: string, rawSerial: number): Promise<void> {
@@ -233,20 +183,85 @@ export async function removeRelease(rawId: string, rawSerial: number): Promise<v
   const serial = parseSerial(String(rawSerial));
   const user = await requirePublisher();
   if (!appId || !serial || !(await ownedApp(user.id, appId))) {
-    redirect("/");
+    redirect("/publish");
   }
   const [release] = await db()
     .select({ deletedAt: releases.deletedAt })
     .from(releases)
     .where(and(eq(releases.appId, appId), eq(releases.serial, serial)));
   if (release && !release.deletedAt) {
-    // Mark first: a failed unlink then leaves a stray file, not a release without one.
+    // Mark first: a failed move then leaves a stray file, not a release without one.
     await db()
       .update(releases)
       .set({ deletedAt: new Date() })
       .where(and(eq(releases.appId, appId), eq(releases.serial, serial)));
-    await removeFile(releasePath(user.username, appId, serial));
+    await binRelease(user.username, appId, serial);
   }
-  revalidatePath(`/apps/${appId}`);
-  redirect(`/apps/${appId}/releases/${serial}`);
+  revalidatePath(`/publish/apps/${appId}`);
+  redirect(`/publish/apps/${appId}/releases/${serial}`);
+}
+
+export async function saveChangelog(
+  rawId: string,
+  rawSerial: number,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const appId = parseAppId(rawId);
+  const serial = parseSerial(String(rawSerial));
+  const user = await requirePublisher();
+  if (!appId || !serial || !(await ownedApp(user.id, appId))) {
+    return { error: { code: "app.notFound" } };
+  }
+  const log = checkChangelog(text(formData, "changelog"));
+  if (!log.ok) {
+    return { error: log.error };
+  }
+  await db()
+    .update(releases)
+    .set({ changelog: log.changelog })
+    .where(and(eq(releases.appId, appId), eq(releases.serial, serial), isNull(releases.deletedAt)));
+  revalidatePath(`/publish/apps/${appId}/releases/${serial}`);
+  return { saved: true };
+}
+
+export async function uploadScreenshot(
+  rawId: string,
+  rawSlot: number,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const appId = parseAppId(rawId);
+  const slot = parseSlot(String(rawSlot));
+  const user = await requirePublisher();
+  if (!appId || !slot || !(await ownedApp(user.id, appId))) {
+    return { error: { code: "app.notFound" } };
+  }
+  const checked = await checkScreenshot(formData.get("file"));
+  if (!checked.ok) {
+    return { error: checked.error };
+  }
+  await putScreenshot(user.username, appId, slot, checked.shot);
+  revalidatePath(`/publish/apps/${appId}`);
+  return {};
+}
+
+export async function removeScreenshot(rawId: string, rawSlot: number): Promise<void> {
+  const appId = parseAppId(rawId);
+  const slot = parseSlot(String(rawSlot));
+  const user = await requirePublisher();
+  if (appId && slot && (await ownedApp(user.id, appId))) {
+    await clearScreenshot(user.username, appId, slot);
+    revalidatePath(`/publish/apps/${appId}`);
+  }
+}
+
+// The wanted state, not a toggle, so a repeated submit changes nothing.
+export async function setSaved(rawId: string, saved: boolean): Promise<void> {
+  const appId = parseAppId(rawId);
+  const user = await requirePublisher();
+  if (appId) {
+    await (saved ? saveApp(user.id, appId) : unsaveApp(user.id, appId));
+  }
+  refresh();
 }

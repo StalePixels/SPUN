@@ -28,6 +28,13 @@ export default defineConfig({
       dependencies: ["setup"],
       use: { storageState: accounts.client.storageState },
     },
+    // No stored login: the page is an anonymous visitor. The client login is
+    // used only in a second browser context, to publish the apps under test.
+    {
+      name: "public",
+      testMatch: /public\/.*\.spec\.ts/,
+      dependencies: ["setup"],
+    },
     {
       name: "admin",
       testMatch: /admin\/.*\.spec\.ts/,

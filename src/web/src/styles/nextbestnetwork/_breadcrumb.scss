@@ -1,0 +1,5 @@
+// Pulse sets the active breadcrumb to $gray-700 in both colour modes, which is
+// unreadable on the dark background; here it follows the mode.
+.breadcrumb-item.active {
+  color: var(--bs-body-color);
+}

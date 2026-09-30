@@ -7,7 +7,7 @@ import NavbarBrand from "react-bootstrap/NavbarBrand";
 import "bootstrap-icons/font/bootstrap-icons.min.css";
 import "@/styles/theme.scss";
 import { currentUser, isAdmin } from "@/lib/session";
-import { logOut } from "./actions";
+import { logIn, logOut } from "./actions";
 import { ThemeSwitch } from "./ThemeSwitch";
 
 export const metadata: Metadata = {
@@ -67,10 +67,29 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {user?.username && <span className="text-light" data-testid="nav-username">{user.username}</span>}
               <ThemeSwitch />
               {user && (
+                <Link href="/my" className="nav-link text-light" data-testid="nav-my">
+                  <i className="bi bi-bookmark me-1" />
+                  My Apps
+                </Link>
+              )}
+              {user && (
+                <Link href="/publish" className="btn btn-light btn-sm" data-testid="nav-publish">
+                  <i className="bi bi-upload me-1" />
+                  Publishers
+                </Link>
+              )}
+              {user ? (
                 <form action={logOut}>
                   <button type="submit" className="btn btn-outline-light btn-sm" data-testid="nav-logout">
                     <i className="bi bi-box-arrow-right me-1" />
                     Log out
+                  </button>
+                </form>
+              ) : (
+                <form action={logIn}>
+                  <button type="submit" className="btn btn-light btn-sm" data-testid="nav-login">
+                    <i className="bi bi-box-arrow-in-right me-1" />
+                    Log in
                   </button>
                 </form>
               )}

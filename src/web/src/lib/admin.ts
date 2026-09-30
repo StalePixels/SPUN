@@ -1,11 +1,19 @@
 import "server-only";
-import { asc, count, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { apps, releases, settings, users } from "@/db/schema";
+import { apps, categories, releases, sessions, settings, users } from "@/db/schema";
+import { deleteApp, moveApp, restoreApp, type AppId } from "./apps";
+import { setAppCategories } from "./categories";
 import { db } from "./db";
 import type { Problem } from "./problems";
+import { addRelease, appBinStore, type Upload } from "./releases";
+import { checkVersionUnused } from "./rules";
 import { currentUser, isAdmin } from "./session";
 import { DEFAULT_APP_LIMIT, getSetting } from "./settings";
+import { clearScreenshot, putScreenshot, type ScreenshotUpload } from "./screenshots";
+import { binRelease, moveRelease, moveScreenshots, renameUserDir, unbinRelease, userDirExists } from "./storage";
+import { usernameTaken } from "./usernames";
+import { renameUser } from "./users";
 
 // Every export calls requireAdmin() itself. Only src/app/admin/ may import this.
 
@@ -76,24 +84,391 @@ export async function adminGetUser(userId: string) {
       createdAt: users.createdAt,
       appLimit: users.appLimit,
       isAdmin: users.isAdmin,
+      disabledAt: users.disabledAt,
     })
     .from(users)
     .where(eq(users.id, userId));
   return user;
 }
 
-// Refuses to remove the last admin.
+async function activeAdmin(userId: string): Promise<boolean> {
+  const [user] = await db()
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.id, userId), eq(users.isAdmin, true), isNull(users.disabledAt)));
+  return user !== undefined;
+}
+
+// A disabled admin cannot log in, so only enabled admins count.
+async function isLastAdmin(userId: string): Promise<boolean> {
+  if (!(await activeAdmin(userId))) {
+    return false;
+  }
+  const [row] = await db()
+    .select({ n: count() })
+    .from(users)
+    .where(and(eq(users.isAdmin, true), isNull(users.disabledAt)));
+  return (row?.n ?? 0) <= 1;
+}
+
 export async function adminUpdateUser(
   userId: string,
   changes: { appLimit: number | null; isAdmin: boolean },
 ): Promise<{ error?: Problem }> {
   await requireAdmin();
-  if (!changes.isAdmin && (await isAdmin(userId))) {
-    const [row] = await db().select({ n: count() }).from(users).where(eq(users.isAdmin, true));
-    if ((row?.n ?? 0) <= 1) {
-      return { error: { code: "admin.lastAdmin" } };
-    }
+  if (!changes.isAdmin && (await isLastAdmin(userId))) {
+    return { error: { code: "admin.lastAdmin" } };
   }
   await db().update(users).set(changes).where(eq(users.id, userId));
   return {};
+}
+
+export async function adminRenameUser(userId: string, username: string): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  const user = await adminGetUser(userId);
+  if (!user?.username) {
+    return { error: { code: "user.notFound" } };
+  }
+  if (user.username === username) {
+    return {};
+  }
+  if (await usernameTaken(username, userId)) {
+    return { error: { code: "username.taken" } };
+  }
+  try {
+    await renameUser(
+      {
+        dirExists: userDirExists,
+        renameDir: renameUserDir,
+        async updateUsername(id, name) {
+          await db().update(users).set({ username: name }).where(eq(users.id, id));
+        },
+      },
+      userId,
+      user.username,
+      username,
+    );
+  } catch (err) {
+    if ((err as { code?: string }).code === "ER_DUP_ENTRY") {
+      return { error: { code: "username.taken" } };
+    }
+    throw err;
+  }
+  return {};
+}
+
+async function disable(userId: string): Promise<void> {
+  await db()
+    .update(users)
+    .set({ disabledAt: new Date() })
+    .where(and(eq(users.id, userId), isNull(users.disabledAt)));
+  await db().delete(sessions).where(eq(sessions.userId, userId));
+}
+
+export async function adminDisableUser(userId: string): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  if (await isLastAdmin(userId)) {
+    return { error: { code: "admin.lastAdmin" } };
+  }
+  await disable(userId);
+  return {};
+}
+
+export async function adminEnableUser(userId: string): Promise<void> {
+  await requireAdmin();
+  await db().update(users).set({ disabledAt: null }).where(eq(users.id, userId));
+}
+
+// The row stays, so the username stays taken.
+export async function adminDeleteUser(userId: string): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  const user = await adminGetUser(userId);
+  if (!user) {
+    return { error: { code: "user.notFound" } };
+  }
+  if (await isLastAdmin(userId)) {
+    return { error: { code: "admin.lastAdmin" } };
+  }
+  await disable(userId);
+  const live = await db()
+    .select({ id: apps.id })
+    .from(apps)
+    .where(and(eq(apps.userId, userId), isNull(apps.deletedAt)));
+  for (const app of live) {
+    await deleteApp(appBinStore(ownerName(app.id, user.username)), app.id);
+  }
+  return {};
+}
+
+// Every app owner has a username: only publishers create apps, and a move needs one.
+function ownerName(appId: AppId, username: string | null): string {
+  if (!username) {
+    throw new Error(`The owner of app ${appId} has no username.`);
+  }
+  return username;
+}
+
+export async function adminListOwners() {
+  await requireAdmin();
+  return db()
+    .select({ id: users.id, username: users.username })
+    .from(users)
+    .where(isNotNull(users.username))
+    .orderBy(asc(users.usernameLower));
+}
+
+export async function adminGetApp(appId: AppId) {
+  await requireAdmin();
+  const [app] = await db()
+    .select({
+      id: apps.id,
+      title: apps.title,
+      description: apps.description,
+      deletedAt: apps.deletedAt,
+      ownerId: users.id,
+      owner: users.username,
+    })
+    .from(apps)
+    .innerJoin(users, eq(users.id, apps.userId))
+    .where(eq(apps.id, appId));
+  return app;
+}
+
+export async function adminListReleases(appId: AppId) {
+  await requireAdmin();
+  return db().select().from(releases).where(eq(releases.appId, appId)).orderBy(desc(releases.serial));
+}
+
+export async function adminGetRelease(appId: AppId, serial: number) {
+  await requireAdmin();
+  const [release] = await db()
+    .select()
+    .from(releases)
+    .where(and(eq(releases.appId, appId), eq(releases.serial, serial)));
+  return release;
+}
+
+export async function adminUpdateApp(
+  appId: AppId,
+  changes: { title: string; description: string },
+  categoryIds: number[],
+): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  if (!(await adminGetApp(appId))) {
+    return { error: { code: "app.notFound" } };
+  }
+  await db().transaction(async (tx) => {
+    await tx.update(apps).set(changes).where(eq(apps.id, appId));
+    await setAppCategories(tx, appId, categoryIds);
+  });
+  return {};
+}
+
+export async function adminUploadRelease(
+  appId: AppId,
+  upload: Upload,
+): Promise<{ error: Problem } | { serial: number }> {
+  await requireAdmin();
+  return addRelease(appId, null, upload);
+}
+
+export async function adminDeleteApp(appId: AppId): Promise<void> {
+  await requireAdmin();
+  const app = await adminGetApp(appId);
+  if (app && !app.deletedAt) {
+    await deleteApp(appBinStore(ownerName(appId, app.owner)), appId);
+  }
+}
+
+export async function adminRestoreApp(appId: AppId): Promise<void> {
+  await requireAdmin();
+  const app = await adminGetApp(appId);
+  if (app?.deletedAt) {
+    await restoreApp(appBinStore(ownerName(appId, app.owner)), appId);
+  }
+}
+
+// The app limit does not apply. A deleted app's zips are in the bin, which a move does not touch.
+export async function adminMoveApp(appId: AppId, userId: string): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  const app = await adminGetApp(appId);
+  if (!app) {
+    return { error: { code: "app.notFound" } };
+  }
+  const target = await adminGetUser(userId);
+  if (!target?.username) {
+    return { error: { code: "user.notFound" } };
+  }
+  if (target.id === app.ownerId) {
+    return {};
+  }
+  const live = app.deletedAt
+    ? []
+    : await db()
+        .select({ serial: releases.serial })
+        .from(releases)
+        .where(and(eq(releases.appId, appId), isNull(releases.deletedAt)));
+  await moveApp(
+    {
+      async moveRelease(serial, from, to) {
+        await moveRelease(from, to, appId, serial);
+      },
+      async moveScreenshots(from, to) {
+        await moveScreenshots(from, to, appId);
+      },
+      async updateOwner(id, ownerId) {
+        await db().update(apps).set({ userId: ownerId }).where(eq(apps.id, id));
+      },
+    },
+    appId,
+    live.map((row) => row.serial),
+    { from: ownerName(appId, app.owner), to: target.username, userId: target.id },
+  );
+  return {};
+}
+
+// A deleted app's screenshots are in the bin, so its slots cannot change.
+export async function adminPutScreenshot(
+  appId: AppId,
+  slot: number,
+  shot: ScreenshotUpload,
+): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  const app = await adminGetApp(appId);
+  if (!app || app.deletedAt) {
+    return { error: { code: "app.notFound" } };
+  }
+  await putScreenshot(ownerName(appId, app.owner), appId, slot, shot);
+  return {};
+}
+
+export async function adminClearScreenshot(appId: AppId, slot: number): Promise<void> {
+  await requireAdmin();
+  const app = await adminGetApp(appId);
+  if (app && !app.deletedAt) {
+    await clearScreenshot(ownerName(appId, app.owner), appId, slot);
+  }
+}
+
+export async function adminUpdateRelease(
+  appId: AppId,
+  serial: number,
+  changes: { version: string; releaseDate: string; changelog: string | null },
+): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  if (!(await adminGetRelease(appId, serial))) {
+    return { error: { code: "app.notFound" } };
+  }
+  const others = await db()
+    .select({ version: releases.version })
+    .from(releases)
+    .where(and(eq(releases.appId, appId), ne(releases.serial, serial)));
+  const taken = checkVersionUnused(changes.version, others.map((row) => row.version));
+  if (taken) {
+    return { error: taken };
+  }
+  try {
+    await db()
+      .update(releases)
+      .set(changes)
+      .where(and(eq(releases.appId, appId), eq(releases.serial, serial)));
+  } catch (err) {
+    if ((err as { code?: string }).code === "ER_DUP_ENTRY") {
+      return { error: { code: "version.taken" } };
+    }
+    throw err;
+  }
+  return {};
+}
+
+// While the app is deleted, its zips stay in the bin; the app restore brings them back.
+export async function adminDeleteRelease(appId: AppId, serial: number): Promise<void> {
+  await requireAdmin();
+  const app = await adminGetApp(appId);
+  const release = await adminGetRelease(appId, serial);
+  if (!app || !release || release.deletedAt) {
+    return;
+  }
+  await db()
+    .update(releases)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(releases.appId, appId), eq(releases.serial, serial)));
+  if (!app.deletedAt) {
+    await binRelease(ownerName(appId, app.owner), appId, serial);
+  }
+}
+
+export async function adminRestoreRelease(appId: AppId, serial: number): Promise<void> {
+  await requireAdmin();
+  const app = await adminGetApp(appId);
+  const release = await adminGetRelease(appId, serial);
+  if (!app || !release?.deletedAt) {
+    return;
+  }
+  if (!app.deletedAt) {
+    await unbinRelease(ownerName(appId, app.owner), appId, serial);
+  }
+  await db()
+    .update(releases)
+    .set({ deletedAt: null })
+    .where(and(eq(releases.appId, appId), eq(releases.serial, serial)));
+}
+
+export async function adminListCategories() {
+  await requireAdmin();
+  return db().select().from(categories).orderBy(asc(categories.name), asc(categories.id));
+}
+
+async function slugTaken(slug: string, exceptId?: number): Promise<boolean> {
+  const rows = await db().select({ id: categories.id }).from(categories).where(eq(categories.slug, slug));
+  return rows.some((row) => row.id !== exceptId);
+}
+
+function duplicate(err: unknown): boolean {
+  return (err as { code?: string }).code === "ER_DUP_ENTRY";
+}
+
+export async function adminAddCategory(slug: string, name: string): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  if (await slugTaken(slug)) {
+    return { error: { code: "category.taken" } };
+  }
+  try {
+    await db().insert(categories).values({ slug, name });
+  } catch (err) {
+    if (duplicate(err)) {
+      return { error: { code: "category.taken" } };
+    }
+    throw err;
+  }
+  return {};
+}
+
+export async function adminUpdateCategory(id: number, slug: string, name: string): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  if (await slugTaken(slug, id)) {
+    return { error: { code: "category.taken" } };
+  }
+  try {
+    await db().update(categories).set({ slug, name }).where(eq(categories.id, id));
+  } catch (err) {
+    if (duplicate(err)) {
+      return { error: { code: "category.taken" } };
+    }
+    throw err;
+  }
+  return {};
+}
+
+export async function adminDeleteCategory(id: number): Promise<void> {
+  await requireAdmin();
+  await db()
+    .update(categories)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(categories.id, id), isNull(categories.deletedAt)));
+}
+
+export async function adminRestoreCategory(id: number): Promise<void> {
+  await requireAdmin();
+  await db().update(categories).set({ deletedAt: null }).where(eq(categories.id, id));
 }

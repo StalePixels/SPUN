@@ -1,9 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
+import { clickHydrated } from "../support/pages";
 
 type Mode = "light" | "dark" | "auto";
 
 async function chooseMode(page: Page, mode: Mode) {
-  await page.getByTestId("theme-toggle").click();
+  await clickHydrated(page.getByTestId("theme-toggle"));
   await page.getByTestId(`theme-${mode}`).click();
 }
 

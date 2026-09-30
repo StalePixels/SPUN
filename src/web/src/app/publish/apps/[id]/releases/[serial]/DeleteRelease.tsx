@@ -3,9 +3,17 @@
 import { useState, useTransition } from "react";
 import Button from "react-bootstrap/Button";
 import Modal from "react-bootstrap/Modal";
-import { removeRelease } from "../../../../actions";
+import { removeRelease } from "../../../../../actions";
 
-export function DeleteRelease({ appId, serial }: { appId: string; serial: number }) {
+export function DeleteRelease({
+  appId,
+  serial,
+  remove = removeRelease,
+}: {
+  appId: string;
+  serial: number;
+  remove?: (appId: string, serial: number) => Promise<void>;
+}) {
   const [show, setShow] = useState(false);
   const [pending, startTransition] = useTransition();
   return (
@@ -30,7 +38,7 @@ export function DeleteRelease({ appId, serial }: { appId: string; serial: number
           <Button data-testid="delete-release-confirm"
             variant="danger"
             disabled={pending}
-            onClick={() => startTransition(() => removeRelease(appId, serial))}
+            onClick={() => startTransition(() => remove(appId, serial))}
           >
             Delete
           </Button>
