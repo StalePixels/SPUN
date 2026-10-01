@@ -20,6 +20,7 @@ export function UsernameForm() {
         help={`${USERNAME_UI_MIN} to ${USERNAME_MAX} letters, numbers, - or _. You cannot change it later.`}
       >
         <Form.Control
+          data-testid="username-field"
           name="username"
           required
           minLength={USERNAME_UI_MIN}
@@ -28,7 +29,7 @@ export function UsernameForm() {
         />
       </Field>
       <FieldRow>
-        <Button type="submit" disabled={pending}>
+        <Button data-testid="username-submit" type="submit" disabled={pending}>
           Save username
         </Button>
       </FieldRow>

@@ -1,7 +1,7 @@
 services:
   cms:
     build: .
-    env_file: .env
+    env_file: ${CMS_ENV_FILE:-.env}
     ports:
       - "${CMS_PORT:-48180}:3000"
     volumes:

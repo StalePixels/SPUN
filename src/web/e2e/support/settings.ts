@@ -50,6 +50,7 @@ export const settings = {
   baseUrl: required("E2E_BASE_URL"),
   nbnIdUrl: process.env.E2E_NBN_ID_URL || "https://id.nextbestnetwork.com/",
   databaseUrl: required("E2E_DATABASE_URL"),
+  testApp: required("E2E_TEST_APP"),
   dataDir: path.join(storageDir, "public"),
   binDir: path.join(storageDir, "bin"),
   assetDir: path.join(storageDir, "assets"),

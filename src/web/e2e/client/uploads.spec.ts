@@ -144,7 +144,13 @@ test("a zip over 4 MB: the browser blocks it, and so does the server", async ({ 
 test("an empty (0-byte) file is refused by the server", async ({ page, apps }) => {
   const id = await apps.create("Empty");
   const failed: string[] = [];
-  page.on("requestfailed", (request) => failed.push(`${request.url()} ${request.failure()?.errorText}`));
+  // Only the upload's own request: in a production build the create action's
+  // redirect and the link prefetches can end as aborted after create returns.
+  page.on("requestfailed", (request) => {
+    if (request.method() === "POST" && new URL(request.url()).pathname === `/publish/apps/${id}`) {
+      failed.push(`${request.url()} ${request.failure()?.errorText}`);
+    }
+  });
   await uploadRelease(page, { version: "1.0", file: files.write("empty.zip", Buffer.alloc(0)) });
   await expectRefused(page, id, "file.missing");
   expect(failed).toEqual([]);

@@ -5,8 +5,9 @@ import mysql, { type ResultSetHeader, type RowDataPacket } from "mysql2/promise"
 import { settings } from "./settings";
 
 // Direct database reads, to check what the CMS stored. The writes are the
-// restores of settings a test changed, and the users and apps that the admin
-// tests make for themselves (so no real account is renamed or disabled).
+// restores of settings a test changed, the users and apps that the admin
+// tests make for themselves (so no real account is renamed or disabled), and
+// the app row of the setup's test app.
 
 async function query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
   const connection = await mysql.createConnection(settings.databaseUrl);
@@ -76,6 +77,11 @@ export async function insertUser(username: string | null): Promise<string> {
 export async function insertApp(userId: string, title: string, description = ""): Promise<string> {
   const alphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
   const id = Array.from(randomBytes(6), (byte) => alphabet[byte % alphabet.length]).join("");
+  return insertAppWithId(id, userId, title, description);
+}
+
+// For the test app of the setup, whose id is fixed in .env.e2e.
+export async function insertAppWithId(id: string, userId: string, title: string, description = ""): Promise<string> {
   await query("insert into apps (id, user_id, title, description) values (?, ?, ?, ?)", [
     id,
     userId,
