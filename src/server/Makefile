@@ -1,4 +1,4 @@
-.PHONY: install build test
+.PHONY: install build test e2e-up e2e-down
 
 node_modules: package.json pnpm-lock.yaml
 	pnpm install --frozen-lockfile
@@ -12,3 +12,12 @@ build: node_modules
 
 test: build
 	node --test "build/server/test/**/*.test.js"
+
+E2E = docker compose -p spun-e2e-server --env-file .env.e2e
+
+# The e2e SPUNServer (settings in .env.e2e), started only while tests need it.
+e2e-up:
+	$(E2E) up -d --build --wait
+
+e2e-down:
+	$(E2E) down

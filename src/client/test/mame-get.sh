@@ -10,7 +10,12 @@ set -a
 set +a
 
 work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
+finish() {
+    [ -z "${SPUN_TEST_SERVER_DOWN:-}" ] || eval "$SPUN_TEST_SERVER_DOWN"
+    rm -rf "$work"
+}
+trap finish EXIT
+[ -z "${SPUN_TEST_SERVER_UP:-}" ] || eval "$SPUN_TEST_SERVER_UP"
 
 scenario() {
     local name=$1 spun=$here/../dot/$2/spun opts=$3

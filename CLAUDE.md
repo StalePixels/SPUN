@@ -11,15 +11,16 @@ the `.spun` dot command will live in `src/server` and `src/client`.
 
 - `make lint`, `make typecheck`, `make test` (Vitest), `make e2e` (Playwright)
 - One unit test: `pnpm exec vitest run src/lib/rules.test.ts -t "<name>"`
-- One e2e spec, on the e2e data as it is (no reset):
-  `pnpm exec playwright test e2e/client/uploads.spec.ts`
+- One e2e spec, on the e2e data as it is (no reset): `make e2e-up`, then
+  `pnpm exec playwright test e2e/client/uploads.spec.ts`, then `make e2e-down`
 - Dev server: `pnpm dev`; container: `docker compose up --build`
 
 The e2e suite has its own database, storage directory, CMS and SPUNServer;
 it never uses the development ones. `make e2e` resets the database and
 storage (`make e2e-reset`, which runs `e2e/reset.mts`), starts the e2e CMS
-and SPUNServer from the current tree in Docker (`make e2e-up`), then runs
-Playwright. The e2e CMS is a production build: a code change reaches it only
+and SPUNServer from the current tree in Docker (`make e2e-up`), runs
+Playwright, and stops both servers again (`make e2e-down`), also after a
+failure. They run only while tests need them. The e2e CMS is a production build: a code change reaches it only
 through `make e2e-up`, which rebuilds the image. Settings:
 `src/web/.env.e2e` (keys in `.env.e2e.example`), the CMS's
 `src/web/.env.e2e-cms` and the server's `src/server/.env.e2e`. After a
