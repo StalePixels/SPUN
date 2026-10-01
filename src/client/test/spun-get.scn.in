@@ -1,0 +1,18 @@
+# .spun find, info, get and update against the test server, through the
+# build's default server or through -s and -p.
+# get installs the app into C:/APPS through the NextZXOS browser:
+# 6 moves down to APPS, ENTER opens it, SPACE chooses it, y confirms.
+# ENTER at 30 s answers scroll?; PAUSE 0 keeps the last output on screen.
+put @SPUN@ /dot/SPUN
+autostart .spun @OPTS@find "@FIND@"
+autostart .spun @OPTS@info @APP@
+autostart .spun @OPTS@get @APP@
+autostart .spun @OPTS@update
+autostart PAUSE 0
+seconds 60
+key 16 6
+key 18 {ENTER}
+key 20 {SPACE}
+key 23 y
+key 30 {ENTER}
+snap 10 15 19 22 25 29 33 40 59

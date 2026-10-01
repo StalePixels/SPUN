@@ -3,3 +3,7 @@ BUILD-posix
 spun.map
 spun_*.bin
 TMP
+BUILD-test
+BUILD-test-posix
+TMP-test
+BUILD-test-s
