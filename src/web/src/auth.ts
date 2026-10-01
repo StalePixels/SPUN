@@ -1,9 +1,10 @@
 import NextAuth, { type DefaultSession } from "next-auth";
+import type { Adapter } from "next-auth/adapters";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { accounts, sessions, users } from "@/db/schema";
 import { db } from "@/lib/db";
 import { storeClaims } from "@/lib/redis";
-import { makeAdminIfFirstUser } from "@/lib/session";
+import { createUser } from "@/lib/session";
 
 declare module "next-auth" {
   interface Session {
@@ -15,15 +16,27 @@ declare module "next-auth" {
   }
 }
 
+// The adapter's own createUser does not make the first admin.
+function adapter(): Adapter {
+  const base = DrizzleAdapter(db(), {
+    usersTable: users,
+    accountsTable: accounts,
+    sessionsTable: sessions,
+  });
+  return {
+    ...base,
+    createUser: (user) =>
+      createUser({ name: user.name, email: user.email, emailVerified: user.emailVerified, image: user.image }).then(
+        (row) => ({ ...row, email: row.email ?? "" }),
+      ),
+  };
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth(() => {
   const issuer = process.env.AUTH_NBN_ISSUER ?? "";
   const base = issuer.endsWith("/") ? issuer : `${issuer}/`;
   return {
-    adapter: DrizzleAdapter(db(), {
-      usersTable: users,
-      accountsTable: accounts,
-      sessionsTable: sessions,
-    }),
+    adapter: adapter(),
     session: { strategy: "database" },
     trustHost: true,
     providers: [
@@ -62,11 +75,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
       },
     },
     events: {
-      async createUser({ user }) {
-        if (user.id) {
-          await makeAdminIfFirstUser(user.id);
-        }
-      },
       async signIn({ user, profile }) {
         if (user.id && profile) {
           await storeClaims(user.id, profile);
