@@ -20,8 +20,9 @@ it never uses the development ones. `make e2e` resets the database and
 storage (`make e2e-reset`, which runs `e2e/reset.mts`), starts the e2e CMS
 and SPUNServer from the current tree in Docker (`make e2e-up`), runs
 Playwright, and stops both servers again (`make e2e-down`), also after a
-failure. They run only while tests need them. The e2e CMS is a production build: a code change reaches it only
-through `make e2e-up`, which rebuilds the image. Settings:
+failure. They run only while tests need them. The e2e CMS is a production
+build: a code change reaches it only through `make e2e-up`, which rebuilds
+the image. Settings:
 `src/web/.env.e2e` (keys in `.env.e2e.example`), the CMS's
 `src/web/.env.e2e-cms` and the server's `src/server/.env.e2e`. After a
 reset the database has no users: the admin account logs in first, so it

@@ -61,9 +61,6 @@ for (const account of [accounts.admin, accounts.client]) {
       await page.getByTestId("username-field").fill(account.username);
       await clickHydrated(page.getByTestId("username-submit"));
       await page.waitForURL((url) => url.pathname === "/");
-      // The redirect after the save keeps the navbar it had, with no username in
-      // it; a new page load shows the username.
-      await page.goto("/");
     }
     await expect(page.getByTestId("nav-username")).toHaveText(account.username);
 

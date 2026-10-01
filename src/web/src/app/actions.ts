@@ -73,6 +73,7 @@ export async function chooseUsername(_prev: FormState, formData: FormData): Prom
     }
     throw err;
   }
+  revalidatePath("/", "layout");
   redirect("/");
 }
 
