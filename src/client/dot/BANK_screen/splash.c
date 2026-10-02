@@ -49,6 +49,7 @@ static void row_make(uint8_t column, uint8_t row) {
     }
 }
 
+// The last picture holds for half a second before the GUI: 25 frames at 50 Hz, 30 at 60 Hz (NR 0x05 bit 2)
 void splash(void) {
     uint8_t mmu2 = ZXN_READ_REG(REG_MMU0 + 2);
     uint8_t mmu3 = ZXN_READ_REG(REG_MMU0 + 3);
@@ -84,6 +85,7 @@ void splash(void) {
         }
     }
     IO_DMA = 0x83;
+    for(frame = ZXN_READ_REG(0x05) & 0x04 ? 30 : 25; frame; frame--) intrinsic_halt();
 
     ZXN_WRITE_MMU3(mmu3);
     ZXN_WRITE_MMU2(mmu2);

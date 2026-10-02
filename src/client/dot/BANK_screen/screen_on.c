@@ -11,7 +11,8 @@ uint8_t paletteSaved[512];
 static const uint8_t palette[] = { 0x02, 0xFF, 0x02, 0xFC, 0xFF, 0x02, 0xFF, 0xE0, 0x00, 0x00 };
 
 // A clip read gives the value at the clip index, and only a write moves the index on, so each value
-// is written back as it is read. Black is transparent and the fallback colour, so it looks black either way
+// is written back as it is read. Black is transparent and the fallback colour, so it looks black either way.
+// Sprites over the tilemap over Layer 2: the text-mode tilemap is transparent in NR 0x14's black (ATTR_BLACK)
 void screen_on(void) {
     uint16_t index;
 
@@ -47,5 +48,5 @@ void screen_on(void) {
     ZXN_NEXTREG(0x6F, 0x5C);
     tilemap_on();
     ZXN_NEXTREGA(0x68, screenSaved[SAVED_68] | 0x80);
-    ZXN_NEXTREGA(0x15, (screenSaved[SAVED_15] & 0xE0) | 0x03);
+    ZXN_NEXTREGA(0x15, (screenSaved[SAVED_15] & 0xE0) | 0x0B);
 }

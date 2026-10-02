@@ -5,8 +5,8 @@
 #include "../BANK_screen/screen.h"
 #include "app.h"
 
-// The cells behind each picture are black, as is Layer 2's transparent colour; they are drawn
-// also when the pictures are already in Layer 2
+// The cells over each picture are black, which is transparent in the tilemap, so Layer 2 shows through;
+// they are drawn also when the pictures are already in Layer 2
 unsigned char *thumbs_load(bool load) __z88dk_fastcall {
     struct l2_target rect;
     unsigned char *failed = NULL;

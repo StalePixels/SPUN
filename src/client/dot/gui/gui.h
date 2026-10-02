@@ -13,7 +13,7 @@
 #define BUTTON_ROW      30
 
 // Tilemap attributes: palette offsets of the 1-bit tilemap (BANK_screen/screen_on.c).
-// ATTR_BLACK is the cells behind a picture in Layer 2, whose transparent colour is black
+// ATTR_BLACK is the cells over a picture in Layer 2: black, which a text-mode tilemap shows as transparent (NR 0x14)
 #define ATTR_TEXT       0x00
 #define ATTR_KEY        0x02
 #define ATTR_BAR        0x04
