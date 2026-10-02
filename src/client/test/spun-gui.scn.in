@@ -1,0 +1,90 @@
+# .spun with no command opens the GUI on SPLIST page 1, through gui-test.py's
+# proxy (@PORT@) to the test server. The proxy sends the reply to the first
+# SPLIST 2 one byte every 5 ms, so that read takes some seconds.
+# mame-gui.sh fills in @SPUN@ and @PORT@, expands each "@ROWS T COMMAND" into
+# expect lines that check tilemap rows 3-25 at T against the server's own
+# reply to COMMAND, and checks each "@POINTER T X Y": the pointer position
+# (gui/isr.asm: X, then Y, 16 bits each, at $BFD8) at T.
+# The mouse reads 128,128 before .spun starts, so the pointer starts from the
+# middle of the screen (160,128). Each move is a change of less than 128 in each
+# reading. The pointer's Y stays in 8-247 (tilemap rows 1-30).
+# The tilemap is found by the title bar, "SPUN" at row 1 column 1 with attribute
+# 4; an offset from it is (row * 80 + column) * 2 - 162.
+# After the GUI: PAUSE 0 waits for a key, which needs NextZXOS's interrupt back,
+# then a second dot command, then BASIC prints SPUNGUIDONE and loops for ever.
+# A reset also ends at the NextZXOS menu, so autoexec.bas never ends: noreset
+# fails the run on any reset after boot, and screen checks the printed text at
+# the end of the run.
+put @SPUN@ /dot/SPUN
+autostart .spun -p @PORT@
+autostart PAUSE 0
+autostart .ls /dot/SPUN
+autostart PRINT "SPUNGUIDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 55
+noreset 7.5
+mouse 2 move 128 128
+
+# Page 1 of the catalogue, and the buttons in row 30 with their letters
+# highlighted (attribute 6)
+@ROWS 15.5 SPLIST 1
+expect 15.5 S\x04P\x04U\x04N\x04 4638 20 00 20 04 50 06 72 04 65 04 76 04 20 04 20 00 20 04 4e 06 65 04 78 04 74 04 20 04 20 00 20 04 53 06 65 04 61 04 72 04 63 04 68 04 20 04 20 00 20 04 48 06 65 04 6c 04 70 04 20 04 20 00 20 04 51 06 75 04 69 04 74 04 20 04 20 00
+@POINTER 15.5 160 128
+
+# far up twice (127 each): Y stops at 8
+mouse 16 move 128 255
+mouse 16.5 move 128 126
+@POINTER 17 160 8
+
+# far down three times: Y stops at 247
+mouse 17.5 move 128 255
+mouse 18 move 128 128
+mouse 18.5 move 128 1
+@POINTER 19 160 247
+@SHOWN 19
+
+# Key N: page 2, the slow read. A mouse move during the read does not move the
+# pointer, as the interrupt is off, and the screen shows no pointer. After the
+# read the interrupt is back, the pointer shows, and it catches up the move:
+# left 74.
+key 19.5 n
+mouse 20.5 move 54 1
+@POINTER 21 160 247
+@HIDDEN 21
+expect 21 S\x04P\x04U\x04N\x04 3840 4c 00 6f 00 61 00 64 00 69 00 6e 00 67 00
+@ROWS 25 SPLIST 2
+@POINTER 25 86 247
+@SHOWN 25
+
+# Left 74 more onto Prev and click it: page 1 again
+mouse 25.5 move 236 1
+@POINTER 25.9 12 247
+mouse 26 press left
+mouse 26.1 release left
+@ROWS 28 SPLIST 1
+
+# Right 60 onto Search and click it, type the text, ENTER
+mouse 28.5 move 40 1
+@POINTER 28.9 72 247
+mouse 29 press left
+mouse 29.1 release left
+key 30 zebra
+key 31.5 {ENTER}
+@ROWS 33.5 SPFIND 1 zebra
+
+# Key S and ENTER with no text: back to the catalogue, no SPFIND sent
+key 34.5 s
+key 35.5 {ENTER}
+@ROWS 37.5 SPLIST 1
+
+# Key H: the help text from row 3 column 2; key H again: page 1 again
+key 38.5 h
+expect 39.5 S\x04P\x04U\x04N\x04 322 2e 00 73 00 70 00 75 00 6e 00
+key 40.5 h
+@ROWS 42.5 SPLIST 1
+
+key 43.5 q
+key 47.5 {SPACE}
+screen 54.4 SPUNGUIDONE
+
+snap 15.5 28 31 33.5 37.5 39.5 42.5 45.5 54.4

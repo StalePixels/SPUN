@@ -1,0 +1,22 @@
+# .spun's GUI does not open when no run of 10 free pages is left for Layer 2:
+# it gives an error and leaves nothing allocated. The test tool .fragment
+# (fragment/fragment.c) takes every free page and gives back those of every
+# even 16K bank, so that no free run is longer than 2 pages, but the dot loader
+# still gets its pages. .spun is typed at the command line, so that its error
+# report stays on the screen; then .fragment check must find as many free pages
+# as .fragment left. mame-nolayer2.sh fills in @SPUN@ and @FRAGMENT@.
+# The autoexec ends after .fragment, and NextZXOS shows its menu, so this
+# scenario has no noreset check. ON ERROR does not keep the autoexec running: in
+# MAME, a failing dot command under ON ERROR went through $0000 and did not go
+# on to the next line.
+put @SPUN@ /dot/SPUN
+put @FRAGMENT@ /dot/FRAGMENT
+autostart .fragment
+seconds 34
+key 11 {DOWN}
+key 12 {ENTER}
+key 14 .spun{ENTER}
+screen 23 No free 80K block for Layer 2
+key 25 .fragment check{ENTER}
+screen 33.9 FRAGMENT SAME
+snap 11.5 16 23 33.9

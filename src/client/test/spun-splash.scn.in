@@ -1,0 +1,26 @@
+# The splash of .spun's GUI (BANK_screen/splash.c), against the test server.
+# mame-splash.sh fills in @SPUN@ and @PORT@ and expands the @ lines
+# (gui-test.py). .spun connects, then opens the GUI with the splash: S, P, U,
+# N and the words STALE, PIXELS, UPDATES, NEXTS come up column by column and
+# stop in line in the middle of the screen; then the list. @LAYER2 checks the
+# splash's last picture, which stays in Layer 2 RAM after it. The run is at
+# real speed.
+put @SPUN@ /dot/SPUN
+autostart .spun -p @PORT@
+autostart PRINT "SPUNSPLASHDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 24
+noreset 7.5
+mouse 2 move 128 128
+# The pointer is hidden during the splash and a mouse move then does nothing;
+# after it the pointer shows in the middle of the screen
+mouse 9 move 30 30
+@HIDDEN 9.5
+@POINTER 9.5 160 128
+@POINTER 12 160 128
+@SHOWN 12
+@LAYER2 14 splash splash
+@ROWS 14 SPLIST 1
+key 15 q
+screen 23.9 SPUNSPLASHDONE
+snap 8.6 8.8 9 9.2 9.4 9.6 9.8 10 10.2 10.34 14 23.9

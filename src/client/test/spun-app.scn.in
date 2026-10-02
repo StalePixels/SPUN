@@ -1,0 +1,108 @@
+# The app page of .spun's GUI (BANK_app), through gui-test.py's proxy (@PORT@)
+# to the test server, which logs every command. mame-app.sh fills in @SPUN@
+# and @PORT@ and expands the @ lines (gui-test.py): @ROWS and @ROWSEL check the
+# list, @APP the app page and @CLOG a changelog page, against the server's own
+# replies; @LAYER2 dumps Layer 2 and its palette, which mame-app.sh checks
+# against the thumbnail and NXI files; @POINTER checks the pointer position.
+# The test data: gui-catalogue.mts and gui-screenshots.mts. gui024 has
+# screenshots in slots 1 (320x256), 2 (256x192), 3 (320x256) and 5 (256x192),
+# none in slot 4, and three releases; gui023 has no screenshots; gui022 has
+# one in every slot. The e2e client app is first in the list, gui024 second,
+# gui023 third and gui022 fourth.
+# Network reads run at real speed: a 320x256 NXI takes several seconds.
+put @SPUN@ /dot/SPUN
+autostart OUT 9275,67: OUT 9531,16: OUT 9275,64: OUT 9531,5: OUT 9275,65: OUT 9531,77: OUT 9275,67: OUT 9531,0
+autostart .spun -p @PORT@
+autostart PRINT "SPUNAPPDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 103
+noreset 7.5
+mouse 2 move 128 128
+
+# NextZXOS's Layer 2 before .spun starts; mame-app.sh compares it with the end.
+# The first autoexec line sets Layer 2 palette entry 5 to colour 77 (NextRegs
+# through ports $243B and $253B), so the palette is not the default one that
+# .spun sets. The tile area of bank 5, which the GUI uses for its tilemap, must
+# also be as it was, up to BASIC's variables (VARS, system variable $5C4B),
+# which the FOR loop changes
+layer2 7.6 before
+dump 7.6 0x5D00 1792 tiles-before
+dump 7.6 0x6C00 5120 map-before
+dump 7.6 0x5C4B 28 sysvars-before
+
+# The list, with its first entry selected; down selects gui024, ENTER opens it
+@ROWS 15.5 SPLIST 1
+key 16 {DOWN}
+key 17 {ENTER}
+
+# The app page: text, releases with the newest selected, thumbnails of slots
+# 1, 2, 3 and 5 and the placeholder in slot 4
+@APP 23.5 gui024
+@LAYER2 23.5 page page gui024
+
+# ENTER: the changelog of the selected release (serial 3), wrapped
+key 24.5 {ENTER}
+@CLOG 27 gui024 3
+
+# B: the app page again. SPINFO is asked for again; the thumbnails are still in
+# Layer 2, so they are not
+key 27.5 b
+@APP 30 gui024
+@LAYER2 30 kept page gui024
+
+# Key 1: slot 1 full screen, a 320x256 NXI that Layer 2 shows while it loads
+key 30.5 1
+@LAYER2 41.5 full320 full gui024 1
+
+# Space: back to the app page, with the default palette and the thumbnails again
+key 42.5 {SPACE}
+@LAYER2 48.5 again page gui024
+
+# A click on the slot 2 thumbnail: a 256x192 NXI
+mouse 49 move 136 216
+@POINTER 49.5 168 40
+mouse 49.7 press left
+mouse 49.8 release left
+@LAYER2 56.5 full256 full gui024 2
+key 57.5 {SPACE}
+@APP 63.5 gui024
+
+# A click on the second release, in the releases column: its changelog
+# (serial 2). EDIT goes back, with that release still selected
+mouse 64.5 move 208 116
+@POINTER 65 240 140
+mouse 65.2 press left
+mouse 65.3 release left
+@CLOG 67.5 gui024 2
+key 68 {EDIT}
+@APP 70.5 gui024 1
+
+# B: the list again, gui024 still selected. Down and ENTER open gui023, which
+# has no screenshots: placeholders in all five slots, and no GET. Key 1 does
+# nothing there
+key 71 b
+@ROWSEL 73.5 1 SPLIST 1
+key 74 {DOWN}
+key 75 {ENTER}
+@APP 78.5 gui023
+@LAYER2 78.5 empty page gui023
+key 79 1
+@LAYER2 80.5 empty1 page gui023
+
+# B, down and ENTER open gui022: thumbnails in all five slots
+key 81 b
+@ROWSEL 83.5 2 SPLIST 1
+key 84 {DOWN}
+key 85 {ENTER}
+@APP 91.5 gui022
+@LAYER2 91.5 all page gui022
+
+key 92 b
+key 94.5 q
+layer2 100.5 after
+dump 100.5 0x5D00 1792 tiles-after
+dump 100.5 0x6C00 5120 map-after
+dump 100.5 0x5C4B 28 sysvars-after
+screen 101.4 SPUNAPPDONE
+
+snap 15.5 23.5 27 30 32.5 35.5 41.5 48.5 53.5 56.5 63.5 67.5 70.5 73.5 78.5 80.5 83.5 91.5 95.5 101.4

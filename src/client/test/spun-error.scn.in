@@ -1,0 +1,37 @@
+# An error exit from inside the GUI: gui023's zip has a file named
+# BAD*NAME.TXT, which NextZXOS cannot create, so the install ends .spun with
+# "Cannot create a file" (BANK_packages/install.c). BASIC's screen must be
+# back before that message is printed, so the message and the lines BASIC
+# printed before .spun show on it, and nothing of the GUI or the browser
+# does. Without ON ERROR the autoexec would end at the error and NextZXOS
+# would show its menu. ON and ERROR are NextBASIC tokens $90 and $8F, which
+# the harness writes as raw bytes. In MAME the trapped error never reaches
+# line 50: BASIC fetches $0000 once a frame with PPC on the ON ERROR line,
+# also after an error from the CLI (.spun get of a missing app), and the
+# screen stays as it is. That is not a reset, so this scenario has no
+# noreset; mame-install.sh fails it on a "machine reset" line in mame.log
+# instead. gui023 is third in the list.
+put @SPUN@ /dot/SPUN
+autostart PRINT "SPUNBEFORE1": PRINT "SPUNBEFORE2"
+autostart \x90\x8fGO TO 50
+autostart .spun -p @PORT@
+autostart PRINT "SPUNTRAPPED"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 48
+mouse 2 move 128 128
+key 16 {DOWN}
+key 16.5 {DOWN}
+key 17 {ENTER}
+mouse 21.5 move 64 12
+@POINTER 22 96 244
+mouse 22.2 press left
+mouse 22.3 release left
+key 26.5 6
+key 28.5 {ENTER}
+key 30.5 {SPACE}
+key 33.5 i
+dump 46.5 0x4000 6912 ula-end
+snap 32.5 34 35.5 46.5
+screen 47 SPUNBEFORE1
+screen 47 SPUNBEFORE2
+screen 47 Cannot create a file

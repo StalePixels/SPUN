@@ -1,0 +1,13 @@
+font_load.asm
+screen_on.c
+screen_off.c
+clip_write.c
+palette_default.c
+layer2_on.c
+layer2_off.c
+layer2_clear.c
+tilemap_on.c
+tilemap_off.c
+placeholder_draw.c
+splash.c
+splash_dma.asm

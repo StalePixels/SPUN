@@ -1,0 +1,68 @@
+# Install from the GUI's app page (BANK_app/app_install.c), through
+# gui-test.py's proxy (@PORT@) to the test server, which logs every command.
+# mame-install.sh fills in the @ values and checks spun.cat, the installed
+# files and BASIC's screen after the run.
+# BASIC prints two lines, then .spun runs, then BASIC prints a third line,
+# which must follow the first two on BASIC's own screen (ula_store and
+# ula_restore). gui024 is second in the list; DOWN selects it, ENTER opens it.
+# A click on Install opens the NextZXOS browser, as get does: 6 moves down to
+# APPS, ENTER opens it, SPACE chooses it. The GUI comes back with the confirm
+# box; key I installs. gui024's zip has 29 blocks and 8 files, so the status
+# line shows the download block by block and the unzip file by file. After
+# the browser the GUI sets the pointer to the middle of the screen again.
+put @SPUN@ /dot/SPUN
+autostart PRINT "SPUNBEFORE1": PRINT "SPUNBEFORE2"
+autostart .spun -p @PORT@
+autostart PRINT "SPUNINSTALLDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 63
+noreset 7.5
+mouse 2 move 128 128
+
+# Which ULA screen NextZXOS shows (BANKM bit 3, NextReg 0x69 bit 6), at start and at the end
+dump 7.6 0x5B5C 1 bankm-start
+layer2 7.6 start
+
+key 16 {DOWN}
+key 17 {ENTER}
+@APP 20.5 gui024
+
+# Install: the button at columns 20-28 of row 30
+mouse 21.5 move 64 12
+@POINTER 22 96 244
+mouse 22.2 press left
+mouse 22.3 release left
+
+# The browser
+key 26.5 6
+key 28.5 {ENTER}
+key 30.5 {SPACE}
+
+# The confirm box, over the app page
+@TEXT 32.5 12 12 2 Install @TITLE@ @VERSION@ to:
+@TEXT 32.5 13 12 0 C:/APPS/
+@TEXT 32.5 17 12 4  
+@TEXT 32.5 17 13 6 I
+@TEXT 32.5 17 14 4 nstall 
+@TEXT 32.5 17 23 4  
+@TEXT 32.5 17 24 6 C
+@TEXT 32.5 17 25 4 ancel 
+key 33.5 i
+
+# Progress on the status line, during the download and during the unzip
+@TEXT 38.5 25 1 0 Downloading block 
+@TEXT 46.5 25 1 0 Unzipping file 
+
+# The app page again, with the result on the status line
+@TEXT 51.5 25 1 0 Installed to C:/APPS/
+@TEXT 51.5 30 21 6 I
+@TEXT 51.5 30 22 4 nstall 
+
+key 52.5 q
+dump 61.5 0x4000 6912 ula-end
+dump 61.5 0x5B5C 1 bankm-end
+layer2 61.5 end
+snap 20.5 24.5 29.5 32.5 38.5 46.5 51.5 54.5 61.5
+screen 62 SPUNBEFORE1
+screen 62 SPUNBEFORE2
+screen 62 SPUNINSTALLDONE

@@ -1,0 +1,45 @@
+# The update box at the GUI's start (BANK_gui/updates_offer.c), through
+# gui-test.py's proxy (@PORT@) to the test server. spun.cat (@CAT@) has older
+# releases of @APP@ and gui024 than the server. .spun runs twice. The first
+# time a click on Ignore opens the list and installs nothing; the second time
+# key U installs both updates, with progress on the status line under the
+# box, then the list opens. mame-install.sh checks the commands sent,
+# spun.cat and the installed files after the run.
+put @SPUN@ /dot/SPUN
+put @CAT@ /sys/spun.cat
+autostart PRINT "SPUNBEFORE1"
+autostart .spun -p @PORT@
+autostart .spun -p @PORT@
+autostart PRINT "SPUNUPDATEDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 65
+noreset 7.5
+mouse 2 move 128 128
+
+@TEXT 14.5 12 12 2 Updates
+@TEXT 14.5 13 12 0 2 installed apps have updates.
+@TEXT 14.5 17 13 6 U
+@TEXT 14.5 17 14 4 pdate 
+@TEXT 14.5 17 23 6 I
+@TEXT 14.5 17 24 4 gnore 
+
+# Ignore: the button at columns 22-29 of row 17
+mouse 16.5 move 68 116
+@POINTER 17 100 140
+mouse 17.2 press left
+mouse 17.3 release left
+@ROWS 19.5 SPLIST 1
+key 21.5 q
+
+# The second .spun: the box again; U installs both
+@TEXT 30 13 12 0 2 installed apps have updates.
+key 32 u
+@TEXT 39 25 1 0 Downloading block 
+@TEXT 46 25 1 0 Unzipping file 
+@TEXT 51 25 1 0 @STATUS@
+key 53 q
+dump 64 0x4000 6912 ula-end
+
+snap 14.5 19.5 30 39 46 51 64
+screen 64.5 SPUNBEFORE1
+screen 64.5 SPUNUPDATEDONE

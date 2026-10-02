@@ -1,0 +1,15 @@
+app_run.c
+app_buttons.c
+app_show.c
+info_draw.c
+releases_draw.c
+release_select.c
+thumb_rect.c
+thumb_at.c
+thumbs_load.c
+text_wrap.c
+buttons_draw.c
+wait_back.c
+clog_show.c
+view_show.c
+app_install.c
