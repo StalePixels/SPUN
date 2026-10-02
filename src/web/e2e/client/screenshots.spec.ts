@@ -2,7 +2,8 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 import sharp from "sharp";
-import { screenshotRows } from "../support/db";
+import { thumbSize } from "../../src/lib/thumbs";
+import { appRow, screenshotRows } from "../support/db";
 import { clickHydrated, deleteAppInUi, expect, test, uploadRelease, waitForHydration } from "../support/pages";
 import { accounts, settings } from "../support/settings";
 import { makeZip, sampleEntries, tempFiles } from "../support/zips";
@@ -18,6 +19,9 @@ test.afterEach(() => {
 });
 
 const nxiFile = (appId: string, slot: number) => path.join(settings.dataDir, client.username, "nxi", appId, String(slot));
+const thumbFile = (appId: string, slot: number) =>
+  path.join(settings.dataDir, client.username, "thumb", appId, String(slot));
+const thumbBytes = (slot: number) => thumbSize(slot).width * thumbSize(slot).height;
 const pngFile = (appId: string, slot: number) => path.join(settings.assetDir, "screenshots", appId, `${slot}.png`);
 const binFiles = (appId: string) =>
   existsSync(settings.binDir) ? readdirSync(settings.binDir).filter((name) => name.startsWith(`${appId}-`)) : [];
@@ -75,6 +79,8 @@ test("upload, replace and clear screenshots, and the public page shows them", as
   expect(readFileSync(nxiFile(id, 2))).toEqual(readFileSync(readyNxi("again.nxi")));
   expect(existsSync(pngFile(id, 1))).toBe(true);
   expect(existsSync(pngFile(id, 2))).toBe(true);
+  expect(statSync(thumbFile(id, 1)).size).toBe(thumbBytes(1));
+  expect(statSync(thumbFile(id, 2)).size).toBe(thumbBytes(2));
   const rows = await screenshotRows(id);
   expect(rows.map(({ slot, width }) => ({ slot, width }))).toEqual([
     { slot: 1, width: 256 },
@@ -92,11 +98,14 @@ test("upload, replace and clear screenshots, and the public page shows them", as
   // Replace the main screenshot at once, with one that needs 320x256: a stale
   // cached PNG on the public page would still be 256 wide.
   const before = readFileSync(nxiFile(id, 1));
+  const thumbBefore = readFileSync(thumbFile(id, 1));
   await page.goto(`/publish/apps/${id}`);
   await uploadScreenshot(page, 1, await stripes(640, 512, "wide.png"));
   await expect(page.getByTestId("screenshot-preview-1")).toHaveAttribute("width", "320");
   expect(statSync(nxiFile(id, 1)).size).toBe(82_432);
   expect(readFileSync(nxiFile(id, 1)).equals(before)).toBe(false);
+  expect(statSync(thumbFile(id, 1)).size).toBe(thumbBytes(1));
+  expect(readFileSync(thumbFile(id, 1)).equals(thumbBefore)).toBe(false);
   const replaced = await screenshotRows(id);
   expect(replaced[0]).toMatchObject({ slot: 1, width: 320 });
   expect(replaced[0].updated_at.getTime()).toBeGreaterThan(rows[0].updated_at.getTime());
@@ -106,6 +115,7 @@ test("upload, replace and clear screenshots, and the public page shows them", as
   await expect(page.getByTestId("screenshot-empty-2")).toBeVisible();
   expect(existsSync(nxiFile(id, 2))).toBe(false);
   expect(existsSync(pngFile(id, 2))).toBe(false);
+  expect(existsSync(thumbFile(id, 2))).toBe(false);
   expect((await screenshotRows(id)).map((row) => row.slot)).toEqual([1]);
   expect(binFiles(id)).toEqual([]);
 
@@ -130,15 +140,37 @@ test("a text file shows screenshot.notImage, and a wrong-size NXI screenshot.bad
   expect(await screenshotRows(id)).toEqual([]);
 });
 
-test("an app delete moves its screenshots to the bin", async ({ page, apps }) => {
+// The restore runs in a second browser context with the admin login.
+test("an app delete moves its screenshots to the bin, and a restore brings them back", async ({
+  page,
+  apps,
+  browser,
+}) => {
   const id = await apps.create("ShotDelete");
   await page.goto(`/publish/apps/${id}`);
   await uploadScreenshot(page, 1, await stripes(256, 192, "main.png"));
   await expect(page.getByTestId("screenshot-preview-1")).toBeVisible();
+  const thumb = readFileSync(thumbFile(id, 1));
 
   await deleteAppInUi(page, id);
   expect(existsSync(nxiFile(id, 1))).toBe(false);
   expect(existsSync(pngFile(id, 1))).toBe(false);
-  expect(binFiles(id).sort()).toEqual([`${id}-nxi-1`, `${id}-png-1`]);
+  expect(existsSync(thumbFile(id, 1))).toBe(false);
+  expect(binFiles(id).sort()).toEqual([`${id}-nxi-1`, `${id}-png-1`, `${id}-thumb-1`]);
   expect((await screenshotRows(id)).map((row) => row.slot)).toEqual([1]);
+
+  const context = await browser.newContext({ storageState: accounts.admin.storageState });
+  try {
+    const admin = await context.newPage();
+    await admin.goto(`/admin/apps/${id}`);
+    await clickHydrated(admin.getByTestId("restore-app"));
+    await expect(admin.getByTestId("admin-app-deleted-note")).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
+  expect((await appRow(id))?.deleted_at).toBeNull();
+  expect(existsSync(nxiFile(id, 1))).toBe(true);
+  expect(existsSync(pngFile(id, 1))).toBe(true);
+  expect(readFileSync(thumbFile(id, 1)).equals(thumb)).toBe(true);
+  expect(binFiles(id)).toEqual([]);
 });

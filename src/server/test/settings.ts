@@ -23,6 +23,3 @@ export const settings = {
   publisher: username("SPUN_TEST_PUBLISHER", "TestPublisher"),
   otherPublisher: username("SPUN_TEST_OTHER_PUBLISHER", "OtherPublisher"),
 };
-
-// A username as the protocol sends it: ASCII, then a zero byte.
-export const hexString = (value: string): string => Buffer.from(value, "ascii").toString("hex") + "00";

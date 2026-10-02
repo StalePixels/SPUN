@@ -151,8 +151,10 @@ export async function removeApps(appIds: string[]): Promise<void> {
     const username = owners.find((row) => row.id === appId)?.username;
     if (username) {
       removeFilesOf(path.join(settings.dataDir, username), appId);
-      rmSync(path.join(settings.dataDir, username, "nxi", appId), { recursive: true, force: true });
-      removeIfEmpty(path.join(settings.dataDir, username, "nxi"));
+      for (const dir of ["nxi", "thumb"]) {
+        rmSync(path.join(settings.dataDir, username, dir, appId), { recursive: true, force: true });
+        removeIfEmpty(path.join(settings.dataDir, username, dir));
+      }
     }
     removeFilesOf(settings.binDir, appId);
     rmSync(path.join(settings.assetDir, "screenshots", appId), { recursive: true, force: true });

@@ -98,6 +98,7 @@ int check_catalogue(char *id) {
         if(!*entry || *entry == '#' || *entry == ';') continue;
         if(!whole || !(at = parse_entry())) {
             close_in();
+            gui_end();
             printf("Line %u: bad entry\n", line);
             NBN_Fail(err_bad_catalogue);
         }

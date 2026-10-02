@@ -2,17 +2,23 @@
 # build's default server or through -s and -p.
 # get installs the app into C:/APPS through the NextZXOS browser:
 # 6 moves down to APPS, ENTER opens it, SPACE chooses it, y confirms.
-# ENTER at 30 s answers scroll?; PAUSE 0 keeps the last output on screen.
+# ENTER at 30 s answers scroll?. The run fails unless SPUNGETDONE is on
+# screen at the end and nothing resets the machine after boot (noreset).
+# The last line never ends: a PAUSE 0 there would return at once on the
+# key flag that y leaves set, and NextZXOS would show its menu.
 put @SPUN@ /dot/SPUN
 autostart .spun @OPTS@find "@FIND@"
 autostart .spun @OPTS@info @APP@
 autostart .spun @OPTS@get @APP@
 autostart .spun @OPTS@update
-autostart PAUSE 0
+autostart PRINT "SPUNGETDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
 seconds 60
+noreset 7.5
 key 16 6
 key 18 {ENTER}
 key 20 {SPACE}
 key 23 y
 key 30 {ENTER}
 snap 10 15 19 22 25 29 33 40 59
+screen 59 SPUNGETDONE

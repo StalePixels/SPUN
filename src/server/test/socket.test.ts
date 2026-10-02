@@ -3,12 +3,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import type * as net from "node:net";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
-import { after, before, describe, test } from "node:test";
+import { after, afterEach, before, beforeEach, describe, test } from "node:test";
 import type { Catalogue } from "../src/catalogue.js";
-import { checksum, decodeFind, decodeInfo } from "../src/codec.js";
+import { checksum, decodeChangelog, decodeFind, decodeInfo } from "../src/codec.js";
 import { fakeCatalogue, type AppRow, type ReleaseRow, type Tables } from "./fakeCatalogue.js";
 import { SpoofClient, startSpunServer } from "./harness.js";
-import { hexString, settings } from "./settings.js";
+import { ascii, counts, field, le, reply } from "./golden.js";
+import { settings } from "./settings.js";
 
 const BLOCK = 4096;
 const user = settings.publisher;
@@ -54,8 +55,26 @@ const tables: Tables = {
     { id: "allgn1", userId: "u1", title: "All Gone", description: "" },
     { id: "gone01", userId: "u1", title: "Test App Gone", description: "", deleted: true },
     { id: "desc01", userId: "u2", title: "Other", description: "Made for Test App users" },
-    { id: "abc123", userId: "u2", title: "Mixed Case Title", description: "" },
-    { id: "long01", userId: "u2", title: "Long History", description: "" },
+    {
+      id: "abc123",
+      userId: "u2",
+      title: "Mixed Case Title",
+      description: "",
+      downloads: 12,
+      categories: ["Tools", "Games"],
+      screenshots: [
+        { slot: 4, width: 256 },
+        { slot: 1, width: 320 },
+      ],
+    },
+    {
+      id: "long01",
+      userId: "u2",
+      title: "Long History",
+      description: "",
+      downloads: 70000,
+      categories: Array.from({ length: 20 }, (_, i) => `Category ${String(20 - i).padStart(2, "0")}`),
+    },
     ...pagerApps,
     ...emptyPagers,
   ],
@@ -65,11 +84,17 @@ const tables: Tables = {
       appId: "tst001",
       serial: 2,
       version: "test-upload-02",
-      releaseDate: "2026-09-26",
+      releaseDate: "2026-09-30",
       deleted: true,
     },
     { appId: "abc123", serial: 1, version: "1.0", releaseDate: "2026-09-20" },
-    { appId: "abc123", serial: 2, version: "1.1", releaseDate: "2026-09-21" },
+    {
+      appId: "abc123",
+      serial: 2,
+      version: "1.1",
+      releaseDate: "2026-09-21",
+      changelog: "Faster.\nFewer bugs.",
+    },
     { appId: "abc123", serial: 3, version: "1.2", releaseDate: "2026-09-22", deleted: true },
     { appId: "desc01", serial: 1, version: "0.1", releaseDate: "2026-09-01" },
     { appId: "tst002", serial: 1, version: "1.0", releaseDate: "2026-09-01" },
@@ -100,6 +125,8 @@ before(async () => {
   mkdirSync(path.join(dataDir, user));
   writeFileSync(path.join(dataDir, user, "tst001-0001.zip"), fileBytes);
   writeFileSync(path.join(dataDir, user, "tst002-0001.zip"), exactBytes);
+  mkdirSync(path.join(dataDir, user, "nxi", "tst001"), { recursive: true });
+  writeFileSync(path.join(dataDir, user, "nxi", "tst001", "1"), fileBytes);
   ({ server, port } = await startSpunServer(fakeCatalogue(tables), dataDir));
 });
 
@@ -107,6 +134,16 @@ after(() => {
   server.close();
   rmSync(dataDir, { recursive: true, force: true });
 });
+
+// tst001 with its deleted release left out.
+const TST001_INFO = reply(
+  counts(1, 1, 1) +
+    field(0x12, ascii(user)) +
+    field(0x13, ascii("Test App")) +
+    field(0x80, ascii("A test app")) +
+    field(0x16, le(0, 4)) +
+    field(0x18, field(0x14, le(1, 2)) + field(0x15, ascii("test-upload-01")) + field(0x17, ascii("2026-09-25"))),
+);
 
 const connect = async (): Promise<void> => {
   client = await SpoofClient.connect(port);
@@ -119,37 +156,35 @@ const expectError = async (command: string, code: string): Promise<void> => {
 
 // The session is still open and answers a command.
 const expectOpen = async (): Promise<void> => {
-  client.send("FIND 1 zebra\n");
+  client.send("SPFIND 1 zebra\n");
   assert.equal((await client.reply(decodeFind)).total, 1);
   assert.equal(client.closed, false);
 };
 
-describe("FIND", () => {
+describe("SPFIND", () => {
   before(connect);
   after(() => client.close());
 
   test("sends the agreed bytes", async () => {
-    client.send("FIND 1 zebra\n");
-    // The block holds the username, so its size and checksum come from the body.
-    const body =
-      "747374303032" + // tst002
-      hexString(user) + // username\0
-      "5a6562726100" + // Zebra\0
-      "0100" + // latest serial 1
-      "312e3000"; // 1.0\0
-    const length = body.length / 2;
-    const sum = Buffer.from(body, "hex").reduce((total, byte) => total + byte, 0) % 256;
-    const expected =
-      "0201000100010100" + // version, total 1, page 1, 1 entry, 1 page
-      Buffer.from([length & 255, length >> 8]).toString("hex") +
-      body +
-      sum.toString(16).padStart(2, "0");
+    client.send("SPFIND 1 zebra\n");
+    const expected = reply(
+      counts(1, 1, 1) +
+        field(
+          0x10,
+          field(0x11, ascii("tst002")) +
+            field(0x12, ascii(user)) +
+            field(0x13, ascii("Zebra")) +
+            field(0x14, le(1, 2)) +
+            field(0x15, ascii("1.0")) +
+            field(0x16, le(0, 4)),
+        ),
+    );
     assert.equal((await client.read(expected.length / 2)).toString("hex"), expected);
     assert.equal((await client.drain()).length, 0);
   });
 
   test("matches title and description, ignoring case, sorted by title", async () => {
-    client.send("FIND 1 tEsT aPp\x0A\x0D");
+    client.send("SPFIND 1 tEsT aPp\x0A\x0D");
     const page = await client.reply(decodeFind);
     assert.deepEqual(
       page.apps.map((app) => app.id),
@@ -159,13 +194,13 @@ describe("FIND", () => {
   });
 
   test("does not list deleted apps", async () => {
-    client.send("FIND 1 gone\n");
+    client.send("SPFIND 1 gone\n");
     const page = await client.reply(decodeFind);
     assert.deepEqual([page.total, page.pages, page.apps.length], [0, 0, 0]);
   });
 
   test("does not list apps with no release, or only deleted releases", async () => {
-    for (const command of ["FIND 1 shelf", "FIND 1 all gone"]) {
+    for (const command of ["SPFIND 1 shelf", "SPFIND 1 all gone"]) {
       client.send(`${command}\n`);
       const page = await client.reply(decodeFind);
       assert.deepEqual([page.total, page.pages, page.apps.length], [0, 0, 0]);
@@ -173,13 +208,18 @@ describe("FIND", () => {
   });
 
   test("the latest serial skips deleted releases", async () => {
-    client.send("FIND 1 mixed case\n");
+    client.send("SPFIND 1 mixed case\n");
     const page = await client.reply(decodeFind);
     assert.deepEqual(page.apps[0].latest, { serial: 2, version: "1.1" });
   });
 
+  test("an entry carries the download count", async () => {
+    client.send("SPFIND 1 long history\n");
+    assert.equal((await client.reply(decodeFind)).apps[0].downloads, 70000);
+  });
+
   test("pages hold 20 entries", async () => {
-    client.send("FIND 2 pager\n");
+    client.send("SPFIND 2 pager\n");
     const page2 = await client.reply(decodeFind);
     assert.deepEqual([page2.total, page2.page, page2.pages], [45, 2, 3]);
     assert.deepEqual(
@@ -187,66 +227,171 @@ describe("FIND", () => {
       Array.from({ length: 20 }, (_, i) => `Pager ${i + 21}`),
     );
 
-    client.send("FIND 3 pager\n");
+    client.send("SPFIND 3 pager\n");
     assert.equal((await client.reply(decodeFind)).apps.length, 5);
 
     // Like DIR: a page past the end is empty, not an error.
-    client.send("FIND 4 pager\n");
+    client.send("SPFIND 4 pager\n");
     const page4 = await client.reply(decodeFind);
     assert.deepEqual([page4.page, page4.pages, page4.apps.length], [4, 3, 0]);
   });
 
   test("bad page numbers and empty text give BadQuery_ERROR and keep the session", async () => {
-    for (const command of ["FIND 0 spun", "FIND x spun", "FIND 65536 spun", "FIND 1", "FIND"]) {
+    for (const command of ["SPFIND 0 spun", "SPFIND x spun", "SPFIND 65536 spun", "SPFIND 1", "SPFIND"]) {
       await expectError(`${command}\n`, "BadQuery_ERROR");
     }
     await expectOpen();
   });
 });
 
-describe("INFO", () => {
+describe("SPLIST", () => {
+  before(connect);
+  after(() => client.close());
+
+  test("lists only public apps, newest update first, 20 to a page", async () => {
+    const listed: string[] = [];
+    let pages = 0;
+    for (let page = 1; page === 1 || page <= pages; page++) {
+      client.send(`SPLIST ${page}\n`);
+      const reply = await client.reply(decodeFind);
+      assert.equal(reply.page, page);
+      assert.ok(reply.apps.length <= 20);
+      pages = reply.pages;
+      listed.push(...reply.apps.map((app) => app.id));
+    }
+    const publicIds = ["tst001", "tst002", "desc01", "abc123", "long01", ...pagerApps.map((app) => app.id)];
+    assert.deepEqual([...listed].sort(), [...publicIds].sort());
+    assert.equal(pages, Math.ceil(publicIds.length / 20));
+
+    // The date of the newest live release decides, then the title; the date of
+    // tst001's deleted serial 2 is the newest of all, and does not count.
+    assert.deepEqual(listed.slice(0, 2), ["long01", "pg0001"]);
+    assert.deepEqual(listed.slice(-4), ["tst001", "abc123", "desc01", "tst002"]);
+  });
+
+  test("an entry is the same as in SPFIND", async () => {
+    client.send("SPLIST 1\n");
+    const listed = (await client.reply(decodeFind)).apps.find((app) => app.id === "long01");
+    client.send("SPFIND 1 long history\n");
+    assert.deepEqual(listed, (await client.reply(decodeFind)).apps[0]);
+  });
+
+  test("with no page number sends page 1; a bad page number gives BadQuery_ERROR", async () => {
+    client.send("SPLIST\n");
+    assert.equal((await client.reply(decodeFind)).page, 1);
+    for (const command of ["SPLIST 0", "SPLIST x", "SPLIST 65536"]) {
+      await expectError(`${command}\n`, "BadQuery_ERROR");
+    }
+    await expectOpen();
+  });
+});
+
+describe("SPINFO", () => {
   before(connect);
   after(() => client.close());
 
   test("an app id in capitals sends the agreed bytes, without deleted releases", async () => {
-    client.send("INFO TST001\n");
-    const expected =
-      "02" + hexString(user) + "5465737420417070004120746573742061707000" +
-      "010001000101001c000100746573742d75706c6f61642d303100323032362d30392d323500f5";
-    assert.equal((await client.read(expected.length / 2)).toString("hex"), expected);
+    client.send("SPINFO TST001\n");
+    assert.equal((await client.read(TST001_INFO.length / 2)).toString("hex"), TST001_INFO);
     assert.equal((await client.drain()).length, 0);
   });
 
-  test("lists releases newest first, 100 to a page", async () => {
-    client.send("INFO long01\n");
+  test("carries the download count, the categories by name and the screenshots by slot", async () => {
+    client.send("SPINFO abc123\n");
+    const page = await client.reply(decodeInfo);
+    assert.equal(page.app.downloads, 12);
+    assert.deepEqual(page.app.categories, ["Games", "Tools"]);
+    assert.deepEqual(page.app.screenshots, [
+      { slot: 1, width: 320 },
+      { slot: 4, width: 256 },
+    ]);
+  });
+
+  test("sends at most 16 categories", async () => {
+    client.send("SPINFO long01\n");
+    const page = await client.reply(decodeInfo);
+    assert.equal(page.app.categories.length, 16);
+    assert.equal(page.app.categories[0], "Category 01");
+  });
+
+  test("lists releases newest first, 64 to a page", async () => {
+    client.send("SPINFO long01\n");
     const page1 = await client.reply(decodeInfo);
-    assert.deepEqual([page1.total, page1.page, page1.pages], [150, 1, 2]);
-    assert.equal(page1.releases.length, 100);
+    assert.deepEqual([page1.total, page1.page, page1.pages], [150, 1, 3]);
+    assert.equal(page1.releases.length, 64);
     assert.deepEqual(page1.releases[0], { serial: 150, version: "1.150", date: "2026-09-26" });
 
-    client.send("INFO long01 2\n");
-    const page2 = await client.reply(decodeInfo);
-    assert.equal(page2.releases.length, 50);
-    assert.equal(page2.releases[0].serial, 50);
+    client.send("SPINFO long01 3\n");
+    const page3 = await client.reply(decodeInfo);
+    assert.equal(page3.releases.length, 150 - 128);
+    assert.equal(page3.releases[0].serial, 150 - 128);
   });
 
   test("an app with no release, or only deleted releases, gives NoApp_ERROR and keeps the session", async () => {
-    for (const command of ["INFO empty1", "INFO allgn1"]) {
+    for (const command of ["SPINFO empty1", "SPINFO allgn1"]) {
       await expectError(`${command}\n`, "NoApp_ERROR");
     }
     await expectOpen();
   });
 
   test("unknown, deleted and malformed app ids give NoApp_ERROR and keep the session", async () => {
-    for (const command of ["INFO zzzzzz", "INFO gone01", "INFO abc", "INFO"]) {
+    for (const command of ["SPINFO zzzzzz", "SPINFO gone01", "SPINFO abc", "SPINFO"]) {
       await expectError(`${command}\n`, "NoApp_ERROR");
     }
     await expectOpen();
   });
 
   test("a bad page number gives BadQuery_ERROR and keeps the session", async () => {
-    await expectError("INFO tst001 0\n", "BadQuery_ERROR");
+    await expectError("SPINFO tst001 0\n", "BadQuery_ERROR");
     await expectOpen();
+  });
+});
+
+describe("SPCLOG", () => {
+  before(connect);
+  after(() => client.close());
+
+  test("sends the changelog of one release", async () => {
+    client.send("SPCLOG ABC123 2\n");
+    assert.deepEqual(await client.reply(decodeChangelog), {
+      serial: 2,
+      version: "1.1",
+      date: "2026-09-21",
+      changelog: "Faster.\nFewer bugs.",
+    });
+  });
+
+  test("a release with no changelog sends none", async () => {
+    client.send("SPCLOG abc123 1\n");
+    assert.equal((await client.reply(decodeChangelog)).changelog, null);
+  });
+
+  test("a deleted or unknown release gives NoRelease_ERROR and keeps the session", async () => {
+    for (const command of ["SPCLOG abc123 3", "SPCLOG abc123 9"]) {
+      await expectError(`${command}\n`, "NoRelease_ERROR");
+    }
+    await expectOpen();
+  });
+
+  test("an app that is not public gives NoApp_ERROR, a bad serial BadQuery_ERROR", async () => {
+    for (const command of ["SPCLOG gone01 1", "SPCLOG allgn1 1", "SPCLOG abc 1", "SPCLOG"]) {
+      await expectError(`${command}\n`, "NoApp_ERROR");
+    }
+    for (const command of ["SPCLOG abc123", "SPCLOG abc123 0", "SPCLOG abc123 x", "SPCLOG abc123 65536"]) {
+      await expectError(`${command}\n`, "BadQuery_ERROR");
+    }
+    await expectOpen();
+  });
+});
+
+describe("the old verbs", () => {
+  before(connect);
+  after(() => client.close());
+
+  test("FIND and INFO are unknown commands, as in the NBN engine", async () => {
+    await expectError("FIND 1 zebra\n", "BadCommand_ERROR");
+    await client.drain();
+    assert.equal(client.closed, true);
   });
 });
 
@@ -325,6 +470,86 @@ describe("two GETs on one connection", () => {
   });
 });
 
+const downloads = (id: string): number => tables.apps.find((app) => app.id === id)?.downloads ?? 0;
+
+describe("download count", () => {
+  beforeEach(connect);
+  afterEach(() => client.close());
+
+  test("a complete zip GET counts once, and a later \"!\" does not count again", async () => {
+    const before = downloads("tst001");
+    await expectFile("tst001-0001.zip", fileBytes);
+    await client.drain();
+    assert.equal(downloads("tst001"), before + 1);
+
+    client.send("!\r\n");
+    await client.drain();
+    assert.equal(downloads("tst001"), before + 1);
+    await expectOpen();
+  });
+
+  test("two zip GETs on one connection count one each", async () => {
+    const [first, second] = [downloads("tst001"), downloads("tst002")];
+    await expectFile("tst001-0001.zip", fileBytes);
+    await expectFile("tst002-0001.zip", exactBytes);
+    await client.drain();
+    assert.deepEqual([downloads("tst001"), downloads("tst002")], [first + 1, second + 1]);
+  });
+
+  test("a zip GET in a directory chosen with CD counts", async () => {
+    const before = downloads("tst001");
+    client.send(`CD ${user}\n`);
+    assert.equal((await client.read(3)).toString(), "!\r\n");
+    await client.drain();
+    client.send("GET tst001-0001.zip\n");
+    await client.read(11 + "tst001-0001.zip".length + 1);
+    for (let block = 0; block < 3; block++) {
+      client.send("!\r\n");
+      await client.read(block < 2 ? BLOCK + 1 : 101);
+    }
+    client.send("!\r\n");
+    await client.drain();
+    assert.equal(downloads("tst001"), before + 1);
+  });
+
+  test("a zip GET stopped before the last \"!\" does not count", async () => {
+    const before = downloads("tst001");
+    client.send(`GET ${user}/tst001-0001.zip\n`);
+    await client.read(11 + "tst001-0001.zip".length + 1);
+    client.send("!\r\n");
+    await client.read(BLOCK + 1);
+    client.close();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.equal(downloads("tst001"), before);
+
+    // Every block arrived, but the client never acknowledged the last one.
+    await connect();
+    client.send(`GET ${user}/tst001-0001.zip\n`);
+    await client.read(11 + "tst001-0001.zip".length + 1);
+    for (let block = 0; block < 3; block++) {
+      client.send("!\r\n");
+      await client.read(block < 2 ? BLOCK + 1 : 101);
+    }
+    client.close();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.equal(downloads("tst001"), before);
+  });
+
+  test("a screenshot (NXI) GET does not count", async () => {
+    const before = downloads("tst001");
+    client.send(`GET ${user}/nxi/tst001/1\n`);
+    await client.read(11 + 2);
+    for (let block = 0; block < 3; block++) {
+      client.send("!\r\n");
+      await client.read(block < 2 ? BLOCK + 1 : 101);
+    }
+    client.send("!\r\n");
+    await client.drain();
+    assert.equal(downloads("tst001"), before);
+    await expectOpen();
+  });
+});
+
 describe("a database failure", () => {
   let failing: net.Server;
   let failingPort: number;
@@ -332,8 +557,11 @@ describe("a database failure", () => {
   before(async () => {
     const broken: Catalogue = {
       find: () => Promise.reject(new Error("database down")),
+      list: () => Promise.reject(new Error("database down")),
       app: () => Promise.reject(new Error("database down")),
       releases: () => Promise.reject(new Error("database down")),
+      changelog: () => Promise.reject(new Error("database down")),
+      countDownload: () => Promise.reject(new Error("database down")),
     };
     ({ server: failing, port: failingPort } = await startSpunServer(broken, dataDir));
   });
@@ -342,7 +570,21 @@ describe("a database failure", () => {
 
   test("gives ServerException_ERROR and ends the session, as the engine does", async () => {
     client = await SpoofClient.connect(failingPort);
-    await expectError("FIND 1 spun\n", "ServerException_ERROR");
+    await expectError("SPFIND 1 spun\n", "ServerException_ERROR");
+    await client.drain();
+    assert.equal(client.closed, true);
+    client.close();
+  });
+
+  test("in the download count also ends the session", async () => {
+    client = await SpoofClient.connect(failingPort);
+    client.send(`GET ${user}/tst001-0001.zip\n`);
+    await client.read(11 + "tst001-0001.zip".length + 1);
+    for (let block = 0; block < 3; block++) {
+      client.send("!\r\n");
+      await client.read(block < 2 ? BLOCK + 1 : 101);
+    }
+    await expectError("!\r\n", "ServerException_ERROR");
     await client.drain();
     assert.equal(client.closed, true);
     client.close();
@@ -353,23 +595,26 @@ describe("lines sent together", () => {
   let slow: net.Server;
   let slowPort: number;
 
-  // A slow database makes INFO finish after a DIR sent behind it, unless the
-  // session handles DIR only after INFO has answered.
+  // A slow database makes SPINFO finish after a DIR sent behind it, unless the
+  // session handles DIR only after SPINFO has answered.
   before(async () => {
     const fast = fakeCatalogue(tables);
     const later = <T>(value: Promise<T>): Promise<T> =>
       new Promise((resolve) => setTimeout(() => resolve(value), 100));
     const delayed: Catalogue = {
       find: (...args) => later(fast.find(...args)),
+      list: (...args) => later(fast.list(...args)),
       app: (...args) => later(fast.app(...args)),
       releases: (...args) => later(fast.releases(...args)),
+      changelog: (...args) => later(fast.changelog(...args)),
+      countDownload: (...args) => later(fast.countDownload(...args)),
     };
     ({ server: slow, port: slowPort } = await startSpunServer(delayed, dataDir));
   });
 
   after(() => slow.close());
 
-  test("INFO then DIR in one write are answered in that order", async () => {
+  test("SPINFO then DIR in one write are answered in that order", async () => {
     client = await SpoofClient.connect(slowPort);
     try {
       client.send("DIR\n");
@@ -377,11 +622,13 @@ describe("lines sent together", () => {
       const dir = await client.drain();
       assert.ok(dir.length > 0);
 
-      client.send("INFO tst001\nDIR\n");
-      const info =
-        "02" + hexString(user) + "5465737420417070004120746573742061707000" +
-        "010001000101001c000100746573742d75706c6f61642d303100323032362d30392d323500f5";
-      assert.equal((await client.read(info.length / 2)).toString("hex"), info);
+      client.send("SPINFO desc01\n");
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const info = await client.drain();
+      assert.ok(info.length > 0);
+
+      client.send("SPINFO desc01\nDIR\n");
+      assert.deepEqual(await client.read(info.length), info);
       assert.deepEqual(await client.read(dir.length), dir);
       assert.equal((await client.drain()).length, 0);
     } finally {

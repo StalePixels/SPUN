@@ -47,22 +47,31 @@ extern bool card_mkdir(const char *dir);
 extern char *netServer;
 extern char *netPort;
 extern uint16_t page;
+extern uint16_t totalItems;
+extern uint16_t totalPages;
 extern uint32_t counter;
 extern unsigned char username[17];
 extern unsigned char title[33];
 extern unsigned char appid[7];
 extern uint16_t serial;
 extern unsigned char version[17];
+extern uint32_t downloads;
 extern unsigned char installDir[256];
 extern unsigned char zipPath[24];
 extern bool getInstalled;
+// The GUI's screen is not the ULA's, so .spun's lines of progress are not printed
+extern bool quiet;
+extern unsigned char *updateError;
 
 bool choose_dir(void);
 
 #ifdef __ZXNEXT
 void check_install_drive(void);
+void gui_end(void);
 #else
 #define check_install_drive()
+#define gui_end()
+#define progress(stage, done, total, name)
 #endif
 
 #ifdef __ZXNEXT

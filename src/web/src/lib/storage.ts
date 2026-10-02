@@ -26,6 +26,10 @@ export function screenshotPath(username: string, appId: string, slot: number): s
   return path.join(dataDir(), username, "nxi", appId, String(slot));
 }
 
+export function thumbPath(username: string, appId: string, slot: number): string {
+  return path.join(dataDir(), username, "thumb", appId, String(slot));
+}
+
 export function screenshotPngPath(appId: string, slot: number): string {
   return path.join(assetDir(), "screenshots", appId, `${slot}.png`);
 }
@@ -106,11 +110,12 @@ export async function writeScreenshot(
   username: string,
   appId: string,
   slot: number,
-  files: { nxi: Buffer; png: Buffer },
+  files: { nxi: Buffer; png: Buffer; thumb: Buffer },
 ): Promise<void> {
   for (const [file, data] of [
     [screenshotPath(username, appId, slot), files.nxi],
     [screenshotPngPath(appId, slot), files.png],
+    [thumbPath(username, appId, slot), files.thumb],
   ] as const) {
     await mkdir(path.dirname(file), { recursive: true });
     await writeFile(file, data);
@@ -120,12 +125,14 @@ export async function writeScreenshot(
 export async function removeScreenshot(username: string, appId: string, slot: number): Promise<void> {
   await removeFile(screenshotPath(username, appId, slot));
   await removeFile(screenshotPngPath(appId, slot));
+  await removeFile(thumbPath(username, appId, slot));
 }
 
 function screenshotBinPaths(appId: string, slot: number) {
   return {
     nxi: path.join(binDir(), `${appId}-nxi-${slot}`),
     png: path.join(binDir(), `${appId}-png-${slot}`),
+    thumb: path.join(binDir(), `${appId}-thumb-${slot}`),
   };
 }
 
@@ -133,23 +140,27 @@ export async function binScreenshot(username: string, appId: string, slot: numbe
   const bin = screenshotBinPaths(appId, slot);
   await moveFile(screenshotPath(username, appId, slot), bin.nxi);
   await moveFile(screenshotPngPath(appId, slot), bin.png);
+  await moveFile(thumbPath(username, appId, slot), bin.thumb);
 }
 
 export async function unbinScreenshot(username: string, appId: string, slot: number): Promise<void> {
   const bin = screenshotBinPaths(appId, slot);
   await moveFile(bin.nxi, screenshotPath(username, appId, slot));
   await moveFile(bin.png, screenshotPngPath(appId, slot));
+  await moveFile(bin.thumb, thumbPath(username, appId, slot));
 }
 
 // rename() refuses a target directory that has files in it.
 export async function moveScreenshots(from: string, to: string, appId: string): Promise<void> {
-  const target = path.join(dataDir(), to, "nxi", appId);
-  await mkdir(path.dirname(target), { recursive: true });
-  try {
-    await rename(path.join(dataDir(), from, "nxi", appId), target);
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw err;
+  for (const dir of ["nxi", "thumb"]) {
+    const target = path.join(dataDir(), to, dir, appId);
+    await mkdir(path.dirname(target), { recursive: true });
+    try {
+      await rename(path.join(dataDir(), from, dir, appId), target);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw err;
+      }
     }
   }
 }

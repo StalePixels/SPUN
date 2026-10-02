@@ -3,27 +3,36 @@
 #include "BANK_packages/catalogue.h"
 #include "BANK_packages/install.h"
 #include "BANK_packages/usage.h"
+#include "gui/gui.h"
 
 #ifdef __ZXNEXT
 unsigned char old_cpu_speed;
+static uint8_t startMmu2;
+static uint8_t startMmu3;
 
 extern unsigned char fileTypes[];
 extern unsigned char browserHelp[];
-extern unsigned int dos_mapping(unsigned char drive) __z88dk_fastcall;
 #endif
 
 char *netServer;
 char *netPort;
 uint16_t page = 1;
+uint16_t totalItems;
+uint16_t totalPages;
 uint32_t counter;
 unsigned char username[17];
 unsigned char title[33];
 unsigned char appid[7];
 uint16_t serial;
 unsigned char version[17];
+uint32_t downloads;
+unsigned char description[257];
+unsigned char date[11];
 unsigned char installDir[256];
 unsigned char zipPath[24];
 bool getInstalled;
+bool quiet;
+unsigned char *updateError;
 
 static unsigned char defaultServer[] = SPUN_SERVER;
 static unsigned char defaultPort[] = SPUN_PORT;
@@ -33,7 +42,13 @@ static uint8_t commandArg = 0;
 static uint8_t valueArg = 0;
 static uint8_t pageArg = 0;
 
+// An exit in the middle of a block read leaves another page over the screen and BASIC's
+// system variables at $4000, so the ULA's pages go back first; NextZXOS's own mapping goes back last
 static void shutdown() {
+#ifdef __ZXNEXT
+    NBN_PageOut();
+    gui_end();
+#endif
     _far(BANK_NET, (void *(*)(void))net_close);
     if(file_out) esxdos_f_close(file_out);
     if(file_in) esxdos_f_close(file_in);
@@ -42,6 +57,8 @@ static void shutdown() {
 #ifdef __ZXNEXT
     zx_border((SYSVAR_BORDCR >> 3) & 7);
     ZXN_NEXTREGA(REG_TURBO_MODE, old_cpu_speed);
+    ZXN_WRITE_MMU2(startMmu2);
+    ZXN_WRITE_MMU3(startMmu3);
 #endif
 }
 
@@ -79,7 +96,7 @@ void check_install_drive(void) {
     unsigned int unit;
 
     if(installDir[1] != ':') return;
-    unit = dos_mapping(installDir[0] & ~0x20);
+    unit = os_mapping(installDir[0] & ~0x20);
     if(unit == 0xffff) NBN_Fail(err_browser);
     if(unit == 4 || unit == 0xff) NBN_Fail(err_no_directories);
 }
@@ -138,6 +155,8 @@ int main(int argc, char** argv) {
     unsigned char *error;
 
 #ifdef __ZXNEXT
+    startMmu2 = ZXN_READ_REG(REG_MMU0 + 2);
+    startMmu3 = ZXN_READ_REG(REG_MMU0 + 3);
     old_cpu_speed = ZXN_READ_REG(REG_TURBO_MODE);
 
     ZXN_NEXTREG(REG_TURBO_MODE, 3);
@@ -185,10 +204,12 @@ int main(int argc, char** argv) {
     }
 
     if(!commandArg) {
+#ifdef __ZXNEXT
+        if(ZXN_READ_REG(REG_VERSION) < 0x32) NBN_Fail(err_old_core);
+#else
         usage(NULL);
-    }
-
-    if (stricmp(argv[commandArg], "update") == 0) {
+#endif
+    } else if (stricmp(argv[commandArg], "update") == 0) {
         if(valueArg) usage(err_invalid_option);
     } else {
         if(!valueArg || !*argv[valueArg]) {
@@ -208,22 +229,32 @@ int main(int argc, char** argv) {
 
     if(pageArg) _farWithPointer(BANK_PACKAGES, (void *(*)(void *))parse_page, argv[pageArg]);
 
-    if (stricmp(argv[commandArg], "update") == 0) {
+    if(commandArg && stricmp(argv[commandArg], "update") == 0) {
         if(!_farWithPointer(BANK_PACKAGES, (void *(*)(void *))check_catalogue, NULL)) {
             printf("No updates\n");
             exit(0);
         }
-    } else if (stricmp(argv[commandArg], "get") == 0) {
+    } else if (commandArg && stricmp(argv[commandArg], "get") == 0) {
         _farWithPointer(BANK_PACKAGES, (void *(*)(void *))check_catalogue, argv[valueArg]);
     }
 
     atexit(shutdown);
+#ifdef __ZXNEXT
+    if(!commandArg) ula_store();
+#endif
 
     if(!NBN_Malloc()) NBN_Fail(err_no_memory);
 
     netServer = customServer ? argv[customServer] : (char *)defaultServer;
     netPort = customPort ? argv[customPort] : (char *)defaultPort;
     _far(BANK_NET, (void *(*)(void))net_open);
+
+#ifdef __ZXNEXT
+    if(!commandArg) {
+        spun_gui();
+        exit(0);
+    }
+#endif
 
     if (stricmp(argv[commandArg], "find") == 0) {
         error = _farWithPointer(BANK_NET, (void *(*)(void *))spun_find, argv[valueArg]);

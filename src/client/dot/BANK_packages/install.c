@@ -5,7 +5,7 @@
 
 static uint16_t updates;
 
-static unsigned char *unzipErrors[] = {
+unsigned char *unzipErrors[] = {
     err_no_memory, err_unzip_read, err_unzip_format, err_unzip_unsupported, err_unzip_path,
     err_unzip_create, err_unzip_write, err_unzip_data, err_unzip_check
 };
@@ -42,7 +42,7 @@ static bool ask(void) {
     return chr == 'y';
 }
 
-static unsigned char install(char *id) __z88dk_fastcall {
+unsigned char install(char *id) __z88dk_fastcall {
     unsigned char *error;
     unsigned char result;
     int code;
@@ -50,11 +50,12 @@ static unsigned char install(char *id) __z88dk_fastcall {
     sprintf(zipPath, "C:/tmp/%s-%04x.zip", id, serial);
     if((error = _farWithPointer(BANK_NET, (void *(*)(void *))download, id))) NBN_Fail(error);
 
-    printf("Installing to %s\n", installDir);
+    if(!quiet) printf("Installing to %s\n", installDir);
     result = unzip(zipPath, installDir);
     if(result == UNZIP_E_NOMEM) NBN_Fail(err_no_memory);
     if(result == UNZIP_E_READ || result == UNZIP_E_CREATE || result == UNZIP_E_WRITE) {
         code = errno ? errno : IO_ERROR;
+        gui_end();
         print_error(unzipErrors[result - 1]);
         exit(code);
     }
@@ -62,7 +63,7 @@ static unsigned char install(char *id) __z88dk_fastcall {
     if(result) return result;
 
     write_catalogue(id);
-    printf("Installed\n");
+    if(!quiet) printf("Installed\n");
     return UNZIP_OK;
 }
 
@@ -98,6 +99,7 @@ unsigned char *spun_update(void) {
     uint16_t skip;
 
     updates = 0;
+    updateError = NULL;
     while(open_in(catalogue)) {
         for(skip = done; skip && next_line(); skip--);
         if(!next_line()) {
@@ -114,21 +116,25 @@ unsigned char *spun_update(void) {
         if((error = _farWithPointer(BANK_NET, (void *(*)(void *))latest, appid))) {
             if(error == err_wrong_version) return error;
 
+            updateError = error;
+            if(quiet) continue;
             printf("%s ", appid);
             print_error(error);
             continue;
         }
         if(serial <= entrySerial) continue;
 
-        printf("%s %s\n", title, version);
+        if(!quiet) printf("%s %s\n", title, version);
         updates++;
         check_install_drive();
         if((result = install(appid))) {
+            updateError = unzipErrors[result - 1];
+            if(quiet) continue;
             printf("%s ", appid);
             print_error(unzipErrors[result - 1]);
         }
     }
 
-    if(!updates) printf("No updates\n");
+    if(!updates && !quiet) printf("No updates\n");
     return NULL;
 }

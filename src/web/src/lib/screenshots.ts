@@ -5,6 +5,7 @@ import type { AppId } from "./apps";
 import { db } from "./db";
 import { checkNxi, convertImage, previewPng, type NxiWidth } from "./nxi";
 import type { Problem } from "./problems";
+import { makeThumbnail } from "./thumbs";
 import { MAX_SCREENSHOT_BYTES, screenshotUrl } from "./rules";
 import { binScreenshot, removeScreenshot, unbinScreenshot, writeScreenshot } from "./storage";
 
@@ -56,7 +57,7 @@ export async function mainScreenshots(appIds: AppId[]): Promise<Map<AppId, Scree
 
 // Files first, so a row never points at a missing file.
 export async function putScreenshot(username: string, appId: AppId, slot: number, shot: ScreenshotUpload) {
-  await writeScreenshot(username, appId, slot, shot);
+  await writeScreenshot(username, appId, slot, { ...shot, thumb: makeThumbnail(shot.nxi, slot)! });
   const updatedAt = new Date();
   await db()
     .insert(screenshots)

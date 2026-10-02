@@ -12,6 +12,8 @@ PUBLIC _err_no_memory
 PUBLIC _err_browser
 PUBLIC _err_drive
 PUBLIC _err_no_directories
+PUBLIC _err_old_core
+PUBLIC _err_no_layer_ram
 PUBLIC _err_unzip_read
 PUBLIC _err_unzip_format
 PUBLIC _err_unzip_unsupported
@@ -61,3 +63,7 @@ _err_drive:
    defm "Cannot change driv", 'e' + 0x80
 _err_no_directories:
    defm "Drive has no directorie", 's' + 0x80
+_err_old_core:
+   defm "Needs core 3.02.00 or late", 'r' + 0x80
+_err_no_layer_ram:
+   defm "No free 80K block for Layer ", '2' + 0x80

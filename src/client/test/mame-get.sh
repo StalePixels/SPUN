@@ -1,8 +1,9 @@
 #!/bin/bash
-# Runs spun-get.scn.in in MAME through esp-harness, with the values in .env, twice:
+# Runs spun-get.scn.in in MAME through mane-harness, with the values in .env, twice:
 #   spun-get:   dot/BUILD-test/spun with no options (its default server)
 #   spun-get-s: dot/BUILD-test-s/spun with -s and -p
-set -eu
+# Exits with 1 if either run fails.
+set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
 set -a
@@ -24,7 +25,8 @@ scenario() {
         -e "s|@APP@|$SPUN_TEST_APP|g" -e "s|@FIND@|$SPUN_TEST_FIND|g" \
         "$here/spun-get.scn.in" > "$work/$name.scn"
 
-    (cd "$ESP_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")") | tee "$work/$name.out"
+    local status=0
+    (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")") | tee "$work/$name.out" || status=$?
 
     if [ -n "${HDFMONKEY:-}" ]; then
         local run
@@ -32,7 +34,10 @@ scenario() {
         "$HDFMONKEY" get "$run/sd.img" /sys/spun.cat "$work/$name.cat"
         cat "$work/$name.cat"
     fi
+    return $status
 }
 
-scenario spun-get BUILD-test ""
-scenario spun-get-s BUILD-test-s "-s $SPUN_TEST_SERVER -p $SPUN_TEST_PORT "
+failed=0
+scenario spun-get BUILD-test "" || failed=1
+scenario spun-get-s BUILD-test-s "-s $SPUN_TEST_SERVER -p $SPUN_TEST_PORT " || failed=1
+exit $failed

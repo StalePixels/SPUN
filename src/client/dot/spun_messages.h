@@ -21,5 +21,7 @@ extern unsigned char err_unzip_create[];
 extern unsigned char err_unzip_write[];
 extern unsigned char err_unzip_data[];
 extern unsigned char err_unzip_check[];
+extern unsigned char err_old_core[];
+extern unsigned char err_no_layer_ram[];
 
 #endif

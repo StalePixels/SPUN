@@ -1,5 +1,7 @@
 catalogue.c
 install.c
 usage.c
-help.asm
+install_check.c
+gui_install.c
+updates_count.c
 ../../unzip/unzip.c

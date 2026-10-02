@@ -6,6 +6,10 @@
 // Logical pages of the 16K banks, as the dotn page table counts them
 #define BANK_NET        (47<<1)
 #define BANK_PACKAGES   (46<<1)
+#define BANK_GUI        (45<<1)
+#define BANK_SCREEN     (44<<1)
+#define BANK_SPRITES    (43<<1)
+#define BANK_APP        (42<<1)
 
 #ifdef __ZXNEXT
 extern unsigned char _z_page_table[];

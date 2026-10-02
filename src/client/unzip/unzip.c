@@ -194,7 +194,9 @@ unsigned char unzip(const char *zip_path, const char *dir_path) {
         cd_pos = cd_offset;
         for (e = 0; r == UNZIP_OK && e < entries; e++) {
             r = next_entry();
-            if (r == UNZIP_OK) r = extract_entry();
+            if (r != UNZIP_OK) break;
+            progress(PROGRESS_UNZIP, e + 1, entries, (unsigned char *)path + dir_len + 1);
+            r = extract_entry();
         }
     }
 

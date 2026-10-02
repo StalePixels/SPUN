@@ -12,6 +12,10 @@
 #define UNZIP_E_DATA        8
 #define UNZIP_E_CHECK       9
 
+#define PROGRESS_DOWNLOAD   0
+#define PROGRESS_UNZIP      1
+extern void progress(unsigned char stage, unsigned int done, unsigned int total, unsigned char *name);
+
 extern unsigned char unzip(const char *zip_path, const char *dir_path);
 
 #endif

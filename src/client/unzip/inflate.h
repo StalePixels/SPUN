@@ -1,6 +1,7 @@
 #ifndef _INFLATE_H
 #define _INFLATE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 // Layout is fixed: inflate_job.inc holds the same offsets for the assembler.
@@ -55,9 +56,10 @@ extern unsigned char _z_page_table[];
 // diag[29] is J_ESXERR in inflate_job.inc
 #define INFLATE_DIAG_ESXERR 29
 
-// Allocated for each unzip() call, by unzip_pages.c
 #define UNZIP_PAGES 5
 
+bool unzip_pages_keep(void);
+void unzip_pages_release(void);
 unsigned char unzip_pages_alloc(struct inflate_job *job);
 void unzip_pages_free(struct inflate_job *job, unsigned char pages);
 
