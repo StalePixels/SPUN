@@ -1,7 +1,20 @@
 import "server-only";
 import { appView, catalogueView, type AppView, type CatalogueView } from "./catalogue";
 import { liveCategories, type Category } from "./categories";
-import { catalogueHref, formatDay, parsePage, parseQuery, releaseFileName } from "./rules";
+import {
+  API_IP_PER_MINUTE,
+  API_JSON_BODY_MAX,
+  API_KEY_PER_MINUTE,
+  API_RELEASE_BODY_MAX,
+  API_REQUEST_WINDOW_SECONDS,
+  API_SCREENSHOT_BODY_MAX,
+  API_UPLOADS_PER_HOUR,
+  catalogueHref,
+  formatDay,
+  parsePage,
+  parseQuery,
+  releaseFileName,
+} from "./rules";
 
 function escapeText(text: string): string {
   return text.replace(/[\\`*_[\]<>#|~]/g, "\\$&");
@@ -129,6 +142,105 @@ function llmsText(categories: Category[]): string {
     "",
     "- `/apps/{id}/download`: the zip of the app's latest release. Older releases have no web download.",
     "",
+    "## API",
+    "",
+    `- ${link("SPUN API", "/api.md")}: how an agent with a user's API key works with that user's apps. Each request is signed with the key.`,
+    "",
+  ].join("\n");
+}
+
+// Made at build time: nothing in it comes from the database or the environment.
+function apiText(): string {
+  const minutes = API_REQUEST_WINDOW_SECONDS / 60;
+  return [
+    "# SPUN API",
+    "",
+    "The API lets an agent act for a SPUN user on that user's apps. Every request is signed with the user's API key. The examples use paths only: put the address of this site in front of each one.",
+    "",
+    "## API keys",
+    "",
+    "A user makes a key on `/keys`. The way there is `/me`, the account page that the user name in the navbar links to. A user needs a username before they can make a key. The CMS shows the key once, when it is made, and never again. The user can delete a key on the same page; a deleted key stops working at once.",
+    "",
+    "A key is one string: `nbnspun-<key id>-<secret>`.",
+    "",
+    "- The key id is 16 characters from `0-9a-z`.",
+    "- The secret is 64 hex characters, `0-9a-f`.",
+    "",
+    "Split the string at its dashes: the second part is the key id, the third the secret. Never send the secret. It only signs requests.",
+    "",
+    "## Signing a request",
+    "",
+    "Send these four headers with every request:",
+    "",
+    "- `X-SPUN-Key`: the key id.",
+    "- `X-SPUN-Timestamp`: the time now, in Unix seconds.",
+    "- `X-SPUN-Nonce`: 16 to 64 random characters from `A-Za-z0-9`. Make a new one for each request.",
+    "- `X-SPUN-Signature`: the HMAC-SHA256 of the signed text, in hex. The HMAC key is the secret, as its 64 characters of text.",
+    "",
+    "The signed text is four lines, joined by a line feed (`\\n`), with no line feed at the end:",
+    "",
+    "1. The method, in capitals, for example `GET`.",
+    "2. The path with its query string, exactly as sent, for example `/api/apps`.",
+    "3. The timestamp, exactly as in `X-SPUN-Timestamp`.",
+    "4. The nonce, exactly as in `X-SPUN-Nonce`.",
+    "",
+    "The body is not signed. Use HTTPS, which protects it.",
+    "",
+    `The server refuses a timestamp more than ${minutes} minutes from its own time, and a nonce that the same key used in the last ${minutes} minutes.`,
+    "",
+    "An example with openssl and curl:",
+    "",
+    "```sh",
+    "SITE=https://...  # the address of this site",
+    "KEY=nbnspun-...   # the key from /keys",
+    "KEY_ID=$(printf '%s' \"$KEY\" | cut -d- -f2)",
+    "SECRET=$(printf '%s' \"$KEY\" | cut -d- -f3)",
+    "METHOD=GET",
+    "REQUEST_PATH=/api/apps",
+    "TIMESTAMP=$(date +%s)",
+    "NONCE=$(openssl rand -hex 16)",
+    "SIGNATURE=$(printf '%s\\n%s\\n%s\\n%s' \"$METHOD\" \"$REQUEST_PATH\" \"$TIMESTAMP\" \"$NONCE\" \\",
+    "  | openssl dgst -sha256 -hmac \"$SECRET\" | sed 's/^.* //')",
+    "curl -sS -X \"$METHOD\" \"$SITE$REQUEST_PATH\" \\",
+    "  -H \"X-SPUN-Key: $KEY_ID\" \\",
+    "  -H \"X-SPUN-Timestamp: $TIMESTAMP\" \\",
+    "  -H \"X-SPUN-Nonce: $NONCE\" \\",
+    "  -H \"X-SPUN-Signature: $SIGNATURE\"",
+    "```",
+    "",
+    "## Responses",
+    "",
+    "Every response is JSON. A success is `200`, or `201` when the call made something. An error is `{ \"error\": { \"code\": \"...\" } }`, with the same codes the CMS forms use. Some errors carry more fields, for example `max`.",
+    "",
+    "- `400`: the input breaks a rule. The code says which.",
+    "- `401`: the request was refused. The code is one of:",
+    "  - `api.missingHeader`: one of the four headers is missing or not in its form.",
+    `  - \`api.oldRequest\`: the timestamp is more than ${minutes} minutes from the server's time.`,
+    "  - `api.badKey`: the key is unknown or deleted, or its user is disabled or has no username.",
+    "  - `api.badSignature`: the signature does not match the request.",
+    "  - `api.nonceUsed`: the key already used this nonce.",
+    "- `404`: not found.",
+    "- `411`, `api.lengthRequired`: a `POST` or `PUT` request, or a request with a chunked body, has no `Content-Length` header.",
+    "- `413`, `api.bodyTooLarge`: the body is larger than the call permits. `max` is the limit in bytes.",
+    "- `429`, `api.tooManyRequests`: a rate limit was reached. The `Retry-After` header gives the seconds to wait.",
+    "",
+    "## Limits",
+    "",
+    `- Body size: ${API_JSON_BODY_MAX} bytes for a JSON call, ${API_RELEASE_BODY_MAX} bytes for a release upload, ${API_SCREENSHOT_BODY_MAX} bytes for a screenshot upload.`,
+    `- ${API_IP_PER_MINUTE} requests a minute from one IP address, signed or not.`,
+    `- ${API_KEY_PER_MINUTE} requests a minute with one key.`,
+    `- ${API_UPLOADS_PER_HOUR} uploads an hour with one key, releases and screenshots together.`,
+    "",
+    "## Calls",
+    "",
+    "### GET /api/apps",
+    "",
+    "The user's apps that are not deleted, public or not, by title.",
+    "",
+    "```json",
+    '{ "apps": [{ "id": "abc123", "title": "My App" }] }',
+    "```",
+    "",
   ].join("\n");
 }
 
@@ -156,6 +268,10 @@ export async function catalogueResponse(slug: string | null, request: Request): 
 export async function appResponse(id: string): Promise<Response> {
   const view = await appView(id);
   return markdownResponse(view ? appMarkdown(view) : null);
+}
+
+export function apiResponse(): Response {
+  return markdownResponse(apiText());
 }
 
 export async function llmsResponse(): Promise<Response> {

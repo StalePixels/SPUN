@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { and, asc, eq, isNull } from "drizzle-orm";
-import { apps } from "@/db/schema";
+import { ownAppRows } from "@/lib/catalogue";
 import { liveCategories } from "@/lib/categories";
-import { db } from "@/lib/db";
 import { appCount, appLimit } from "@/lib/limits";
 import { problemMessage } from "@/lib/messages";
 import { canCreateApp } from "@/lib/rules";
@@ -11,11 +9,7 @@ import { AppForm } from "../AppForm";
 
 export default async function Publish() {
   const user = await requirePublisher();
-  const rows = await db()
-    .select({ id: apps.id, title: apps.title })
-    .from(apps)
-    .where(and(eq(apps.userId, user.id), isNull(apps.deletedAt)))
-    .orderBy(asc(apps.title));
+  const rows = await ownAppRows(user.id);
   const limit = await appLimit(user.id);
   const canCreate = canCreateApp(await appCount(user.id), limit);
   const categories = await liveCategories();

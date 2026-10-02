@@ -41,6 +41,10 @@ export function problemMessage(problem: Problem): string {
       return `The title cannot use: ${characters(problem.chars)}`;
     case "title.length":
       return `The title must be ${min} to ${max} characters.`;
+    case "keyName.invalidCharacters":
+      return `The key name cannot use: ${characters(problem.chars)}`;
+    case "keyName.length":
+      return `The key name must be ${min} to ${max} characters.`;
     case "description.invalidCharacters":
       return `The description cannot use: ${characters(problem.chars)}`;
     case "description.length":
@@ -95,5 +99,21 @@ export function problemMessage(problem: Problem): string {
       return "User not found.";
     case "admin.lastAdmin":
       return "This is the only admin. Make another user an admin first.";
+    case "api.badKey":
+      return "The API key is unknown or deleted, or its user cannot publish.";
+    case "api.badSignature":
+      return "The signature does not match the request.";
+    case "api.oldRequest":
+      return "The timestamp is more than 5 minutes from the server's time.";
+    case "api.nonceUsed":
+      return "This nonce was already used. Make a new one for each request.";
+    case "api.missingHeader":
+      return "A request needs the headers X-SPUN-Key, X-SPUN-Timestamp, X-SPUN-Nonce and X-SPUN-Signature, each in its form.";
+    case "api.bodyTooLarge":
+      return `The request body is larger than ${max} bytes.`;
+    case "api.lengthRequired":
+      return "The request has a body but no Content-Length header.";
+    case "api.tooManyRequests":
+      return "Too many requests. Wait for the time in the Retry-After header.";
   }
 }

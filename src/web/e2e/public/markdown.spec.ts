@@ -90,7 +90,7 @@ test("/llms.txt links every live category and not a deleted one, and every link 
   expect(links).toContain("/index.md");
   const categorySlugs = links
     .map((link) => link.match(/^\/([a-z0-9-]+)\.md$/)?.[1])
-    .filter((slug): slug is string => slug !== undefined && slug !== "index");
+    .filter((slug): slug is string => slug !== undefined && slug !== "index" && slug !== "api");
   expect([...categorySlugs].sort()).toEqual((await liveCategorySlugs()).sort());
   expect(categorySlugs).toContain(data.one.slug);
   expect(categorySlugs).not.toContain(data.gone.slug);

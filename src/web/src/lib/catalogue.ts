@@ -115,6 +115,14 @@ export async function cataloguePage(
   return { rows: await withDetails(shown), more: rows.length > CATALOGUE_PAGE_SIZE };
 }
 
+export async function ownAppRows(userId: string): Promise<{ id: AppId; title: string }[]> {
+  return db()
+    .select({ id: apps.id, title: apps.title })
+    .from(apps)
+    .where(and(eq(apps.userId, userId), isNull(apps.deletedAt)))
+    .orderBy(asc(apps.title));
+}
+
 // Newest save first. A saved app that is not public is left out, but its row
 // stays, so it comes back if the app is restored.
 export async function savedAppRows(userId: string): Promise<CatalogueRow[]> {

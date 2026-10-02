@@ -142,6 +142,17 @@ export const savedApps = mysqlTable(
   (t) => [primaryKey({ columns: [t.userId, t.appId] })],
 );
 
+// The secret of a key is derived from its id and API_KEY_SECRET, so no secret is stored.
+export const apiKeys = mysqlTable("api_keys", {
+  id: char("id", { length: 16 }).primaryKey(),
+  userId: varchar("user_id", { length: 255 })
+    .notNull()
+    .references(() => users.id),
+  name: varchar("name", { length: 32 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at"),
+});
+
 // One row for each filled slot; 1 is the main screenshot. An app delete keeps
 // the rows, so a restore brings the screenshots back.
 export const screenshots = mysqlTable(

@@ -254,3 +254,19 @@ export async function isSaved(userId: string, appId: string): Promise<boolean> {
   const rows = await query("select 1 from saved_apps where user_id = ? and app_id = ?", [userId, appId]);
   return rows.length === 1;
 }
+
+export async function apiKeyRow(keyId: string) {
+  const [row] = await query<{ user_id: string; name: string; deleted_at: Date | null }>(
+    "select user_id, name, deleted_at from api_keys where id = ?",
+    [keyId],
+  );
+  return row;
+}
+
+export async function liveAppIdsOf(userId: string): Promise<string[]> {
+  const rows = await query<{ id: string }>(
+    "select id from apps where user_id = ? and deleted_at is null order by title",
+    [userId],
+  );
+  return rows.map((row) => row.id);
+}

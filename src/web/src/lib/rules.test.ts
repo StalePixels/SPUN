@@ -14,6 +14,7 @@ import {
   checkReleaseDate,
   parseLimit,
   checkDescription,
+  checkKeyName,
   checkTitle,
   checkUsernameInput,
   checkVersion,
@@ -215,6 +216,16 @@ describe("problem codes", () => {
   it("gives the length bounds", () => {
     expect(checkTitle("")).toEqual({ code: "title.length", min: 1, max: 32 });
     expect(checkVersion("x".repeat(17))).toEqual({ code: "version.length", min: 1, max: 16 });
+  });
+});
+
+describe("checkKeyName", () => {
+  it("has the rules of an app title, with codes of its own", () => {
+    expect(checkKeyName("My agent")).toBeNull();
+    expect(checkKeyName("x".repeat(32))).toBeNull();
+    expect(checkKeyName("")).toEqual({ code: "keyName.length", min: 1, max: 32 });
+    expect(checkKeyName("x".repeat(33))).toEqual({ code: "keyName.length", min: 1, max: 32 });
+    expect(checkKeyName("Caf\u00e9")).toEqual({ code: "keyName.invalidCharacters", chars: ["\u00e9"] });
   });
 });
 

@@ -64,7 +64,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   Admin
                 </Link>
               )}
-              {user?.username && <span className="text-light" data-testid="nav-username">{user.username}</span>}
+              {user?.username && (
+                <Link href="/me" className="nav-link text-light" data-testid="nav-username">
+                  {user.username}
+                </Link>
+              )}
               <ThemeSwitch />
               {user && (
                 <Link href="/my" className="nav-link text-light" data-testid="nav-my">

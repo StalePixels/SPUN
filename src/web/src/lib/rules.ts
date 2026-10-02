@@ -13,6 +13,16 @@ export const SCREENSHOT_SLOTS = 5;
 export const MAX_SCREENSHOT_BYTES = 16 * 1024 * 1024;
 export const MAX_SCREENSHOT_TEXT = "16 MB";
 
+// API defaults, for production. A value of the same name in .env overrides each.
+export const API_JSON_BODY_MAX = 64 * 1024;
+export const API_RELEASE_BODY_MAX = MAX_UPLOAD_BYTES + 64 * 1024;
+export const API_SCREENSHOT_BODY_MAX = MAX_SCREENSHOT_BYTES + 64 * 1024;
+export const API_IP_PER_MINUTE = 60;
+export const API_KEY_PER_MINUTE = 60;
+export const API_UPLOADS_PER_HOUR = 20;
+export const API_REQUEST_WINDOW_SECONDS = 5 * 60;
+export const KEY_NAME_MAX = TITLE_MAX;
+
 const SLUG_CHAR = /[A-Za-z0-9_-]/;
 const VERSION_CHAR = /[A-Za-z0-9_.,#-]/;
 const PRINTABLE_ASCII_CHAR = /[\x20-\x7e]/;
@@ -72,6 +82,14 @@ export function checkTitle(value: string): Problem | null {
   return null;
 }
 
+export function checkKeyName(value: string): Problem | null {
+  const error = checkTitle(value);
+  if (!error) {
+    return null;
+  }
+  return { ...error, code: error.code === "title.length" ? "keyName.length" : "keyName.invalidCharacters" };
+}
+
 export function checkDescription(value: string): Problem | null {
   if (value.length > DESCRIPTION_MAX) {
     return { code: "description.length", max: DESCRIPTION_MAX };
@@ -105,7 +123,7 @@ const CATEGORY_SLUG_CHAR = /[a-z0-9-]/;
 
 // Every top-level path of the site except apps, which is also a category, plus
 // index, whose .md copy is /index.md. A category slug is a top-level URL too.
-export const RESERVED_PATHS = ["admin", "api", "index", "llms.txt", "md", "my", "publish", "username"];
+export const RESERVED_PATHS = ["admin", "api", "index", "keys", "llms.txt", "md", "me", "my", "publish", "username"];
 
 export function checkCategorySlug(value: string): Problem | null {
   if (RESERVED_PATHS.includes(value)) {

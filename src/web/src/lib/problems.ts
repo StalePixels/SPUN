@@ -10,6 +10,8 @@ export type ProblemCode =
   | "version.taken"
   | "title.invalidCharacters"
   | "title.length"
+  | "keyName.invalidCharacters"
+  | "keyName.length"
   | "description.invalidCharacters"
   | "description.length"
   | "changelog.invalidCharacters"
@@ -35,7 +37,15 @@ export type ProblemCode =
   | "limit.notNumber"
   | "limit.missing"
   | "user.notFound"
-  | "admin.lastAdmin";
+  | "admin.lastAdmin"
+  | "api.badKey"
+  | "api.badSignature"
+  | "api.oldRequest"
+  | "api.nonceUsed"
+  | "api.missingHeader"
+  | "api.bodyTooLarge"
+  | "api.lengthRequired"
+  | "api.tooManyRequests";
 
 export type Problem = {
   code: ProblemCode;
