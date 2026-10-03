@@ -38,7 +38,7 @@ test("upload, read, edit the changelog of and delete a release through the API",
     const zip = makeZip(sampleEntries());
     expect(await upload(page, key, id, { version: "1.0", changelog: "First." }, zip)).toEqual({
       status: 201,
-      body: { serial: 1 },
+      body: { serial: 1, dotMoves: [] },
     });
     expect(fileSize(releaseFile(client.username, id, 1))).toBe(zip.length);
     expect(await releaseRow(id, 1)).toMatchObject({
@@ -58,11 +58,12 @@ test("upload, read, edit the changelog of and delete a release through the API",
         deletedDay: null,
         path: `/${client.username}/${id}-0001.zip`,
         files: sampleEntries().map((entry) => entry.name),
+        dotMoves: [],
       },
     });
 
     const historic = await upload(page, key, id, { version: "0.9", releaseDate: "2020-05-17" }, makeZip(sampleEntries()));
-    expect(historic).toEqual({ status: 201, body: { serial: 2 } });
+    expect(historic).toEqual({ status: 201, body: { serial: 2, dotMoves: [] } });
     expect((await releaseRow(id, 2))?.release_date).toBe("2020-05-17");
 
     const taken = await upload(page, key, id, { version: "1.0" }, makeZip(sampleEntries()));
@@ -108,7 +109,7 @@ test("upload, read, edit the changelog of and delete a release through the API",
   }
 });
 
-test("the API refuses a zip the Next cannot unzip and a zip over 4 MB, and stores nothing", async ({ page }) => {
+test("the API refuses a zip the Next cannot unzip, one with bad names and one over 4 MB, and stores nothing", async ({ page }) => {
   const key = await makeApiKey(page);
   const id = await createApp(page, key);
   try {
@@ -117,6 +118,11 @@ test("the API refuses a zip the Next cannot unzip and a zip over 4 MB, and store
       status: 400,
       body: { error: { code: "file.incompatible" } },
     });
+    const badNames = makeZip([...sampleEntries(), { name: "WHAT?.TXT", data: Buffer.from("a") }]);
+    expect(await upload(page, key, id, { version: "1.0" }, badNames)).toEqual({
+      status: 400,
+      body: { error: { code: "file.badNames", names: ["WHAT?.TXT"] } },
+    });
     const big = makeZip([{ name: "BIG.BIN", data: Buffer.alloc(MAX_UPLOAD_BYTES) }]);
     expect(await upload(page, key, id, { version: "1.0" }, big)).toEqual({
       status: 400,
@@ -124,6 +130,45 @@ test("the API refuses a zip the Next cannot unzip and a zip over 4 MB, and store
     });
     expect(await releaseRow(id, 1)).toBeUndefined();
     expect(existsSync(releaseFile(client.username, id, 1))).toBe(false);
+  } finally {
+    await removeApps([id]);
+  }
+});
+
+test("the API names each root .dot file it will move, and refuses a dot command the Next already has", async ({
+  page,
+}) => {
+  const key = await makeApiKey(page);
+  const id = await createApp(page, key);
+  try {
+    const clash = makeZip([
+      ...sampleEntries(),
+      { name: "Ls.Dot", data: Buffer.from("a") },
+      { name: "mine.dot", data: Buffer.from("b") },
+    ]);
+    expect(await upload(page, key, id, { version: "1.0" }, clash)).toEqual({
+      status: 400,
+      body: { error: { code: "file.dotCommandTaken", names: ["Ls"] } },
+    });
+    expect(await releaseRow(id, 1)).toBeUndefined();
+    expect(existsSync(releaseFile(client.username, id, 1))).toBe(false);
+
+    const moves = [
+      { file: "spun.dot", to: "C:/dot/spun" },
+      { file: "TOOL.DOT", to: "C:/dot/TOOL" },
+    ];
+    const zip = makeZip([
+      ...sampleEntries(),
+      { name: "spun.dot", data: Buffer.from("a") },
+      { name: "TOOL.DOT", data: Buffer.from("b") },
+      { name: "BIN/LS.DOT", data: Buffer.from("c") },
+    ]);
+    expect(await upload(page, key, id, { version: "1.0" }, zip)).toEqual({
+      status: 201,
+      body: { serial: 1, dotMoves: moves },
+    });
+    const read = await signedJson(page.request, key, "GET", `/api/apps/${id}/releases/1`);
+    expect(read.body.dotMoves).toEqual(moves);
   } finally {
     await removeApps([id]);
   }

@@ -77,7 +77,7 @@ export default async function AppPage({ params }: { params: Promise<{ id: string
       <div className="card mb-4">
         <div className="card-header">
           <i className="bi bi-pencil me-1" />
-          Title, description and categories
+          Title, description, install directory and categories
         </div>
         <div className="card-body">
           <AppForm app={app} categories={categories} selected={app.categories} />

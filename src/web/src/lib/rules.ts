@@ -119,7 +119,7 @@ export function checkChangelog(input: string): ChangelogCheck {
 export const INSTALL_DIR_MAX = 64;
 export const INSTALL_DIR_BANNED = ["/", "/nextzxos", "/sys", "/dot"];
 
-const INSTALL_DIR_CHAR = /[^\x00-\x1f\x7f"*:<>?|]/;
+const INSTALL_DIR_CHAR = /(?!["*:<>?|])[\x20-\x7e]/;
 
 export type InstallDirCheck = { ok: true; installDir: string | null } | { ok: false; error: Problem };
 

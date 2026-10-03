@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { parseAppId } from "@/lib/apps";
+import { dotMoveText } from "@/lib/messages";
 import { ownReleaseView } from "@/lib/releases";
 import { formatDay, parseSerial } from "@/lib/rules";
 import { requirePublisher } from "@/lib/session";
@@ -71,6 +72,20 @@ export default async function ReleasePage({
               <ChangelogForm appId={id} serial={serial} changelog={release.changelog ?? ""} />
             </div>
           </div>
+
+          {release.dotMoves.length > 0 && (
+            <div className="alert alert-info mb-4" data-testid="dot-moves">
+              <i className="bi bi-info-circle me-1" />
+              Dot commands
+              <ul className="mb-0 mt-2">
+                {release.dotMoves.map((move) => (
+                  <li key={move.file} data-testid="dot-move">
+                    {dotMoveText(move)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <h2 className="h5">Files in the zip</h2>
           {!release.files ? (

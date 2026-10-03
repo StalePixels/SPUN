@@ -378,13 +378,17 @@ describe("checkInstallDir", () => {
     expect(stored("/apps/v1.0/.spun")).toBe("/apps/v1.0/.spun");
   });
 
-  it("refuses characters FAT does not allow, and names each bad one", () => {
+  it("refuses characters FAT does not allow and anything outside printable ASCII, and names each bad one", () => {
     for (const char of ['"', "*", "?", "<", ">", "|", "\x00", "\x1f", "\x7f"]) {
       expect(checkInstallDir(`/apps/a${char}b`)).toEqual({
         ok: false,
         error: { code: "installDir.invalidCharacters", chars: [char] },
       });
     }
+    expect(checkInstallDir("/apps/café/✓")).toEqual({
+      ok: false,
+      error: { code: "installDir.invalidCharacters", chars: ["é", "✓"] },
+    });
     expect(checkInstallDir("/a*b?c*")).toEqual({
       ok: false,
       error: { code: "installDir.invalidCharacters", chars: ["*", "?"] },

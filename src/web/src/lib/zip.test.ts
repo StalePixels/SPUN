@@ -190,6 +190,30 @@ describe("zip check", () => {
     expect((await checkZip(makeZip({ ["A".repeat(NEXT_NAME_MAX)]: Buffer.from("a") }))).ok).toBe(true);
   });
 
+  it("refuses names outside printable ASCII or with characters FAT does not allow, and names each one", async () => {
+    for (const bad of ['"', "*", "<", ">", "?", "|", "\x00", "\x1f", "\x7f", "\xe9"]) {
+      expect(await checkZip(makeZip({ "OK.TXT": Buffer.from("a"), [`GAME/A${bad}B.TXT`]: Buffer.from("a") }))).toEqual({
+        ok: false,
+        error: { code: "file.badNames", names: [`GAME/A${bad}B.TXT`] },
+      });
+    }
+    expect(
+      await checkZip(makeZip({ "C\xe9.TXT": Buffer.from("a"), "OK.TXT": Buffer.from("b"), "D?.TXT": Buffer.from("c") })),
+    ).toEqual({ ok: false, error: { code: "file.badNames", names: ["C\xe9.TXT", "D?.TXT"] } });
+  });
+
+  it("reads a UTF-8 name as UTF-8 in the list of bad names", async () => {
+    const name = Buffer.from("CAFÉ.TXT", "utf8").toString("latin1");
+    expect(await checkZip(makeZip({ [name]: Buffer.from("a") }))).toEqual({
+      ok: false,
+      error: { code: "file.badNames", names: ["CAFÉ.TXT"] },
+    });
+  });
+
+  it("accepts every other printable ASCII character in a name", async () => {
+    expect((await checkZip(makeZip({ "GAME/A b!#$%&'()+,-.;=@[\\]^_`{}~.TXT": Buffer.from("a") }))).ok).toBe(true);
+  });
+
   it("rejects a damaged local header as not a zip", async () => {
     expect(await checkZip(makeZip(a, { localSig: 0 }))).toEqual({
       ok: false,

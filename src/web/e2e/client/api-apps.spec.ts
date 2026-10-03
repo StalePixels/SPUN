@@ -121,6 +121,7 @@ test("the API refuses each bad title, description, install directory and categor
     [{ ...good, description: "two\nlines" }, "description.invalidCharacters"],
     [{ ...good, installDir: "C:\\apps" }, "installDir.drive"],
     [{ ...good, installDir: "/apps/a|b" }, "installDir.invalidCharacters"],
+    [{ ...good, installDir: "/apps/café" }, "installDir.invalidCharacters"],
     [{ ...good, installDir: "/apps/../sys" }, "installDir.dots"],
     [{ ...good, installDir: "/NextZXOS/apps" }, "installDir.banned"],
     [{ ...good, installDir: "/" }, "installDir.banned"],

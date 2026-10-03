@@ -123,6 +123,44 @@ test("a file that is not a zip is refused", async ({ page, apps }) => {
   await expectRefused(page, id, "file.notZip");
 });
 
+test("a root .dot file the Next already has is refused, by name and in any case", async ({ page, apps }) => {
+  const id = await apps.create("DotClash");
+  const zip = makeZip([...sampleEntries(), { name: "nbnGet.DOT", data: Buffer.from("a") }]);
+  await uploadRelease(page, { version: "1.0", file: files.write("clash.zip", zip) });
+  await expectRefused(page, id, "file.dotCommandTaken");
+  await expect(page.getByTestId("form-error")).toContainText("nbnGet");
+});
+
+test("after an upload, the release page names each root .dot file that will be moved", async ({ page, apps }) => {
+  const id = await apps.create("DotMove");
+  const zip = makeZip([
+    ...sampleEntries(),
+    { name: "spun.dot", data: Buffer.from("a") },
+    { name: "GAME/LS.DOT", data: Buffer.from("b") },
+  ]);
+  await uploadRelease(page, { version: "1.0", file: files.write("dot.zip", zip) });
+  await expect(page).toHaveURL(new RegExp(`/publish/apps/${id}/releases/1$`));
+  await expect(page.getByTestId("dot-move")).toHaveCount(1);
+  await expect(page.getByTestId("dot-move")).toContainText("C:/dot/spun");
+  expect(await releaseRow(id, 1)).toMatchObject({ version: "1.0", deleted_at: null });
+});
+
+test("a release with no root .dot file shows no move notice", async ({ page, apps }) => {
+  const id = await apps.create("NoDot");
+  await uploadRelease(page, { version: "1.0", file: files.write("game.zip", makeZip(sampleEntries())) });
+  await expect(page).toHaveURL(new RegExp(`/publish/apps/${id}/releases/1$`));
+  await expect(page.getByTestId("zip-entry")).toHaveCount(sampleEntries().length);
+  await expect(page.getByTestId("dot-moves")).toHaveCount(0);
+});
+
+test("a zip with names a Next cannot use is refused, naming them", async ({ page, apps }) => {
+  const id = await apps.create("BadNames");
+  const zip = makeZip([...sampleEntries(), { name: "GAME/CAFÉ.TXT", data: Buffer.from("a") }]);
+  await uploadRelease(page, { version: "1.0", file: files.write("names.zip", zip) });
+  await expectRefused(page, id, "file.badNames");
+  await expect(page.getByTestId("form-error")).toContainText("GAME/CAFÉ.TXT");
+});
+
 test("a truncated zip is refused", async ({ page, apps }) => {
   const id = await apps.create("Truncated");
   const zip = makeZip(sampleEntries());

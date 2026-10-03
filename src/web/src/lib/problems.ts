@@ -32,6 +32,8 @@ export type ProblemCode =
   | "file.tooLarge"
   | "file.notZip"
   | "file.incompatible"
+  | "file.dotCommandTaken"
+  | "file.badNames"
   | "screenshot.missing"
   | "screenshot.tooLarge"
   | "screenshot.notImage"
@@ -57,6 +59,7 @@ export type ProblemCode =
 export type Problem = {
   code: ProblemCode;
   chars?: string[];
+  names?: string[];
   min?: number;
   max?: number;
   limit?: number | null;

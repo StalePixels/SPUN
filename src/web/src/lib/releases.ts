@@ -3,6 +3,7 @@ import { and, eq, isNull, max } from "drizzle-orm";
 import { apps, releases, users } from "@/db/schema";
 import { ownedApp, type AppBinStore, type AppId } from "./apps";
 import { db } from "./db";
+import { checkDotMoves, dotMoves, type DotMove } from "./dotcommands";
 import type { Problem } from "./problems";
 import {
   checkChangelog,
@@ -18,7 +19,7 @@ import { binScreenshots, unbinScreenshots } from "./screenshots";
 import { binRelease, readRelease, releasePath, removeFile, unbinRelease, writeRelease } from "./storage";
 import { checkZip } from "./zip";
 
-export type Upload = { version: string; day: string; changelog: string | null; data: Buffer };
+export type Upload = { version: string; day: string; changelog: string | null; data: Buffer; dotMoves: DotMove[] };
 
 export type UploadFile = { name: string; data: Buffer };
 
@@ -31,6 +32,7 @@ export type OwnReleaseView = {
   deletedDay: string | null;
   path: string;
   files: string[] | null;
+  dotMoves: DotMove[];
 };
 
 export type UploadCheck = { ok: true; upload: Upload } | { ok: false; error: Problem };
@@ -63,7 +65,12 @@ export async function checkUpload(
   if (!zip.ok) {
     return { ok: false, error: zip.error };
   }
-  return { ok: true, upload: { version, day: date.day, changelog: log.changelog, data: file.data } };
+  const moves = dotMoves(zip.entries);
+  const clash = checkDotMoves(moves);
+  if (clash) {
+    return { ok: false, error: clash };
+  }
+  return { ok: true, upload: { version, day: date.day, changelog: log.changelog, data: file.data, dotMoves: moves } };
 }
 
 export async function formFile(value: FormDataEntryValue | null): Promise<UploadFile | null> {
@@ -80,7 +87,7 @@ export async function uploadOwnRelease(
   userId: string,
   appId: AppId,
   readForm: () => Promise<FormData>,
-): Promise<{ error: Problem } | { serial: number }> {
+): Promise<{ error: Problem } | { serial: number; dotMoves: DotMove[] }> {
   if (!(await ownedApp(userId, appId))) {
     return { error: { code: "app.notFound" } };
   }
@@ -94,7 +101,8 @@ export async function uploadOwnRelease(
   if (!checked.ok) {
     return { error: checked.error };
   }
-  return addRelease(appId, userId, checked.upload);
+  const result = await addRelease(appId, userId, checked.upload);
+  return "error" in result ? result : { serial: result.serial, dotMoves: checked.upload.dotMoves };
 }
 
 // ownerId null is the admin upload: any owner. The file goes under the owner's username.
@@ -235,6 +243,7 @@ export async function ownReleaseView(
       deletedDay: release.deletedAt ? isoDay(release.deletedAt) : null,
       path: `/${user.username}/${releaseFileName(appId, serial)}`,
       files: zip?.ok ? zip.entries : null,
+      dotMoves: zip?.ok ? dotMoves(zip.entries) : [],
     },
   };
 }

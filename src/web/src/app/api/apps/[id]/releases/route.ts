@@ -8,5 +8,5 @@ export const POST = apiRoute<{ id: string }>({ body: "release", upload: true }, 
     return apiProblem({ code: "app.notFound" });
   }
   const result = await uploadOwnRelease(user.id, appId, () => apiForm(request));
-  return "error" in result ? apiProblem(result.error) : apiJson(201, { serial: result.serial });
+  return "error" in result ? apiProblem(result.error) : apiJson(201, { serial: result.serial, dotMoves: result.dotMoves });
 });

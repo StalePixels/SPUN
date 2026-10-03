@@ -135,6 +135,24 @@ test("an admin opens, edits, uploads to, deletes and restores another user's app
   expect(existsSync(binFile(id, 1))).toBe(false);
 });
 
+test("an admin saves another user's install directory through the same rules", async ({ page, people }) => {
+  const owner = await people.user();
+  const id = await people.app(owner, "Rights dir");
+  await page.goto(`/admin/apps/${id}`);
+
+  await page.getByTestId("app-install-dir").fill("apps\\theirs\\");
+  await clickHydrated(page.getByTestId("app-submit"));
+  await expect(page.getByTestId("form-saved")).toBeVisible();
+  expect(await appRow(id)).toMatchObject({ install_dir: "/apps/theirs" });
+  await page.reload();
+  await expect(page.getByTestId("app-install-dir")).toHaveValue("/apps/theirs");
+
+  await page.getByTestId("app-install-dir").fill("/nextzxos/x");
+  await clickHydrated(page.getByTestId("app-submit"));
+  await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "installDir.banned");
+  expect(await appRow(id)).toMatchObject({ install_dir: "/apps/theirs" });
+});
+
 test("a move puts the zips under the new owner and changes the owner row", async ({ page, people }) => {
   const from = await people.user();
   const to = await people.user();

@@ -1,3 +1,4 @@
+import type { DotMove } from "./dotcommands";
 import type { Problem } from "./problems";
 import { INSTALL_DIR_BANNED, MAX_SCREENSHOT_TEXT, MAX_UPLOAD_TEXT } from "./rules";
 
@@ -18,6 +19,10 @@ export function appLimitText(limit: number | null): string {
   if (limit === null) return "no limit";
   if (limit === 0) return "no apps";
   return limit === 1 ? "1 app" : `${limit} apps`;
+}
+
+export function dotMoveText(move: DotMove): string {
+  return `${move.file} will be moved to ${move.to} on install.`;
 }
 
 export function problemMessage(problem: Problem): string {
@@ -85,6 +90,10 @@ export function problemMessage(problem: Problem): string {
       return "The file is not a readable zip. It can be damaged, cut short, or not a zip.";
     case "file.incompatible":
       return "A Next cannot install this zip.";
+    case "file.badNames":
+      return `These names in the zip use characters a Next cannot use (only printable ASCII, without " * < > ? |): ${(problem.names ?? []).join(", ")}`;
+    case "file.dotCommandTaken":
+      return `The zip has dot commands at its root that the Next already has: ${(problem.names ?? []).join(", ")}`;
     case "screenshot.missing":
       return "Choose an image file to upload.";
     case "screenshot.tooLarge":

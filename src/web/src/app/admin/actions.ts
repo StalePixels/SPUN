@@ -38,6 +38,7 @@ import {
   checkCategorySlug,
   checkChangelog,
   checkDescription,
+  checkInstallDir,
   checkReleaseDate,
   checkTitle,
   checkUsernameInput,
@@ -110,6 +111,10 @@ export async function saveAdminApp(rawId: string, _prev: FormState, formData: Fo
   if (error) {
     return { error };
   }
+  const dir = checkInstallDir(text(formData, "installDir"));
+  if (!dir.ok) {
+    return { error: dir.error };
+  }
   const values = formData
     .getAll("categories")
     .filter((value) => typeof value === "string")
@@ -118,7 +123,7 @@ export async function saveAdminApp(rawId: string, _prev: FormState, formData: Fo
   if (!choice.ok) {
     return { error: choice.error };
   }
-  const result = await adminUpdateApp(appId, { title, description }, choice.ids);
+  const result = await adminUpdateApp(appId, { title, description, installDir: dir.installDir }, choice.ids);
   if (result.error) {
     return { error: result.error };
   }

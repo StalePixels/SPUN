@@ -16,10 +16,20 @@ const EOCD_SIG = 0x06054b50;
 const CENTRAL_SIG = 0x02014b50;
 const LOCAL_SIG = 0x04034b50;
 const ZIP64_SIZE = 0xffffffff;
+const BAD_NAME_BYTE = /[^\x20-\x7e]|["*<>?|]/;
+
+// For the message only: a name in UTF-8 reads back as UTF-8, anything else byte for byte.
+function displayName(raw: Buffer): string {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(raw);
+  } catch {
+    return raw.toString("latin1");
+  }
+}
 
 // The rules of the Next's unzipper (src/client/unzip/unzip.c), applied to the
-// raw records in its order, so that the CMS refuses exactly the zips it refuses.
-export function nextUnzipProblem(data: Buffer): ZipProblem | null {
+// raw records in its order, plus entry names in printable ASCII that FAT allows.
+export function nextUnzipProblem(data: Buffer): ZipProblem | Problem | null {
   if (data.length < 22) return "file.notZip";
   const stop = Math.max(0, data.length - 22 - 0xffff);
   let end = -1;
@@ -36,12 +46,16 @@ export function nextUnzipProblem(data: Buffer): ZipProblem | null {
   let at = data.readUInt32LE(end + 16);
   if (at === ZIP64_SIZE) return "file.incompatible";
 
+  const badNames: string[] = [];
   for (let entry = 0; entry < entries; entry++) {
     if (at + 46 > data.length || data.readUInt32LE(at) !== CENTRAL_SIG) return "file.notZip";
     const nameLength = data.readUInt16LE(at + 28);
     if (nameLength === 0 || nameLength > NEXT_NAME_MAX) return "file.incompatible";
     if (at + 46 + nameLength > data.length) return "file.notZip";
     const name = data.toString("latin1", at + 46, at + 46 + nameLength);
+    if (BAD_NAME_BYTE.test(name)) {
+      badNames.push(displayName(data.subarray(at + 46, at + 46 + nameLength)));
+    }
     if (data.readUInt16LE(at + 8) & 1) return "file.incompatible";
     const method = data.readUInt16LE(at + 10);
     if (method !== 0 && method !== 8) return "file.incompatible";
@@ -57,7 +71,7 @@ export function nextUnzipProblem(data: Buffer): ZipProblem | null {
     }
     at += 46 + nameLength + data.readUInt16LE(at + 30) + data.readUInt16LE(at + 32);
   }
-  return null;
+  return badNames.length > 0 ? { code: "file.badNames", names: [...new Set(badNames)] } : null;
 }
 
 export type ZipCheck = { ok: true; entries: string[] } | { ok: false; error: Problem };
@@ -90,7 +104,8 @@ export function checkZip(data: Buffer): Promise<ZipCheck> {
       });
       zip.on("end", () => {
         const problem = nextUnzipProblem(data);
-        if (problem) reject(problem);
+        if (typeof problem === "string") reject(problem);
+        else if (problem) resolve({ ok: false, error: problem });
         else resolve({ ok: true, entries });
       });
       zip.on("error", rejectError);

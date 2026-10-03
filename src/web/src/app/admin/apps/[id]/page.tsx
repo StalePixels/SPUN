@@ -127,11 +127,11 @@ export default async function AdminAppPage({ params }: { params: Promise<{ id: s
       <div className="card mb-4">
         <div className="card-header">
           <i className="bi bi-pencil me-1" />
-          Title, description and categories
+          Title, description, install directory and categories
         </div>
         <div className="card-body">
           <AppForm
-            app={{ id: app.id, title: app.title, description: app.description }}
+            app={{ id: app.id, title: app.title, description: app.description, installDir: app.installDir }}
             categories={categories}
             selected={selected}
             save={saveAdminApp.bind(null, app.id)}

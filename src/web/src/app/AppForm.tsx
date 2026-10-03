@@ -37,15 +37,13 @@ export function AppForm({ app, categories, selected = [], save }: Props) {
           defaultValue={app?.description}
         />
       </Field>
-      {!save && (
-        <Field
-          controlId="installDir"
-          label="Suggested install directory"
-          help={`Where SPUN on the Next installs the app the first time. The user can change it. Up to ${INSTALL_DIR_MAX} characters.`}
-        >
-          <Form.Control data-testid="app-install-dir" name="installDir" defaultValue={app?.installDir ?? ""} />
-        </Field>
-      )}
+      <Field
+        controlId="installDir"
+        label="Suggested install directory"
+        help={`Where SPUN on the Next installs the app the first time. The user can change it. Up to ${INSTALL_DIR_MAX} characters.`}
+      >
+        <Form.Control data-testid="app-install-dir" name="installDir" defaultValue={app?.installDir ?? ""} />
+      </Field>
       <Field controlId="categories" label="Categories" required help="Choose at least one.">
         {categories.map((category) => (
           <Form.Check
