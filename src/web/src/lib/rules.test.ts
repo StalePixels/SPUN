@@ -11,6 +11,7 @@ import {
   checkCategoryName,
   checkCategorySlug,
   checkChangelog,
+  checkInstallDir,
   checkReleaseDate,
   parseLimit,
   checkDescription,
@@ -340,5 +341,73 @@ describe("checkCategoryChoice", () => {
   it("refuses a choice with no live category", () => {
     expect(checkCategoryChoice([], [1, 2])).toEqual({ ok: false, error: { code: "category.missing" } });
     expect(checkCategoryChoice([9, Number.NaN], [1, 2])).toEqual({ ok: false, error: { code: "category.missing" } });
+  });
+});
+
+describe("checkInstallDir", () => {
+  const stored = (input: string) => {
+    const result = checkInstallDir(input);
+    return result.ok ? result.installDir : result.error.code;
+  };
+
+  it("stores empty and whitespace-only input as no suggestion", () => {
+    expect(stored("")).toBeNull();
+    expect(stored("   ")).toBeNull();
+    expect(stored("\t ")).toBeNull();
+  });
+
+  it("normalises backslashes, the leading slash, repeated slashes and the trailing slash", () => {
+    expect(stored("apps\\wifi\\spun")).toBe("/apps/wifi/spun");
+    expect(stored("/apps/wifi/spun/")).toBe("/apps/wifi/spun");
+    expect(stored("apps//wifi///spun")).toBe("/apps/wifi/spun");
+    expect(stored("\\\\apps\\/wifi\\")).toBe("/apps/wifi");
+    expect(stored("/Games/My App")).toBe("/Games/My App");
+  });
+
+  it("refuses drive letters and any colon", () => {
+    expect(stored("C:/apps")).toBe("installDir.drive");
+    expect(stored("c:apps")).toBe("installDir.drive");
+    expect(stored("/apps/a:b")).toBe("installDir.drive");
+  });
+
+  it("refuses . and .. path parts, but not dots inside names", () => {
+    expect(stored("/apps/./spun")).toBe("installDir.dots");
+    expect(stored("/apps/../sys")).toBe("installDir.dots");
+    expect(stored("..")).toBe("installDir.dots");
+    expect(stored("apps\\..")).toBe("installDir.dots");
+    expect(stored("/apps/v1.0/.spun")).toBe("/apps/v1.0/.spun");
+  });
+
+  it("refuses characters FAT does not allow, and names each bad one", () => {
+    for (const char of ['"', "*", "?", "<", ">", "|", "\x00", "\x1f", "\x7f"]) {
+      expect(checkInstallDir(`/apps/a${char}b`)).toEqual({
+        ok: false,
+        error: { code: "installDir.invalidCharacters", chars: [char] },
+      });
+    }
+    expect(checkInstallDir("/a*b?c*")).toEqual({
+      ok: false,
+      error: { code: "installDir.invalidCharacters", chars: ["*", "?"] },
+    });
+  });
+
+  it("refuses /, and /nextzxos, /sys and /dot with everything under them, in any case", () => {
+    for (const input of ["/", "\\", "//", "/nextzxos", "/NextZXOS/", "/sys", "/sys/foo", "sys\\foo", "/dot", "/DOT/x"]) {
+      expect(stored(input)).toBe("installDir.banned");
+    }
+  });
+
+  it("allows names that only start like a banned directory", () => {
+    expect(stored("/system")).toBe("/system");
+    expect(stored("/dots/x")).toBe("/dots/x");
+    expect(stored("/apps/sys")).toBe("/apps/sys");
+  });
+
+  it("allows 64 characters, measured after normalising", () => {
+    const dir = `/${"a".repeat(63)}`;
+    expect(stored(dir)).toBe(dir);
+    expect(stored(`${dir}/`)).toBe(dir);
+    expect(stored(`//${"a".repeat(63)}//`)).toBe(dir);
+    expect(checkInstallDir(`/${"a".repeat(64)}`)).toEqual({ ok: false, error: { code: "installDir.length", max: 64 } });
   });
 });

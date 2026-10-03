@@ -77,6 +77,7 @@ export function apiAppFields(body: Record<string, unknown>): AppFields {
   return {
     title: text(body.title),
     description: text(body.description),
+    installDir: text(body.installDir),
     categories: Array.isArray(body.categories) ? body.categories.filter((value) => Number.isInteger(value)) : [],
   };
 }

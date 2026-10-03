@@ -11,9 +11,9 @@ import {
   canCreateApp,
   checkCategoryChoice,
   checkDescription,
+  checkInstallDir,
   checkTitle,
   isoDay,
-  type CategoryChoice,
 } from "./rules";
 import { appScreenshots, type Screenshot } from "./screenshots";
 
@@ -114,7 +114,7 @@ export async function moveApp(
   }
 }
 
-export type AppFields = { title: string; description: string; categories: number[] };
+export type AppFields = { title: string; description: string; installDir: string; categories: number[] };
 
 export type OwnRelease = {
   serial: number;
@@ -127,6 +127,7 @@ export type OwnAppView = {
   id: AppId;
   title: string;
   description: string;
+  installDir: string | null;
   categories: number[];
   releases: OwnRelease[];
   screenshots: Screenshot[];
@@ -140,12 +141,19 @@ export async function ownedApp(userId: string, appId: AppId) {
   return rows[0];
 }
 
-async function checkAppFields(fields: AppFields): Promise<CategoryChoice> {
+type AppFieldsCheck = { ok: true; installDir: string | null; categoryIds: number[] } | { ok: false; error: Problem };
+
+async function checkAppFields(fields: AppFields): Promise<AppFieldsCheck> {
   const error = checkTitle(fields.title) ?? checkDescription(fields.description);
   if (error) {
     return { ok: false, error };
   }
-  return checkCategoryChoice(fields.categories, (await liveCategories()).map((category) => category.id));
+  const dir = checkInstallDir(fields.installDir);
+  if (!dir.ok) {
+    return dir;
+  }
+  const choice = checkCategoryChoice(fields.categories, (await liveCategories()).map((category) => category.id));
+  return choice.ok ? { ok: true, installDir: dir.installDir, categoryIds: choice.ids } : choice;
 }
 
 export async function addApp(userId: string, fields: AppFields): Promise<{ error: Problem } | { id: AppId }> {
@@ -164,8 +172,10 @@ export async function addApp(userId: string, fields: AppFields): Promise<{ error
     },
   });
   await db().transaction(async (tx) => {
-    await tx.insert(apps).values({ id, userId, title: fields.title, description: fields.description });
-    await setAppCategories(tx, id, choice.ids);
+    await tx
+      .insert(apps)
+      .values({ id, userId, title: fields.title, description: fields.description, installDir: choice.installDir });
+    await setAppCategories(tx, id, choice.categoryIds);
   });
   return { id };
 }
@@ -184,8 +194,11 @@ export async function editApp(
     return { error: choice.error };
   }
   await db().transaction(async (tx) => {
-    await tx.update(apps).set({ title: fields.title, description: fields.description }).where(eq(apps.id, appId));
-    await setAppCategories(tx, appId, choice.ids);
+    await tx
+      .update(apps)
+      .set({ title: fields.title, description: fields.description, installDir: choice.installDir })
+      .where(eq(apps.id, appId));
+    await setAppCategories(tx, appId, choice.categoryIds);
   });
   return {};
 }
@@ -212,6 +225,7 @@ export async function ownAppView(userId: string, appId: AppId): Promise<OwnAppVi
     id: appId,
     title: app.title,
     description: app.description,
+    installDir: app.installDir,
     categories: (await appCategoryList(appId)).map((category) => category.id),
     releases: rows.map((row) => ({
       serial: row.serial,

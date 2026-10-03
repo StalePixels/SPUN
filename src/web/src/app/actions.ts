@@ -28,6 +28,7 @@ function appFields(formData: FormData): AppFields {
   return {
     title: text(formData, "title"),
     description: text(formData, "description"),
+    installDir: text(formData, "installDir"),
     categories: formData
       .getAll("categories")
       .filter((value) => typeof value === "string")

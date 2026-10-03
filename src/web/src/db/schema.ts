@@ -79,6 +79,7 @@ export const apps = mysqlTable("apps", {
     .references(() => users.id),
   title: varchar("title", { length: 32 }).notNull(),
   description: varchar("description", { length: 256 }).notNull().default(""),
+  installDir: varchar("install_dir", { length: 64 }),
   downloads: int("downloads", { unsigned: true }).notNull().default(0),
   // Soft delete: the row stays, so the id is never reused.
   deletedAt: timestamp("deleted_at"),

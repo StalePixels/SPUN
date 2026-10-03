@@ -116,6 +116,42 @@ export function checkChangelog(input: string): ChangelogCheck {
   return { ok: true, changelog: value === "" ? null : value };
 }
 
+export const INSTALL_DIR_MAX = 64;
+export const INSTALL_DIR_BANNED = ["/", "/nextzxos", "/sys", "/dot"];
+
+const INSTALL_DIR_CHAR = /[^\x00-\x1f\x7f"*:<>?|]/;
+
+export type InstallDirCheck = { ok: true; installDir: string | null } | { ok: false; error: Problem };
+
+// FAT ignores case, so a banned directory is banned in any case, with all
+// that is under it; "/" is banned only by itself.
+export function checkInstallDir(input: string): InstallDirCheck {
+  const value = input.trim();
+  if (value === "") {
+    return { ok: true, installDir: null };
+  }
+  if (value.includes(":")) {
+    return { ok: false, error: { code: "installDir.drive" } };
+  }
+  const bad = invalidCharacters(value, INSTALL_DIR_CHAR);
+  if (bad.length > 0) {
+    return { ok: false, error: { code: "installDir.invalidCharacters", chars: bad } };
+  }
+  const parts = value.replace(/\\/g, "/").split("/").filter((part) => part !== "");
+  if (parts.some((part) => part === "." || part === "..")) {
+    return { ok: false, error: { code: "installDir.dots" } };
+  }
+  const installDir = `/${parts.join("/")}`;
+  const key = installDir.toLowerCase();
+  if (INSTALL_DIR_BANNED.some((banned) => key === banned || (banned !== "/" && key.startsWith(`${banned}/`)))) {
+    return { ok: false, error: { code: "installDir.banned" } };
+  }
+  if (installDir.length > INSTALL_DIR_MAX) {
+    return { ok: false, error: { code: "installDir.length", max: INSTALL_DIR_MAX } };
+  }
+  return { ok: true, installDir };
+}
+
 export const CATEGORY_SLUG_MAX = 16;
 export const CATEGORY_NAME_MAX = 32;
 

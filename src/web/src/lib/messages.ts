@@ -1,5 +1,5 @@
 import type { Problem } from "./problems";
-import { MAX_SCREENSHOT_TEXT, MAX_UPLOAD_TEXT } from "./rules";
+import { INSTALL_DIR_BANNED, MAX_SCREENSHOT_TEXT, MAX_UPLOAD_TEXT } from "./rules";
 
 // Behaviour and tests never depend on this wording.
 
@@ -53,6 +53,16 @@ export function problemMessage(problem: Problem): string {
       return `The changelog cannot use: ${characters(problem.chars)}`;
     case "changelog.length":
       return `The changelog must be ${max} characters or fewer.`;
+    case "installDir.drive":
+      return "The install directory cannot have a drive letter or a colon.";
+    case "installDir.invalidCharacters":
+      return `The install directory cannot use: ${characters(problem.chars)}`;
+    case "installDir.dots":
+      return "The install directory cannot have . or .. in its path.";
+    case "installDir.banned":
+      return `The install directory cannot be / or be in ${INSTALL_DIR_BANNED.slice(1).join(", ")}.`;
+    case "installDir.length":
+      return `The install directory must be ${max} characters or fewer.`;
     case "category.invalidCharacters":
       return `A category slug or name cannot use: ${characters(problem.chars)}`;
     case "category.length":
