@@ -11,7 +11,25 @@ test("/api.md is served, and /llms.txt links to it", async ({ page }) => {
   for (const header of ["X-SPUN-Key", "X-SPUN-Timestamp", "X-SPUN-Nonce", "X-SPUN-Signature"]) {
     expect(text).toContain(header);
   }
-  expect(text).toContain("### GET /api/apps");
+  for (const call of [
+    "GET /api/apps",
+    "GET /api/categories",
+    "GET /api/apps/{id}",
+    "POST /api/apps",
+    "PUT /api/apps/{id}",
+    "DELETE /api/apps/{id}",
+    "POST /api/apps/{id}/releases",
+    "GET /api/apps/{id}/releases/{serial}",
+    "PUT /api/apps/{id}/releases/{serial}/changelog",
+    "DELETE /api/apps/{id}/releases/{serial}",
+    "PUT /api/apps/{id}/screenshots/{slot}",
+    "DELETE /api/apps/{id}/screenshots/{slot}",
+    "GET /api/saved",
+    "PUT /api/saved/{id}",
+    "DELETE /api/saved/{id}",
+  ]) {
+    expect(text).toContain(`### ${call}\n`);
+  }
 
   const llms = await (await page.request.get("/llms.txt")).text();
   expect(llms).toContain("](/api.md)");

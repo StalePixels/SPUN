@@ -146,8 +146,13 @@ test("an empty (0-byte) file is refused by the server", async ({ page, apps }) =
   const failed: string[] = [];
   // Only the upload's own request: in a production build the create action's
   // redirect and the link prefetches can end as aborted after create returns.
-  page.on("requestfailed", (request) => {
-    if (request.method() === "POST" && new URL(request.url()).pathname === `/publish/apps/${id}`) {
+  // A POST that got its response can also be reported as aborted afterwards.
+  page.on("requestfailed", async (request) => {
+    if (
+      request.method() === "POST" &&
+      new URL(request.url()).pathname === `/publish/apps/${id}` &&
+      !(await request.response())
+    ) {
       failed.push(`${request.url()} ${request.failure()?.errorText}`);
     }
   });

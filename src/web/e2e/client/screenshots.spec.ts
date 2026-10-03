@@ -1,9 +1,9 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import sharp from "sharp";
 import { thumbSize } from "../../src/lib/thumbs";
 import { appRow, screenshotRows } from "../support/db";
+import { readyNxi as readyNxiData, stripesPng } from "../support/images";
 import { clickHydrated, deleteAppInUi, expect, test, uploadRelease, waitForHydration } from "../support/pages";
 import { accounts, settings } from "../support/settings";
 import { makeZip, sampleEntries, tempFiles } from "../support/zips";
@@ -26,27 +26,12 @@ const pngFile = (appId: string, slot: number) => path.join(settings.assetDir, "s
 const binFiles = (appId: string) =>
   existsSync(settings.binDir) ? readdirSync(settings.binDir).filter((name) => name.startsWith(`${appId}-`)) : [];
 
-// A PNG of coloured stripes, so a replace gives different bytes.
 async function stripes(width: number, height: number, name: string): Promise<string> {
-  const rgb = Buffer.alloc(width * height * 3);
-  for (let i = 0; i < width * height; i++) {
-    const x = i % width;
-    rgb[i * 3] = (x * 32) & 0xff;
-    rgb[i * 3 + 1] = (Math.floor(i / width) * 16) & 0xff;
-    rgb[i * 3 + 2] = 0xe0;
-  }
-  const png = await sharp(rgb, { raw: { width, height, channels: 3 } }).png().toBuffer();
-  return files.write(name, png);
+  return files.write(name, await stripesPng(width, height));
 }
 
-// A ready 320x256 NXI: a 512-byte palette, then one byte for each pixel.
 function readyNxi(name: string): string {
-  const data = Buffer.alloc(512 + 320 * 256);
-  data[2] = 0xe0;
-  for (let at = 512; at < data.length; at++) {
-    data[at] = at % 2;
-  }
-  return files.write(name, data);
+  return files.write(name, readyNxiData());
 }
 
 async function uploadScreenshot(page: Page, slot: number, file: string) {

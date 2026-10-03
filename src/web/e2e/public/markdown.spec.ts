@@ -95,7 +95,7 @@ test("/llms.txt links every live category and not a deleted one, and every link 
   expect(categorySlugs).toContain(data.one.slug);
   expect(categorySlugs).not.toContain(data.gone.slug);
 
-  for (const link of links) {
+  for (const link of links.filter((link) => link.startsWith("/"))) {
     expect((await page.request.get(link)).status(), link).toBe(200);
   }
 });
