@@ -334,11 +334,11 @@ describe("checkCategoryName", () => {
 
 describe("checkCategoryChoice", () => {
   it("keeps only live categories", () => {
-    expect(checkCategoryChoice(["1", "3", "9"], [1, 2, 3])).toEqual({ ok: true, ids: [1, 3] });
+    expect(checkCategoryChoice([1, 3, 9], [1, 2, 3])).toEqual({ ok: true, ids: [1, 3] });
   });
 
   it("refuses a choice with no live category", () => {
     expect(checkCategoryChoice([], [1, 2])).toEqual({ ok: false, error: { code: "category.missing" } });
-    expect(checkCategoryChoice(["9", "x"], [1, 2])).toEqual({ ok: false, error: { code: "category.missing" } });
+    expect(checkCategoryChoice([9, Number.NaN], [1, 2])).toEqual({ ok: false, error: { code: "category.missing" } });
   });
 });

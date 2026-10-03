@@ -1,12 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, desc, eq, isNull } from "drizzle-orm";
-import { apps, releases } from "@/db/schema";
-import { parseAppId } from "@/lib/apps";
-import { appCategoryList, liveCategories } from "@/lib/categories";
-import { db } from "@/lib/db";
-import { formatDay, isoDay } from "@/lib/rules";
-import { appScreenshots } from "@/lib/screenshots";
+import { ownAppView, parseAppId } from "@/lib/apps";
+import { liveCategories } from "@/lib/categories";
+import { formatDay } from "@/lib/rules";
 import { requirePublisher } from "@/lib/session";
 import { AppForm } from "../../../AppForm";
 import { Breadcrumbs } from "../../../Breadcrumbs";
@@ -20,21 +16,11 @@ export default async function AppPage({ params }: { params: Promise<{ id: string
     notFound();
   }
   const user = await requirePublisher();
-  const [app] = await db()
-    .select()
-    .from(apps)
-    .where(and(eq(apps.id, id), eq(apps.userId, user.id), isNull(apps.deletedAt)));
+  const app = await ownAppView(user.id, id);
   if (!app) {
     notFound();
   }
-  const rows = await db()
-    .select()
-    .from(releases)
-    .where(eq(releases.appId, id))
-    .orderBy(desc(releases.serial));
   const categories = await liveCategories();
-  const selected = (await appCategoryList(id)).map((category) => category.id);
-  const screenshots = await appScreenshots(id);
   return (
     <>
       <Breadcrumbs items={[{ label: "Your apps", href: "/publish" }, { label: app.title }]} />
@@ -43,24 +29,24 @@ export default async function AppPage({ params }: { params: Promise<{ id: string
       </h1>
 
       <h2 className="h5">Releases</h2>
-      {rows.length === 0 ? (
+      {app.releases.length === 0 ? (
         <p className="text-body-secondary mb-4">No releases yet.</p>
       ) : (
         <div className="list-group mb-4">
-          {rows.map((release) => (
+          {app.releases.map((release) => (
             <Link
               key={release.serial}
               data-testid={`release-${release.serial}`}
               href={`/publish/apps/${app.id}/releases/${release.serial}`}
-              className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center${release.deletedAt ? " text-body-secondary" : ""}`}
+              className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center${release.deletedDay ? " text-body-secondary" : ""}`}
             >
               <span>
                 <span className="fw-medium">Release {release.serial}</span>
                 <span className="text-body-secondary ms-2">Version {release.version}</span>
               </span>
               <span className="text-body-secondary">
-                {release.deletedAt
-                  ? `Deleted ${formatDay(isoDay(release.deletedAt))}`
+                {release.deletedDay
+                  ? `Deleted ${formatDay(release.deletedDay)}`
                   : formatDay(release.releaseDate)}
               </span>
             </Link>
@@ -84,7 +70,7 @@ export default async function AppPage({ params }: { params: Promise<{ id: string
           Screenshots
         </div>
         <div className="card-body">
-          <ScreenshotSlots appId={app.id} screenshots={screenshots} />
+          <ScreenshotSlots appId={app.id} screenshots={app.screenshots} />
         </div>
       </div>
 
@@ -94,7 +80,7 @@ export default async function AppPage({ params }: { params: Promise<{ id: string
           Title, description and categories
         </div>
         <div className="card-body">
-          <AppForm app={app} categories={categories} selected={selected} />
+          <AppForm app={app} categories={categories} selected={app.categories} />
         </div>
       </div>
 

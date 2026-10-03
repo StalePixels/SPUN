@@ -1,0 +1,77 @@
+---
+name: spun-publish
+description: Publishes software for the ZX Spectrum Next on SPUN, the Next's package manager, through the SPUN API with the user's API key. Use it to create or change a SPUN app, upload a release zip, add screenshots or save apps.
+license: MIT
+---
+
+# Publish on SPUN
+
+SPUN is the package manager for the ZX Spectrum Next. Its site, the CMS, is where publishers make apps and upload releases. The CMS has an API: with the user's API key, you can do everything with the user's apps that the user can do on the site.
+
+The site is `https://spun.nextbestnetwork.com`, unless the user names another.
+
+## Read the current API first
+
+This skill does not describe the API calls. The site does, and it is always current. Before you start, read these two pages on the site:
+
+- `/llms.txt`: what the site has, with links.
+- `/api.md`: the key, how to sign a request, every API call, its fields, its answers and its error codes.
+
+Follow `/api.md` where it differs from this skill.
+
+## Get the user's API key
+
+You cannot make a key. Ask the user for one:
+
+1. The user logs in on the site and clicks their username in the navbar. This opens `/me`, their account page.
+2. From `/me`, the user goes to `/keys` and makes a key. They need a username before they can make one.
+3. The site shows the key once. It is one string, `nbnspun-<key id>-<secret>`. The user copies it and gives it to you, for example in the environment variable `SPUN_KEY`.
+
+The key lets anyone who has it act as the user. Do not write it into files, commits or logs.
+
+## Send requests with scripts/spun.sh
+
+`scripts/spun.sh` signs a request with the key and sends it with curl:
+
+```sh
+SPUN_KEY=nbnspun-... scripts/spun.sh METHOD PATH [curl options...]
+```
+
+- `SPUN_KEY`: the user's key.
+- `SPUN_SITE`: the site, only if it is not `https://spun.nextbestnetwork.com`.
+- `PATH` is the path with its query, for example `/api/apps`.
+- The curl options carry the body: `-H 'Content-Type: application/json' -d '{...}'` for JSON, `-F name=value` and `-F file=@name.zip` for an upload.
+- Add `-i` to see the HTTP status and headers.
+
+Each run makes a new timestamp and nonce, so you can run the same command again.
+
+## The order of the work
+
+1. **Categories.** Get the categories and choose the ids that fit the software. An app needs at least one.
+2. **Create the app.** Give it a title, a description and its categories. Keep the app id the answer gives you. If the app already exists, list the user's apps and use its id.
+3. **Upload a release.** Upload the zip with its version, and a changelog if there is one. The app becomes public when it has a release.
+4. **Add screenshots.** Slot 1 is the main screenshot. Add more in the other slots if the user has them.
+5. **Save apps.** If the user asks, save apps to their list, or remove them from it.
+
+## What the CMS checks before it accepts a release
+
+Check the zip and the version before you upload. The CMS refuses a release that breaks any of these rules, with the error code shown.
+
+### The version
+
+- 1 to 16 characters (`version.length`).
+- Only `A-Z`, `a-z`, `0-9` and `_ . , # -` (`version.invalidCharacters`).
+- Different from every earlier version of the app, deleted releases included. Capitals do not count: `1.0A` and `1.0a` are the same version (`version.taken`).
+
+### The zip
+
+The Next unzips each release itself, with its own unzipper. The CMS refuses a zip that this unzipper cannot unzip (`file.incompatible`) or that is not a readable zip (`file.notZip`):
+
+- At most 4 MB (`file.tooLarge`).
+- One file, not split across several disks or parts.
+- Fewer than 65535 entries.
+- No ZIP64 records: no entry, and no zip, too large for the normal zip fields.
+- Each entry is stored (method 0) or deflated (method 8). No other compression method.
+- No encryption.
+- Each name is 1 to 252 bytes long.
+- No name starts with `/` or `\`, contains `:`, or has a `..` part.

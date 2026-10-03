@@ -4,6 +4,7 @@ import { savedApps } from "@/db/schema";
 import type { AppId } from "./apps";
 import { publicApp } from "./catalogue";
 import { db } from "./db";
+import type { Problem } from "./problems";
 
 export async function savedIds(userId: string, appIds: AppId[]): Promise<Set<AppId>> {
   if (appIds.length === 0) {
@@ -17,10 +18,12 @@ export async function savedIds(userId: string, appIds: AppId[]): Promise<Set<App
 }
 
 // Only a public app can be saved. A second save keeps the first save's time.
-export async function saveApp(userId: string, appId: AppId): Promise<void> {
-  if (await publicApp(appId)) {
-    await db().insert(savedApps).ignore().values({ userId, appId });
+export async function saveApp(userId: string, appId: AppId): Promise<{ error?: Problem }> {
+  if (!(await publicApp(appId))) {
+    return { error: { code: "app.notFound" } };
   }
+  await db().insert(savedApps).ignore().values({ userId, appId });
+  return {};
 }
 
 export async function unsaveApp(userId: string, appId: AppId): Promise<void> {

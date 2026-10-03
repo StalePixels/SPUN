@@ -55,6 +55,8 @@ of `.spun` uses.
 - App code comments follow the existing user style: none by default; only a
   why the code cannot show, in one or two lines above the function; almost
   nothing inside function bodies. Tests may comment freely.
+- Every app function in the GUI has its API call, through the same src/lib
+  function, and is in /api.md.
 - `throw` is for exceptions only, never routine behaviour such as quitting,
   ending a session or an expected error reply.
 - The repo is public. Committed files carry placeholders; real hosts,

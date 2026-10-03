@@ -1,15 +1,9 @@
-import { describe, expect, it } from "vitest";
-import {
-  allocateAppId,
-  deleteApp,
-  moveApp,
-  parseAppId,
-  restoreApp,
-  type AppBinStore,
-  type AppId,
-  type AppIdStore,
-  type AppMoveStore,
-} from "./apps";
+import { describe, expect, it, vi } from "vitest";
+import type { AppBinStore, AppId, AppIdStore, AppMoveStore } from "./apps";
+
+vi.mock("server-only", () => ({}));
+
+const { allocateAppId, deleteApp, moveApp, parseAppId, restoreApp } = await import("./apps");
 
 const K3X9QA = "k3x9qa" as AppId;
 

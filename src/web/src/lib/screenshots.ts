@@ -1,11 +1,12 @@
 import "server-only";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { screenshots } from "@/db/schema";
-import type { AppId } from "./apps";
+import { ownedApp, type AppId } from "./apps";
 import { db } from "./db";
 import { checkNxi, convertImage, previewPng, type NxiWidth } from "./nxi";
 import type { Problem } from "./problems";
 import { makeThumbnail } from "./thumbs";
+import { formFile, type UploadFile } from "./releases";
 import { MAX_SCREENSHOT_BYTES, screenshotUrl } from "./rules";
 import { binScreenshot, removeScreenshot, unbinScreenshot, writeScreenshot } from "./storage";
 
@@ -16,17 +17,16 @@ export type ScreenshotUpload = { nxi: Buffer; png: Buffer; width: NxiWidth };
 export type ScreenshotCheck = { ok: true; shot: ScreenshotUpload } | { ok: false; error: Problem };
 
 // A file named .nxi is taken as ready and only checked; anything else is converted.
-export async function checkScreenshot(file: FormDataEntryValue | null): Promise<ScreenshotCheck> {
-  if (!(file instanceof File) || file.size === 0) {
+export async function checkScreenshot(file: UploadFile | null): Promise<ScreenshotCheck> {
+  if (!file || file.data.length === 0) {
     return { ok: false, error: { code: "screenshot.missing" } };
   }
-  if (file.size > MAX_SCREENSHOT_BYTES) {
+  if (file.data.length > MAX_SCREENSHOT_BYTES) {
     return { ok: false, error: { code: "screenshot.tooLarge" } };
   }
-  const data = Buffer.from(await file.arrayBuffer());
   const result = file.name.toLowerCase().endsWith(".nxi")
-    ? { ...checkNxi(data), nxi: data }
-    : await convertImage(data);
+    ? { ...checkNxi(file.data), nxi: file.data }
+    : await convertImage(file.data);
   if (!result.ok) {
     return result;
   }
@@ -70,6 +70,39 @@ export async function clearScreenshot(username: string, appId: AppId, slot: numb
     .delete(screenshots)
     .where(and(eq(screenshots.appId, appId), eq(screenshots.slot, slot)));
   await removeScreenshot(username, appId, slot);
+}
+
+// The form comes through a callback so an upload to someone else's app is never read.
+export async function uploadOwnScreenshot(
+  user: { id: string; username: string },
+  appId: AppId,
+  slot: number,
+  readForm: () => Promise<FormData>,
+): Promise<{ error: Problem } | { width: NxiWidth }> {
+  if (!(await ownedApp(user.id, appId))) {
+    return { error: { code: "app.notFound" } };
+  }
+  const checked = await checkScreenshot(await formFile((await readForm()).get("file")));
+  if (!checked.ok) {
+    return { error: checked.error };
+  }
+  await putScreenshot(user.username, appId, slot, checked.shot);
+  return { width: checked.shot.width };
+}
+
+export async function clearOwnScreenshot(
+  user: { id: string; username: string },
+  appId: AppId,
+  slot: number,
+): Promise<{ error?: Problem }> {
+  if (!(await ownedApp(user.id, appId))) {
+    return { error: { code: "app.notFound" } };
+  }
+  if (!(await slots(appId)).includes(slot)) {
+    return { error: { code: "screenshot.notFound" } };
+  }
+  await clearScreenshot(user.username, appId, slot);
+  return {};
 }
 
 async function slots(appId: AppId): Promise<number[]> {

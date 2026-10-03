@@ -83,6 +83,8 @@ export function problemMessage(problem: Problem): string {
       return "The file is not a PNG, JPEG, GIF or WebP image that the CMS can read.";
     case "screenshot.badNxi":
       return "An NXI file must be 49,664 bytes (256×192) or 82,432 bytes (320×256), with its palette first.";
+    case "screenshot.notFound":
+      return "Screenshot not found.";
     case "app.notFound":
       return "App not found.";
     case "app.limitReached":
@@ -91,6 +93,8 @@ export function problemMessage(problem: Problem): string {
         : `You can publish up to ${appLimitText(limit)}.`;
     case "app.releasesFull":
       return `This app has reached the maximum of ${max} releases.`;
+    case "release.notFound":
+      return "Release not found.";
     case "limit.notNumber":
       return "Enter a whole number.";
     case "limit.missing":

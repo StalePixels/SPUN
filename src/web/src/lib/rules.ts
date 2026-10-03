@@ -153,8 +153,8 @@ export function checkCategoryName(value: string): Problem | null {
 export type CategoryChoice = { ok: true; ids: number[] } | { ok: false; error: Problem };
 
 // Only live categories count; an app needs at least one.
-export function checkCategoryChoice(values: string[], liveIds: number[]): CategoryChoice {
-  const ids = liveIds.filter((id) => values.includes(String(id)));
+export function checkCategoryChoice(values: number[], liveIds: number[]): CategoryChoice {
+  const ids = liveIds.filter((id) => values.includes(id));
   return ids.length > 0 ? { ok: true, ids } : { ok: false, error: { code: "category.missing" } };
 }
 

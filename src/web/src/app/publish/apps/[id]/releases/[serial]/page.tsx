@@ -1,12 +1,8 @@
 import { notFound } from "next/navigation";
-import { and, eq, isNull } from "drizzle-orm";
-import { apps, releases } from "@/db/schema";
 import { parseAppId } from "@/lib/apps";
-import { db } from "@/lib/db";
-import { formatDay, isoDay, parseSerial, releaseFileName } from "@/lib/rules";
+import { ownReleaseView } from "@/lib/releases";
+import { formatDay, parseSerial } from "@/lib/rules";
 import { requirePublisher } from "@/lib/session";
-import { readRelease, releasePath } from "@/lib/storage";
-import { checkZip } from "@/lib/zip";
 import { Breadcrumbs } from "../../../../../Breadcrumbs";
 import { ChangelogForm } from "./ChangelogForm";
 import { DeleteRelease } from "./DeleteRelease";
@@ -23,41 +19,29 @@ export default async function ReleasePage({
     notFound();
   }
   const user = await requirePublisher();
-  const [app] = await db()
-    .select()
-    .from(apps)
-    .where(and(eq(apps.id, id), eq(apps.userId, user.id), isNull(apps.deletedAt)));
-  if (!app) {
+  const found = await ownReleaseView(user, id, serial);
+  if ("error" in found) {
     notFound();
   }
-  const [release] = await db()
-    .select()
-    .from(releases)
-    .where(and(eq(releases.appId, id), eq(releases.serial, serial)));
-  if (!release) {
-    notFound();
-  }
-  const deleted = release.deletedAt !== null;
-  const data = deleted ? null : await readRelease(releasePath(user.username, id, serial));
-  const zip = data ? await checkZip(data) : null;
+  const release = found.value;
   const label = `Release ${serial}`;
   return (
     <>
       <Breadcrumbs
         items={[
           { label: "Your apps", href: "/publish" },
-          { label: app.title, href: `/publish/apps/${app.id}` },
+          { label: release.appTitle, href: `/publish/apps/${id}` },
           { label },
         ]}
       />
       <h1 className="h3 mb-4">
-        {app.title} <span className="text-body-secondary fw-normal">{label}</span>
+        {release.appTitle} <span className="text-body-secondary fw-normal">{label}</span>
       </h1>
 
-      {release.deletedAt && (
+      {release.deletedDay && (
         <div className="alert alert-secondary" data-testid="release-deleted">
           <i className="bi bi-trash me-1" />
-          This release was deleted on {formatDay(isoDay(release.deletedAt))}.
+          This release was deleted on {formatDay(release.deletedDay)}.
         </div>
       )}
 
@@ -70,15 +54,13 @@ export default async function ReleasePage({
             <dd className="col-sm-9" data-testid="release-date">{formatDay(release.releaseDate)}</dd>
             <dt className="col-sm-3">File</dt>
             <dd className="col-sm-9 mb-0" data-testid="release-file">
-              <code>
-                /{user.username}/{releaseFileName(app.id, serial)}
-              </code>
+              <code>{release.path}</code>
             </dd>
           </dl>
         </div>
       </div>
 
-      {deleted ? null : (
+      {release.deletedDay ? null : (
         <>
           <div className="card mb-4">
             <div className="card-header">
@@ -86,19 +68,19 @@ export default async function ReleasePage({
               Changelog
             </div>
             <div className="card-body">
-              <ChangelogForm appId={app.id} serial={serial} changelog={release.changelog ?? ""} />
+              <ChangelogForm appId={id} serial={serial} changelog={release.changelog ?? ""} />
             </div>
           </div>
 
           <h2 className="h5">Files in the zip</h2>
-          {!zip?.ok ? (
+          {!release.files ? (
             <p className="text-body-secondary mb-4">The file list is not available.</p>
-          ) : zip.entries.length === 0 ? (
+          ) : release.files.length === 0 ? (
             <p className="text-body-secondary mb-4">The zip has no files.</p>
           ) : (
             <ul className="list-group mb-4">
               {/* A zip can hold the same name twice. */}
-              {zip.entries.map((entry, index) => (
+              {release.files.map((entry, index) => (
                 <li key={index} className="list-group-item" data-testid="zip-entry">
                   <code>{entry}</code>
                 </li>
@@ -113,7 +95,7 @@ export default async function ReleasePage({
             </div>
             <div className="card-body">
               <p>Deleting the release removes its file from the server.</p>
-              <DeleteRelease appId={app.id} serial={serial} />
+              <DeleteRelease appId={id} serial={serial} />
             </div>
           </div>
         </>

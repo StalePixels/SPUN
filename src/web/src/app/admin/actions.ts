@@ -30,7 +30,7 @@ import {
 } from "@/lib/admin";
 import { parseAppId } from "@/lib/apps";
 import { liveCategories } from "@/lib/categories";
-import { checkUpload } from "@/lib/releases";
+import { checkUpload, formFile } from "@/lib/releases";
 import { checkScreenshot } from "@/lib/screenshots";
 import {
   checkCategoryChoice,
@@ -110,7 +110,10 @@ export async function saveAdminApp(rawId: string, _prev: FormState, formData: Fo
   if (error) {
     return { error };
   }
-  const values = formData.getAll("categories").filter((value) => typeof value === "string");
+  const values = formData
+    .getAll("categories")
+    .filter((value) => typeof value === "string")
+    .map(Number);
   const choice = checkCategoryChoice(values, (await liveCategories()).map((category) => category.id));
   if (!choice.ok) {
     return { error: choice.error };
@@ -137,7 +140,7 @@ export async function uploadAdminRelease(
     text(formData, "version"),
     text(formData, "releaseDate"),
     text(formData, "changelog"),
-    formData.get("file"),
+    await formFile(formData.get("file")),
   );
   if (!checked.ok) {
     return { error: checked.error };
@@ -184,7 +187,7 @@ export async function uploadAdminScreenshot(
   if (!appId || !slot) {
     return { error: { code: "app.notFound" } };
   }
-  const checked = await checkScreenshot(formData.get("file"));
+  const checked = await checkScreenshot(await formFile(formData.get("file")));
   if (!checked.ok) {
     return { error: checked.error };
   }
