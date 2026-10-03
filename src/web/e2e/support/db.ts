@@ -20,8 +20,14 @@ async function query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
 }
 
 export async function appRow(appId: string) {
-  const [row] = await query<{ id: string; user_id: string; title: string; deleted_at: Date | null }>(
-    "select id, user_id, title, deleted_at from apps where id = ?",
+  const [row] = await query<{
+    id: string;
+    user_id: string;
+    title: string;
+    install_dir: string | null;
+    deleted_at: Date | null;
+  }>(
+    "select id, user_id, title, install_dir, deleted_at from apps where id = ?",
     [appId],
   );
   return row;

@@ -34,18 +34,27 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
     const made = await signedJson(page.request, key, "POST", "/api/apps", {
       title,
       description: "Made by the API",
+      installDir: "apps\\myapp\\",
       categories: [first],
     });
     expect(made.status).toBe(201);
     const id = made.body.id as string;
     created.push(id);
-    expect(await appRow(id)).toMatchObject({ user_id: client.id, title, deleted_at: null });
+    expect(await appRow(id)).toMatchObject({ user_id: client.id, title, install_dir: "/apps/myapp", deleted_at: null });
     expect(await appCategoryIds(id)).toEqual([first]);
 
     const read = await signedJson(page.request, key, "GET", `/api/apps/${id}`);
     expect(read).toEqual({
       status: 200,
-      body: { id, title, description: "Made by the API", categories: [first], releases: [], screenshots: [] },
+      body: {
+        id,
+        title,
+        description: "Made by the API",
+        installDir: "/apps/myapp",
+        categories: [first],
+        releases: [],
+        screenshots: [],
+      },
     });
 
     const list = await signedJson(page.request, key, "GET", "/api/apps");
@@ -58,7 +67,7 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
       categories: [second, first],
     });
     expect(put).toEqual({ status: 200, body: {} });
-    expect((await appRow(id)).title).toBe(edited);
+    expect(await appRow(id)).toMatchObject({ title: edited, install_dir: null });
     expect(await appCategoryIds(id)).toEqual([first, second].sort((a, b) => a - b));
 
     const refused = await signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
@@ -69,6 +78,23 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
     expect(refused.status).toBe(400);
     expect(refused.body.error).toMatchObject({ code: "title.length" });
     expect((await appRow(id)).title, "a refused edit changes nothing").toBe(edited);
+
+    const moved = await signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
+      title: edited,
+      description: "",
+      installDir: "//Games//My App/",
+      categories: [first],
+    });
+    expect(moved).toEqual({ status: 200, body: {} });
+    expect((await appRow(id)).install_dir).toBe("/Games/My App");
+    const banned = await signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
+      title: edited,
+      description: "",
+      installDir: "/dot/x",
+      categories: [first],
+    });
+    expect(banned).toEqual({ status: 400, body: { error: { code: "installDir.banned" } } });
+    expect((await appRow(id)).install_dir, "a refused edit changes nothing").toBe("/Games/My App");
 
     expect(await signedJson(page.request, key, "DELETE", `/api/apps/${id}`)).toEqual({ status: 200, body: {} });
     expect((await appRow(id)).deleted_at).not.toBeNull();
@@ -81,7 +107,7 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
   }
 });
 
-test("the API refuses each bad title, description and category choice, and makes no app", async ({ page }) => {
+test("the API refuses each bad title, description, install directory and category choice, and makes no app", async ({ page }) => {
   const client = await userByUsername(accounts.client.username);
   const key = await makeApiKey(page);
   const [category] = await categoryIds(page, key);
@@ -93,6 +119,12 @@ test("the API refuses each bad title, description and category choice, and makes
     [{ ...good, title: "Rocket 🚀" }, "title.invalidCharacters"],
     [{ ...good, description: "x".repeat(257) }, "description.length"],
     [{ ...good, description: "two\nlines" }, "description.invalidCharacters"],
+    [{ ...good, installDir: "C:\\apps" }, "installDir.drive"],
+    [{ ...good, installDir: "/apps/a|b" }, "installDir.invalidCharacters"],
+    [{ ...good, installDir: "/apps/../sys" }, "installDir.dots"],
+    [{ ...good, installDir: "/NextZXOS/apps" }, "installDir.banned"],
+    [{ ...good, installDir: "/" }, "installDir.banned"],
+    [{ ...good, installDir: `/${"a".repeat(64)}` }, "installDir.length"],
     [{ ...good, categories: [] }, "category.missing"],
     [{ ...good, categories: [999999] }, "category.missing"],
     [{ title: good.title, description: "" }, "category.missing"],
