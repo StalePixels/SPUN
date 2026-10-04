@@ -1,0 +1,16 @@
+# Release test against the live systems: the line a new user types gets .spun
+# from the live CDN with .nbnget, then runs it from the current directory to
+# get SPUN from production. Run it at real speed after a release:
+#   cd $MANE_HARNESS && ./run.py <this file> --mame "$(command -v mame)"
+# .spun asks for the install directory by 20 s; y at 25 s takes the suggested
+# C:/apps/wifi/spun. After the run, read from the run's sd.img with
+# hdfmonkey: /dot/spun is the release's spun.dot, /apps/wifi/spun holds
+# README.txt, and /sys/spun.cat names the release.
+autostart .nbnget /dot/spun : ../spun get spun
+autostart PRINT "RELEASEDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 90
+noreset 7.5
+key 25 y
+snap 24 27 30 35 40 50 60 70 89
+screen 89 RELEASEDONE
