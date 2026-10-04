@@ -4,8 +4,27 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { crc32 } from "node:zlib";
 
+export type ZipEntry = {
+  name: string;
+  data: Buffer;
+  // A second name in an Info-ZIP Unicode Path extra field (0x7075) of the central directory.
+  unicodeName?: string;
+  // The uncompressed size the directory states. The entry is then marked deflated, though its data stays stored.
+  usize?: number;
+};
+
+function unicodePath(name: Buffer, unicodeName: string): Buffer {
+  const utf8 = Buffer.from(unicodeName, "utf8");
+  const field = Buffer.alloc(9);
+  field.writeUInt16LE(0x7075, 0);
+  field.writeUInt16LE(5 + utf8.length, 2);
+  field.writeUInt8(1, 4);
+  field.writeUInt32LE(crc32(name), 5);
+  return Buffer.concat([field, utf8]);
+}
+
 // Builds zip files (stored, no compression) for upload tests.
-export function makeZip(entries: { name: string; data: Buffer }[]): Buffer {
+export function makeZip(entries: ZipEntry[]): Buffer {
   const locals: Buffer[] = [];
   const centrals: Buffer[] = [];
   let offset = 0;
@@ -25,11 +44,17 @@ export function makeZip(entries: { name: string; data: Buffer }[]): Buffer {
     central.writeUInt16LE(20, 6);
     central.writeUInt32LE(crc, 16);
     central.writeUInt32LE(entry.data.length, 20);
-    central.writeUInt32LE(entry.data.length, 24);
+    central.writeUInt32LE(entry.usize ?? entry.data.length, 24);
     central.writeUInt16LE(name.length, 28);
     central.writeUInt32LE(offset, 42);
+    if (entry.usize !== undefined) {
+      local.writeUInt16LE(8, 8);
+      central.writeUInt16LE(8, 10);
+    }
+    const extra = entry.unicodeName === undefined ? Buffer.alloc(0) : unicodePath(name, entry.unicodeName);
+    central.writeUInt16LE(extra.length, 30);
     locals.push(local, name, entry.data);
-    centrals.push(central, name);
+    centrals.push(central, name, extra);
     offset += local.length + name.length + entry.data.length;
   }
   const centralSize = centrals.reduce((sum, part) => sum + part.length, 0);

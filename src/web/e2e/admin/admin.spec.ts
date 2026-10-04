@@ -111,17 +111,35 @@ test("users: set the client's own limit to 2, then clear it back to the default"
   await waitForHydration(toggle);
   await expect(page.getByTestId("user-is-admin")).not.toBeChecked();
 
-  // Ticked with no number is an error.
-  await toggle.check();
-  await number.fill("");
-  await save.click();
-  await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "limit.missing");
-
+  // The box and the number show what is stored after each save, each error and each load.
   await toggle.check();
   await number.fill("2");
   await save.click();
   await expect(page.getByTestId("form-saved")).toBeVisible();
   expect(await userByUsername(client.username)).toMatchObject({ app_limit: 2, is_admin: 0 });
+  await expect(toggle, "after a save").toBeChecked();
+  await expect(number).toBeEnabled();
+  await expect(number).toHaveValue("2");
+
+  await page.reload();
+  await waitForHydration(toggle);
+  await expect(toggle, "after a load").toBeChecked();
+  await expect(number).toHaveValue("2");
+
+  // Ticked with no number is an error, which changes nothing.
+  await number.fill("");
+  await save.click();
+  await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "limit.missing");
+  await expect(toggle, "after an error").toBeChecked();
+  await expect(number).toBeEnabled();
+  await expect(number).toHaveValue("2");
+  expect(await userByUsername(client.username)).toMatchObject({ app_limit: 2, is_admin: 0 });
+
+  // A save with nothing changed keeps the limit.
+  await save.click();
+  await expect(page.getByTestId("form-saved")).toBeVisible();
+  expect(await userByUsername(client.username)).toMatchObject({ app_limit: 2, is_admin: 0 });
+
   await page.goto("/admin/users");
   await expect(row.getByTestId("user-own-limit")).toContainText("2");
   await expect(row.getByTestId("user-limit-default")).toHaveCount(0);
@@ -134,6 +152,8 @@ test("users: set the client's own limit to 2, then clear it back to the default"
   await save.click();
   await expect(page.getByTestId("form-saved")).toBeVisible();
   expect(await userByUsername(client.username)).toMatchObject({ app_limit: null, is_admin: 0 });
+  await expect(toggle, "after clearing").not.toBeChecked();
+  await expect(number).toBeDisabled();
   await page.goto("/admin/users");
   await expect(row.getByTestId("user-limit-default")).toBeVisible();
 });

@@ -131,17 +131,32 @@ test("a root .dot file the Next already has is refused, by name and in any case"
   await expect(page.getByTestId("form-error")).toContainText("nbnGet");
 });
 
+test("spun.dot needs an override, and a dot command name ending in a space is refused", async ({ page, apps }) => {
+  const id = await apps.create("DotReserved");
+  await uploadRelease(page, {
+    version: "1.0",
+    file: files.write("spun.zip", makeZip([...sampleEntries(), { name: "spun.dot", data: Buffer.from("a") }])),
+  });
+  await expectRefused(page, id, "file.dotCommandTaken");
+  await expect(page.getByTestId("form-error")).toContainText("spun");
+  await uploadRelease(page, {
+    version: "1.0",
+    file: files.write("space.zip", makeZip([...sampleEntries(), { name: "LS .dot", data: Buffer.from("a") }])),
+  });
+  await expectRefused(page, id, "file.dotNameEnd");
+});
+
 test("after an upload, the release page names each root .dot file that will be moved", async ({ page, apps }) => {
   const id = await apps.create("DotMove");
   const zip = makeZip([
     ...sampleEntries(),
-    { name: "spun.dot", data: Buffer.from("a") },
+    { name: "wifi.dot", data: Buffer.from("a") },
     { name: "GAME/LS.DOT", data: Buffer.from("b") },
   ]);
   await uploadRelease(page, { version: "1.0", file: files.write("dot.zip", zip) });
   await expect(page).toHaveURL(new RegExp(`/publish/apps/${id}/releases/1$`));
   await expect(page.getByTestId("dot-move")).toHaveCount(1);
-  await expect(page.getByTestId("dot-move")).toContainText("C:/dot/spun");
+  await expect(page.getByTestId("dot-move")).toContainText("C:/dot/wifi");
   expect(await releaseRow(id, 1)).toMatchObject({ version: "1.0", deleted_at: null });
 });
 
@@ -159,6 +174,21 @@ test("a zip with names a Next cannot use is refused, naming them", async ({ page
   await uploadRelease(page, { version: "1.0", file: files.write("names.zip", zip) });
   await expectRefused(page, id, "file.badNames");
   await expect(page.getByTestId("form-error")).toContainText("GAME/CAFÉ.TXT");
+});
+
+test("a zip whose entry hides another name in a Unicode Path field is refused, naming the entry", async ({ page, apps }) => {
+  const id = await apps.create("TwoNames");
+  const zip = makeZip([...sampleEntries(), { name: "MV.dot", data: Buffer.from("a"), unicodeName: "z.dot" }]);
+  await uploadRelease(page, { version: "1.0", file: files.write("two.zip", zip) });
+  await expectRefused(page, id, "file.twoNames");
+  await expect(page.getByTestId("form-error")).toContainText("MV.dot");
+});
+
+test("a zip over 16 MB unpacked is refused", async ({ page, apps }) => {
+  const id = await apps.create("Unpacked");
+  const zip = makeZip([{ name: "A.BIN", data: Buffer.from("a"), usize: 16 * 1024 * 1024 + 1 }]);
+  await uploadRelease(page, { version: "1.0", file: files.write("big.zip", zip) });
+  await expectRefused(page, id, "file.unpackedTooLarge");
 });
 
 test("a truncated zip is refused", async ({ page, apps }) => {

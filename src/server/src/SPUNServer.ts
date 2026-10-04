@@ -11,8 +11,9 @@ import {
   INFO_CATEGORIES_MAX,
   INFO_PAGE_SIZE,
   LIST_PAGE_SIZE,
+  namedFile,
   pageCount,
-  parseAppId,
+  parseAppName,
   parsePage,
   parseSerial,
   zipAppId,
@@ -43,6 +44,16 @@ export class SPUNServer extends Server {
       default:
         return super.command(cmd, params);
     }
+  }
+
+  // A file of an app may be asked for by an alias; it is served from the app id's path
+  protected override async sendFile(file: string): Promise<Answer> {
+    const named = namedFile(path.posix.join(this.currentWorkingDirectory, file).replace(/^\/+/, ""));
+    const id = named && (await this.catalogue.resolve(named[1]));
+    if (named && id) {
+      return super.sendFile(path.posix.relative(this.currentWorkingDirectory, "/" + named[0] + id + named[2]));
+    }
+    return super.sendFile(file);
   }
 
   protected override async sendFileDangerous(
@@ -94,8 +105,13 @@ export class SPUNServer extends Server {
     });
   }
 
+  private async appId(param: string | undefined): Promise<AppId | null> {
+    const name = parseAppName(param ?? "");
+    return name === null ? null : this.catalogue.resolve(name);
+  }
+
   private async info(params: readonly string[]): Promise<Uint8Array> {
-    const id = parseAppId(params[0] ?? "");
+    const id = await this.appId(params[0]);
     if (id === null) {
       return encodeError("NoApp_ERROR");
     }
@@ -118,7 +134,7 @@ export class SPUNServer extends Server {
   }
 
   private async changelog(params: readonly string[]): Promise<Uint8Array> {
-    const id = parseAppId(params[0] ?? "");
+    const id = await this.appId(params[0]);
     if (id === null) {
       return encodeError("NoApp_ERROR");
     }

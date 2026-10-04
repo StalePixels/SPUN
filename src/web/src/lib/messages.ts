@@ -1,6 +1,12 @@
 import type { DotMove } from "./dotcommands";
 import type { Problem } from "./problems";
-import { INSTALL_DIR_BANNED, MAX_SCREENSHOT_TEXT, MAX_UPLOAD_TEXT } from "./rules";
+import {
+  INSTALL_DIR_BANNED,
+  MAX_IMAGE_PIXELS_TEXT,
+  MAX_SCREENSHOT_TEXT,
+  MAX_UNPACKED_TEXT,
+  MAX_UPLOAD_TEXT,
+} from "./rules";
 
 // Behaviour and tests never depend on this wording.
 
@@ -64,10 +70,22 @@ export function problemMessage(problem: Problem): string {
       return `The install directory cannot use: ${characters(problem.chars)}`;
     case "installDir.dots":
       return "The install directory cannot have . or .. in its path.";
+    case "installDir.partEnd":
+      return "A directory name in the install directory cannot end with a dot or a space.";
     case "installDir.banned":
       return `The install directory cannot be / or be in ${INSTALL_DIR_BANNED.slice(1).join(", ")}.`;
     case "installDir.length":
       return `The install directory must be ${max} characters or fewer.`;
+    case "alias.invalidCharacters":
+      return `An alias cannot use: ${characters(problem.chars)}`;
+    case "alias.length":
+      return `An alias must be ${min} to ${max} characters.`;
+    case "alias.isAppId":
+      return "That alias is the id of an app, or of a deleted app.";
+    case "alias.taken":
+      return "Another alias already has that name.";
+    case "alias.notFound":
+      return "This app has no such alias.";
     case "category.invalidCharacters":
       return `A category slug or name cannot use: ${characters(problem.chars)}`;
     case "category.length":
@@ -91,9 +109,19 @@ export function problemMessage(problem: Problem): string {
     case "file.incompatible":
       return "A Next cannot install this zip.";
     case "file.badNames":
-      return `These names in the zip use characters a Next cannot use (only printable ASCII, without " * < > ? |): ${(problem.names ?? []).join(", ")}`;
+      return `These names in the zip use characters a Next cannot use (only printable ASCII, without " * < > ? | ~), or have a part that ends with a dot or a space: ${(problem.names ?? []).join(", ")}`;
+    case "file.twoNames":
+      return `These entries in the zip carry a second, Unicode name that differs from their own. The Next uses only their own name: ${(problem.names ?? []).join(", ")}`;
+    case "file.unpackedTooLarge":
+      return `The files in the zip add up to more than ${MAX_UNPACKED_TEXT} unpacked.`;
     case "file.dotCommandTaken":
-      return `The zip has dot commands at its root that the Next already has: ${(problem.names ?? []).join(", ")}`;
+      return `The zip has dot commands at its root whose names are reserved for the Next or for SPUN: ${(problem.names ?? []).join(", ")}`;
+    case "file.dotNameEnd":
+      return `These dot commands at the root of the zip have names that end with a dot or a space: ${(problem.names ?? []).join(", ")}`;
+    case "dotOverride.notReserved":
+      return "That name is not a reserved dot command name, so it needs no override.";
+    case "dotOverride.taken":
+      return "This app already has an override for that name.";
     case "screenshot.missing":
       return "Choose an image file to upload.";
     case "screenshot.tooLarge":
@@ -102,6 +130,10 @@ export function problemMessage(problem: Problem): string {
       return "The file is not a PNG, JPEG, GIF or WebP image that the CMS can read.";
     case "screenshot.badNxi":
       return "An NXI file must be 49,664 bytes (256×192) or 82,432 bytes (320×256), with its palette first.";
+    case "screenshot.tooManyPixels":
+      return `The image is larger than ${MAX_IMAGE_PIXELS_TEXT}. A screenshot needs no more than 320×256.`;
+    case "upload.tooMany":
+      return `You can upload ${max} files an hour, releases and screenshots together. Try again in ${Math.ceil((problem.wait ?? 60) / 60)} minutes.`;
     case "screenshot.notFound":
       return "Screenshot not found.";
     case "app.notFound":

@@ -12,6 +12,13 @@ export async function stripesPng(width: number, height: number): Promise<Buffer>
   return sharp(rgb, { raw: { width, height, channels: 3 } }).png().toBuffer();
 }
 
+// A black PNG of any size; a few kilobytes even when it has millions of pixels.
+export async function blackPng(width: number, height: number): Promise<Buffer> {
+  return sharp({ create: { width, height, channels: 3, background: "#000000" } })
+    .png({ palette: true, colours: 2, compressionLevel: 9 })
+    .toBuffer();
+}
+
 // A ready NXI: a 512-byte palette, then one byte for each pixel, 256x192 or 320x256.
 export function readyNxi(width: 256 | 320 = 320): Buffer {
   const data = Buffer.alloc(512 + (width === 320 ? 320 * 256 : 256 * 192));

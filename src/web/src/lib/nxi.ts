@@ -1,5 +1,6 @@
 import sharp from "sharp";
 import type { Problem } from "./problems";
+import { MAX_IMAGE_PIXELS } from "./rules";
 
 export type NxiWidth = 256 | 320;
 
@@ -175,23 +176,36 @@ export function decodeNxi(data: Buffer): Frame | null {
   return { width: mode.width, height: mode.height, rgb };
 }
 
+let queue: Promise<unknown> = Promise.resolve();
+
+// One image conversion at a time, so parallel uploads cannot add up their memory.
+export function oneAtATime<T>(task: () => Promise<T>): Promise<T> {
+  const run = queue.then(task, task);
+  queue = run.catch(() => undefined);
+  return run;
+}
+
 export type Conversion = { ok: true; nxi: Buffer; width: NxiWidth } | { ok: false; error: Problem };
 
 // Nearest-neighbour by a whole-number scale, so every Next pixel is a source
-// pixel; centred on black; never scaled up. Alpha goes onto black too.
+// pixel; centred on black; never scaled up. Alpha goes onto black too. The
+// size comes from the header, before anything is decoded; limitInputPixels
+// guards the decode as well.
 export async function convertImage(data: Buffer): Promise<Conversion> {
   const notImage = { ok: false, error: { code: "screenshot.notImage" } } as const;
   let size: SizeChoice;
   let source: Buffer;
   let channels: number;
   try {
-    const image = sharp(data);
-    const meta = await image.metadata();
+    const meta = await sharp(data).metadata();
     if (!meta.format || !INPUT_FORMATS.includes(meta.format) || !meta.width || !meta.height) {
       return notImage;
     }
+    if (meta.width * meta.height > MAX_IMAGE_PIXELS) {
+      return { ok: false, error: { code: "screenshot.tooManyPixels" } };
+    }
     size = chooseSize(meta.width, meta.height);
-    const pipeline = image.flatten({ background: "#000000" }).toColourspace("srgb").removeAlpha();
+    const pipeline = sharp(data, { limitInputPixels: MAX_IMAGE_PIXELS }).flatten({ background: "#000000" }).toColourspace("srgb").removeAlpha();
     if (size.scale > 1) {
       pipeline.resize(size.width, size.height, { kernel: "nearest", fit: "fill", fastShrinkOnLoad: false });
     }

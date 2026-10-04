@@ -23,6 +23,7 @@
 #define TAG_SCREENSHOT      0x1A
 #define TAG_SLOT            0x1B
 #define TAG_WIDTH           0x1C
+#define TAG_INSTALL_DIR     0x1D
 #define TAG_DESCRIPTION     0x80
 #define TAG_CHANGELOG       0x81
 

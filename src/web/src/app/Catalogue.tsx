@@ -27,6 +27,7 @@ export async function Catalogue({ slug, page, query }: { slug: string | null; pa
           defaultValue={query}
           className="form-control"
           aria-label="Search"
+          placeholder="e.g. tetris"
           data-testid="catalogue-search-input"
         />
         <button type="submit" className="btn btn-primary" data-testid="catalogue-search-submit">

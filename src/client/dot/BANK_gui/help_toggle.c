@@ -16,7 +16,7 @@ void help_toggle(void) {
 
     helpShown = true;
     listCount = 0;
-    tm_blank(0, HEAD_ROW, GUI_COLUMNS * (STATUS_ROW - HEAD_ROW), ATTR_TEXT);
+    tm_blank(0, HEAD_ROW, GUI_COLUMNS * (STATUS_ROW + 1 - HEAD_ROW), ATTR_TEXT);
     while(*line && row != STATUS_ROW) {
         line = tm_text(2, row++, line, ATTR_TEXT);
         if(*line) line++;

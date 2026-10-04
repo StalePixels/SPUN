@@ -29,8 +29,10 @@ uint32_t downloads;
 unsigned char description[257];
 unsigned char date[11];
 unsigned char installDir[256];
+unsigned char suggestDir[65];
 unsigned char zipPath[24];
 bool getInstalled;
+bool downloading;
 bool quiet;
 unsigned char *updateError;
 
@@ -43,7 +45,8 @@ static uint8_t valueArg = 0;
 static uint8_t pageArg = 0;
 
 // An exit in the middle of a block read leaves another page over the screen and BASIC's
-// system variables at $4000, so the ULA's pages go back first; NextZXOS's own mapping goes back last
+// system variables at $4000, so the ULA's pages go back first; NextZXOS's own mapping goes back last.
+// A download cut short, for example by a lost connection, leaves no part of its zip
 static void shutdown() {
 #ifdef __ZXNEXT
     NBN_PageOut();
@@ -51,6 +54,7 @@ static void shutdown() {
 #endif
     _far(BANK_NET, (void *(*)(void))net_close);
     if(file_out) esxdos_f_close(file_out);
+    if(downloading) esxdos_f_unlink(zipPath);
     if(file_in) esxdos_f_close(file_in);
     NBN_Free();
 
@@ -151,10 +155,19 @@ bool choose_dir(void) {
 }
 #endif
 
+#ifdef __ZXNEXT
+// NextZXOS keeps a dot command's own file open, which stops a get from deleting C:/dot/spun.
+// By main() the loader has read every bank, so .spun never needs it
+static void own_file_close(void) {
+    esx_f_close(esx_m_gethandle());
+}
+#endif
+
 int main(int argc, char** argv) {
     unsigned char *error;
 
 #ifdef __ZXNEXT
+    own_file_close();
     startMmu2 = ZXN_READ_REG(REG_MMU0 + 2);
     startMmu3 = ZXN_READ_REG(REG_MMU0 + 3);
     old_cpu_speed = ZXN_READ_REG(REG_TURBO_MODE);

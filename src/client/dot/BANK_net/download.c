@@ -55,6 +55,7 @@ unsigned char *download(char *id) {
 
         exit(errno);
     }
+    downloading = true;
 
     if(!quiet) printf("Name: %s\nSize: %lu bytes\n", filename, (unsigned long)size);
 
@@ -76,6 +77,7 @@ unsigned char *download(char *id) {
     NET_Send("\x0D\x0A", 2);
 
     close_out();
+    downloading = false;
 
     if(!quiet) printf("Transfer complete\n");
     return NULL;

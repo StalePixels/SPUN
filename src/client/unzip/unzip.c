@@ -18,6 +18,7 @@ static uint16_t entries;
 static uint32_t cd_offset;
 static uint32_t cd_pos;
 static unsigned char zip;
+static bool overwrite_all;
 
 static uint16_t get16(const unsigned char *p) {
     return p[0] | ((uint16_t)p[1] << 8);
@@ -113,6 +114,72 @@ static unsigned char check_entry(void) {
     return UNZIP_OK;
 }
 
+// A .dot file at the root of the zip is a dot command, for C:/dot without its extension. The
+// name goes in tail, which is free once the directory is found
+static bool dot_target(void) {
+    const char *name = path + dir_len + 1;
+    uint16_t len = strlen(name);
+
+    if (len < 5 || strpbrk(name, "/\\") || stricmp(name + len - 4, ".dot")) return false;
+    memcpy(tail, "C:/dot/", 7);
+    memcpy(tail + 7, name, len - 4);
+    tail[len + 3] = 0;
+    return true;
+}
+
+static unsigned char check_existing(void) {
+    const char *target = dot_target() ? (const char *)tail : path;
+    unsigned char answer;
+
+    if (overwrite_all || path[strlen(path) - 1] == '/') return UNZIP_OK;
+    errno = 0;
+    esx_f_stat(target, &st);
+    if (errno) return UNZIP_OK;
+    answer = overwrite_ask(target);
+    if (answer == OVERWRITE_CANCEL) return UNZIP_E_ABORT;
+    if (answer == OVERWRITE_ALL) overwrite_all = true;
+    return UNZIP_OK;
+}
+
+// Both files are open before tail, which holds the target's name, becomes the copy buffer
+static unsigned char copy_dot(void) {
+    unsigned char in, out;
+    unsigned char r = UNZIP_OK;
+    uint16_t got;
+
+    errno = 0;
+    in = esx_f_open(path, ESX_MODE_READ | ESX_MODE_OPEN_EXIST);
+    if (errno) return UNZIP_E_READ;
+    out = esx_f_open(tail, ESX_MODE_WRITE | ESX_MODE_OPEN_CREAT_TRUNC);
+    if (errno) {
+        esx_f_close(in);
+        return UNZIP_E_CREATE;
+    }
+    do {
+        got = esx_f_read(in, tail, sizeof(tail));
+        if (errno) r = UNZIP_E_READ;
+        else if (esx_f_write(out, tail, got) != got || errno) r = UNZIP_E_WRITE;
+    } while (r == UNZIP_OK && got == sizeof(tail));
+    esx_f_close(out);
+    if (r == UNZIP_OK && errno) r = UNZIP_E_WRITE;
+    esx_f_close(in);
+    if (r != UNZIP_OK) return r;
+    errno = 0;
+    esx_f_unlink(path);
+    return errno ? UNZIP_E_WRITE : UNZIP_OK;
+}
+
+// esxDOS renames only within a drive, and not onto a file that exists
+static unsigned char move_dot(void) {
+    if ((path[0] | 0x20) != 'c' || path[1] != ':') return copy_dot();
+    errno = 0;
+    esx_f_unlink(tail);
+    if (errno && errno != ESX_ENOENT) return UNZIP_E_CREATE;
+    errno = 0;
+    esx_f_rename(path, tail);
+    return errno ? UNZIP_E_CREATE : UNZIP_OK;
+}
+
 static unsigned char make_dirs(char *end) {
     char *p;
 
@@ -171,6 +238,7 @@ unsigned char unzip(const char *zip_path, const char *dir_path) {
     uint16_t e;
     int error;
 
+    overwrite_all = false;
     dir_len = strlen(dir_path);
     while (dir_len && dir_path[dir_len - 1] == '/') dir_len--;
     if (dir_len + 2 >= sizeof(path)) return UNZIP_E_PATH;
@@ -186,6 +254,7 @@ unsigned char unzip(const char *zip_path, const char *dir_path) {
     for (e = 0; r == UNZIP_OK && e < entries; e++) {
         r = next_entry();
         if (r == UNZIP_OK) r = check_entry();
+        if (r == UNZIP_OK) r = check_existing();
     }
 
     if (r == UNZIP_OK && (pages = unzip_pages_alloc(&job)) < UNZIP_PAGES) r = UNZIP_E_NOMEM;
@@ -197,6 +266,11 @@ unsigned char unzip(const char *zip_path, const char *dir_path) {
             if (r != UNZIP_OK) break;
             progress(PROGRESS_UNZIP, e + 1, entries, (unsigned char *)path + dir_len + 1);
             r = extract_entry();
+        }
+        cd_pos = cd_offset;
+        for (e = 0; r == UNZIP_OK && e < entries; e++) {
+            r = next_entry();
+            if (r == UNZIP_OK && dot_target()) r = move_dot();
         }
     }
 

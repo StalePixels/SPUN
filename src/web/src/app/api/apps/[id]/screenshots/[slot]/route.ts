@@ -3,7 +3,7 @@ import { clearOwnScreenshot, uploadOwnScreenshot } from "@/lib/screenshots";
 
 type Params = { id: string; slot: string };
 
-export const PUT = apiRoute<Params>({ body: "screenshot", upload: true }, async ({ request, user, params }) => {
+export const PUT = apiRoute<Params>({ body: "screenshot" }, async ({ request, user, params }) => {
   const target = apiScreenshotParams(params);
   if ("error" in target) {
     return apiProblem(target.error);

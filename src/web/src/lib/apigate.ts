@@ -17,7 +17,7 @@ import {
   API_RELEASE_BODY_MAX,
   API_REQUEST_WINDOW_SECONDS,
   API_SCREENSHOT_BODY_MAX,
-  API_UPLOADS_PER_HOUR,
+  UPLOADS_PER_HOUR,
 } from "./rules";
 
 export type ApiLimits = {
@@ -31,7 +31,7 @@ export type ApiLimits = {
 
 export type BodyKind = "json" | "release" | "screenshot";
 
-export type ApiOptions = { body: BodyKind; upload?: boolean };
+export type ApiOptions = { body: BodyKind };
 
 export type ApiCall = {
   method: string;
@@ -73,7 +73,7 @@ export function apiLimits(env: Record<string, string | undefined> = process.env)
     screenshotBody: limitFrom(env, "API_SCREENSHOT_BODY_MAX", API_SCREENSHOT_BODY_MAX),
     ipPerMinute: limitFrom(env, "API_IP_PER_MINUTE", API_IP_PER_MINUTE),
     keyPerMinute: limitFrom(env, "API_KEY_PER_MINUTE", API_KEY_PER_MINUTE),
-    uploadsPerHour: limitFrom(env, "API_UPLOADS_PER_HOUR", API_UPLOADS_PER_HOUR),
+    uploadsPerHour: limitFrom(env, "UPLOADS_PER_HOUR", UPLOADS_PER_HOUR),
   };
 }
 
@@ -85,8 +85,10 @@ function refuse(status: number, error: Problem, retryAfter?: number): GateResult
   return retryAfter === undefined ? { ok: false, status, error } : { ok: false, status, error, retryAfter };
 }
 
+export type RateDeps = Pick<ApiDeps, "nowMs" | "count">;
+
 export async function rateCheck(
-  deps: ApiDeps,
+  deps: RateDeps,
   name: string,
   limit: number,
   windowSeconds: number,
@@ -164,12 +166,6 @@ export async function checkApiCall(call: ApiCall, options: ApiOptions, deps: Api
   const keyWait = await rateCheck(deps, `key:${keyId}`, deps.limits.keyPerMinute, 60);
   if (keyWait !== null) {
     return refuse(429, { code: "api.tooManyRequests" }, keyWait);
-  }
-  if (options.upload) {
-    const uploadWait = await rateCheck(deps, `upload:${keyId}`, deps.limits.uploadsPerHour, 3600);
-    if (uploadWait !== null) {
-      return refuse(429, { code: "api.tooManyRequests" }, uploadWait);
-    }
   }
   return signed;
 }

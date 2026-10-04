@@ -45,10 +45,3 @@ gui/spun_gui.c
 ../unzip/unzip_pages.c
 ../unzip/unzip_stub.asm
 ../unzip/inflate_pages.asm.m4
-TMP/BANK_net.o
-TMP/BANK_net_nbn.o
-TMP/BANK_packages.o
-TMP/BANK_gui.o
-TMP/BANK_screen.o
-TMP/BANK_sprites.o
-TMP/BANK_app.o

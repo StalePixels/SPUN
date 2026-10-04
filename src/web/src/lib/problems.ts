@@ -19,8 +19,14 @@ export type ProblemCode =
   | "installDir.drive"
   | "installDir.invalidCharacters"
   | "installDir.dots"
+  | "installDir.partEnd"
   | "installDir.banned"
   | "installDir.length"
+  | "alias.invalidCharacters"
+  | "alias.length"
+  | "alias.isAppId"
+  | "alias.taken"
+  | "alias.notFound"
   | "category.invalidCharacters"
   | "category.length"
   | "category.reserved"
@@ -33,11 +39,18 @@ export type ProblemCode =
   | "file.notZip"
   | "file.incompatible"
   | "file.dotCommandTaken"
+  | "file.dotNameEnd"
+  | "dotOverride.notReserved"
+  | "dotOverride.taken"
   | "file.badNames"
+  | "file.twoNames"
+  | "file.unpackedTooLarge"
   | "screenshot.missing"
   | "screenshot.tooLarge"
   | "screenshot.notImage"
   | "screenshot.badNxi"
+  | "screenshot.tooManyPixels"
+  | "upload.tooMany"
   | "screenshot.notFound"
   | "app.notFound"
   | "app.limitReached"
@@ -63,4 +76,6 @@ export type Problem = {
   min?: number;
   max?: number;
   limit?: number | null;
+  // Seconds until another try can work.
+  wait?: number;
 };

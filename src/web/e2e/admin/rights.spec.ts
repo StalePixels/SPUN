@@ -2,12 +2,15 @@ import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 import {
+  aliasRow,
   appIdsOf,
+  dotOverrideNames,
   appRow,
   firstLiveCategoryId,
   insertApp,
   linkCategory,
   insertSession,
+  markAppDeleted,
   insertUser,
   releaseRow,
   removeTestUser,
@@ -151,6 +154,105 @@ test("an admin saves another user's install directory through the same rules", a
   await clickHydrated(page.getByTestId("app-submit"));
   await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "installDir.banned");
   expect(await appRow(id)).toMatchObject({ install_dir: "/apps/theirs" });
+});
+
+test("aliases: add, refuse bad names and clashes, move to another app, remove", async ({ page, people }) => {
+  const owner = await people.user();
+  const first = await people.app(owner, "Alias one");
+  const second = await people.app(owner, "Alias two");
+  const gone = await people.app(owner, "Alias gone");
+  await markAppDeleted(gone);
+  const alias = `e2e-${Date.now().toString(36)}`;
+  const add = page.getByTestId("alias-add");
+
+  async function addAlias(name: string) {
+    await add.getByTestId("alias-add-name").fill(name);
+    await clickHydrated(add.getByTestId("alias-add-submit"));
+  }
+
+  await page.goto(`/admin/apps/${first}`);
+  await expect(page.getByTestId("aliases-none")).toBeVisible();
+  await addAlias(alias.toUpperCase());
+  await expect(add.getByTestId("form-saved")).toBeVisible();
+  expect(await aliasRow(alias)).toEqual({ alias, app_id: first });
+  await expect(page.getByTestId(`alias-${alias}`)).toBeVisible();
+
+  // Each code differs from the one before, so each wait sees its own submit.
+  for (const [name, code] of [
+    ["bad name!", "alias.invalidCharacters"],
+    [second.toUpperCase(), "alias.isAppId"],
+    ["x".repeat(17), "alias.length"],
+    [gone, "alias.isAppId"],
+    [alias, "alias.taken"],
+  ]) {
+    await addAlias(name);
+    await expect(add.getByTestId("form-error"), name).toHaveAttribute("data-error", code);
+  }
+  expect(await aliasRow(second)).toBeUndefined();
+  expect(await aliasRow(gone)).toBeUndefined();
+
+  const row = page.getByTestId(`alias-${alias}`);
+  await row.getByTestId("alias-move-target").fill("zzzzzz");
+  await clickHydrated(row.getByTestId("alias-move-submit"));
+  await expect(row.getByTestId("form-error")).toHaveAttribute("data-error", "app.notFound");
+  expect(await aliasRow(alias)).toEqual({ alias, app_id: first });
+
+  await row.getByTestId("alias-move-target").fill(second.toUpperCase());
+  await clickHydrated(row.getByTestId("alias-move-submit"));
+  await expect(page.getByTestId(`alias-${alias}`)).toHaveCount(0);
+  expect(await aliasRow(alias)).toEqual({ alias, app_id: second });
+
+  await page.goto(`/admin/apps/${second}`);
+  await clickHydrated(page.getByTestId(`alias-${alias}`).getByTestId("alias-remove"));
+  await expect(page.getByTestId(`alias-${alias}`)).toHaveCount(0);
+  expect(await aliasRow(alias), "a removed alias leaves no row").toBeUndefined();
+});
+
+test("dot command overrides: add in any case, refuse others and repeats, let uploads ship the name, remove", async ({
+  page,
+  people,
+}) => {
+  const owner = await people.user();
+  const id = await people.app(owner, "Overrides");
+  const add = page.getByTestId("dot-override-add");
+  const spunZip = () => files.write("spun.zip", makeZip([...sampleEntries(), { name: "spun.dot", data: Buffer.from("a") }]));
+
+  async function addOverride(name: string) {
+    await add.getByTestId("dot-override-add-name").fill(name);
+    await clickHydrated(add.getByTestId("dot-override-add-submit"));
+  }
+
+  await page.goto(`/admin/apps/${id}`);
+  await expect(page.getByTestId("dot-overrides-none")).toBeVisible();
+  await uploadRelease(page, { version: "1.0", file: spunZip() });
+  await expect(page.getByTestId("form-error").first()).toHaveAttribute("data-error", "file.dotCommandTaken");
+  expect(await releaseRow(id, 1)).toBeUndefined();
+
+  await addOverride("SPUN");
+  await expect(add.getByTestId("form-saved")).toBeVisible();
+  expect(await dotOverrideNames(id)).toEqual(["spun"]);
+  await expect(page.getByTestId("dot-override-spun")).toBeVisible();
+
+  // Each code differs from the one before, so each wait sees its own submit.
+  for (const [name, code] of [
+    ["mytool", "dotOverride.notReserved"],
+    ["Spun", "dotOverride.taken"],
+  ]) {
+    await addOverride(name);
+    await expect(add.getByTestId("form-error"), name).toHaveAttribute("data-error", code);
+  }
+  expect(await dotOverrideNames(id)).toEqual(["spun"]);
+
+  await uploadRelease(page, { version: "1.0", file: spunZip() });
+  await expect(page).toHaveURL(new RegExp(`/admin/apps/${id}/releases/1$`));
+
+  await page.goto(`/admin/apps/${id}`);
+  await clickHydrated(page.getByTestId("dot-override-spun").getByTestId("dot-override-remove"));
+  await expect(page.getByTestId("dot-override-spun")).toHaveCount(0);
+  expect(await dotOverrideNames(id), "a removed override leaves no row").toEqual([]);
+  await uploadRelease(page, { version: "2.0", file: spunZip() });
+  await expect(page.getByTestId("form-error").first()).toHaveAttribute("data-error", "file.dotCommandTaken");
+  expect(await releaseRow(id, 2)).toBeUndefined();
 });
 
 test("a move puts the zips under the new owner and changes the owner row", async ({ page, people }) => {

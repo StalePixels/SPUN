@@ -52,6 +52,8 @@ test("a banned install directory and a drive letter are refused and change nothi
     ["/SYS/foo", "installDir.banned"],
     ["C:\\apps", "installDir.drive"],
     ["/", "installDir.banned"],
+    ["/dot.", "installDir.partEnd"],
+    ["/machines/next", "installDir.banned"],
   ]) {
     await page.getByTestId("app-install-dir").fill(input);
     await clickHydrated(page.getByTestId("app-submit"));

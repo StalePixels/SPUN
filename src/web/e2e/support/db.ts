@@ -102,6 +102,23 @@ export async function setAppDownloads(appId: string, downloads: number): Promise
   await query("update apps set downloads = ? where id = ?", [downloads, appId]);
 }
 
+export async function aliasRow(alias: string) {
+  const [row] = await query<{ alias: string; app_id: string }>("select alias, app_id from aliases where alias = ?", [
+    alias,
+  ]);
+  return row;
+}
+
+export async function dotOverrideNames(appId: string): Promise<string[]> {
+  const rows = await query<{ name: string }>("select name from dot_overrides where app_id = ? order by name", [appId]);
+  return rows.map((row) => row.name);
+}
+
+// Only on an app that the test made.
+export async function insertDotOverride(appId: string, name: string): Promise<void> {
+  await query("insert into dot_overrides (app_id, name) values (?, ?)", [appId, name]);
+}
+
 export async function markAppDeleted(appId: string): Promise<void> {
   await query("update apps set deleted_at = now() where id = ?", [appId]);
 }
@@ -149,7 +166,7 @@ export async function removeApps(appIds: string[]): Promise<void> {
     "select apps.id, users.username from apps join users on users.id = apps.user_id where apps.id in (?)",
     [appIds],
   );
-  for (const table of ["app_categories", "saved_apps", "screenshots", "releases"]) {
+  for (const table of ["aliases", "dot_overrides", "app_categories", "saved_apps", "screenshots", "releases"]) {
     await query(`delete from ${table} where app_id in (?)`, [appIds]);
   }
   await query("delete from apps where id in (?)", [appIds]);

@@ -16,6 +16,7 @@ export interface AppRow {
   downloads?: number;
   categories?: string[];
   screenshots?: Screenshot[];
+  installDir?: string;
   deleted?: boolean;
 }
 
@@ -28,10 +29,16 @@ export interface ReleaseRow {
   deleted?: boolean;
 }
 
+export interface AliasRow {
+  alias: string;
+  appId: string;
+}
+
 export interface Tables {
   users: UserRow[];
   apps: AppRow[];
   releases: ReleaseRow[];
+  aliases?: AliasRow[];
 }
 
 const slice = <T>(rows: T[], offset: number, limit: number): Slice<T> => ({
@@ -68,6 +75,12 @@ export function fakeCatalogue(tables: Tables): Catalogue {
   };
 
   return {
+    async resolve(name) {
+      const id = tables.apps.find((app) => app.id === name)?.id ??
+        tables.aliases?.find((row) => row.alias === name)?.appId;
+      return id === undefined ? null : (id as AppId);
+    },
+
     async find(text, offset, limit) {
       const needle = text.toLowerCase();
       const matches = publicApps()
@@ -93,12 +106,14 @@ export function fakeCatalogue(tables: Tables): Catalogue {
         return null;
       }
       return {
+        id: app.id as AppId,
         username: username(app.userId),
         title: app.title,
         description: app.description,
         downloads: app.downloads ?? 0,
         categories: [...(app.categories ?? [])].sort(),
         screenshots: [...(app.screenshots ?? [])].sort((a, b) => a.slot - b.slot),
+        installDir: app.installDir ?? null,
       };
     },
 

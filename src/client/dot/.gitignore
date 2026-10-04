@@ -7,4 +7,4 @@ BUILD-test
 BUILD-test-posix
 TMP-test
 BUILD-test-s
-BUILD-lan
+BUILD-dev

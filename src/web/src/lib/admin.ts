@@ -1,13 +1,15 @@
 import "server-only";
 import { and, asc, count, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { apps, categories, releases, sessions, settings, users } from "@/db/schema";
-import { deleteApp, moveApp, restoreApp, type AppId } from "./apps";
+import { aliases, apps, categories, dotOverrides, releases, sessions, settings, users } from "@/db/schema";
+import { appIdStore, checkAliasFree, deleteApp, moveApp, parseAppId, restoreApp, type AppId } from "./apps";
 import { setAppCategories } from "./categories";
+import { checkDotOverride } from "./dotcommands";
 import { db } from "./db";
+import { isDuplicateEntry } from "./dberrors";
 import type { Problem } from "./problems";
 import { addRelease, appBinStore, type Upload } from "./releases";
-import { checkVersionUnused } from "./rules";
+import { checkAlias, checkVersionUnused } from "./rules";
 import { currentUser, isAdmin } from "./session";
 import { DEFAULT_APP_LIMIT, getSetting } from "./settings";
 import { clearScreenshot, putScreenshot, type ScreenshotUpload } from "./screenshots";
@@ -149,7 +151,7 @@ export async function adminRenameUser(userId: string, username: string): Promise
       username,
     );
   } catch (err) {
-    if ((err as { code?: string }).code === "ER_DUP_ENTRY") {
+    if (isDuplicateEntry(err)) {
       return { error: { code: "username.taken" } };
     }
     throw err;
@@ -233,6 +235,95 @@ export async function adminGetApp(appId: AppId) {
     .innerJoin(users, eq(users.id, apps.userId))
     .where(eq(apps.id, appId));
   return app;
+}
+
+export async function adminListAliases(appId: AppId): Promise<string[]> {
+  await requireAdmin();
+  const rows = await db()
+    .select({ alias: aliases.alias })
+    .from(aliases)
+    .where(eq(aliases.appId, appId))
+    .orderBy(asc(aliases.alias));
+  return rows.map((row) => row.alias);
+}
+
+export async function adminAddAlias(appId: AppId, input: string): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  const checked = checkAlias(input);
+  if (!checked.ok) {
+    return { error: checked.error };
+  }
+  if (!(await adminGetApp(appId))) {
+    return { error: { code: "app.notFound" } };
+  }
+  const taken = await checkAliasFree(appIdStore(), checked.alias);
+  if (taken) {
+    return { error: taken };
+  }
+  try {
+    await db().insert(aliases).values({ alias: checked.alias, appId });
+  } catch (err) {
+    if (isDuplicateEntry(err)) {
+      return { error: { code: "alias.taken" } };
+    }
+    throw err;
+  }
+  return {};
+}
+
+export async function adminMoveAlias(appId: AppId, alias: string, rawTarget: string): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  const target = parseAppId(rawTarget.trim());
+  if (!target || !(await adminGetApp(target))) {
+    return { error: { code: "app.notFound" } };
+  }
+  const owned = and(eq(aliases.alias, alias), eq(aliases.appId, appId));
+  if ((await db().select({ alias: aliases.alias }).from(aliases).where(owned)).length === 0) {
+    return { error: { code: "alias.notFound" } };
+  }
+  await db().update(aliases).set({ appId: target }).where(owned);
+  return {};
+}
+
+// A hard delete, unlike the rest of the CMS: an alias is meant to be reused.
+export async function adminRemoveAlias(appId: AppId, alias: string): Promise<void> {
+  await requireAdmin();
+  await db().delete(aliases).where(and(eq(aliases.alias, alias), eq(aliases.appId, appId)));
+}
+
+export async function adminListDotOverrides(appId: AppId): Promise<string[]> {
+  await requireAdmin();
+  const rows = await db()
+    .select({ name: dotOverrides.name })
+    .from(dotOverrides)
+    .where(eq(dotOverrides.appId, appId))
+    .orderBy(asc(dotOverrides.name));
+  return rows.map((row) => row.name);
+}
+
+export async function adminAddDotOverride(appId: AppId, input: string): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  const checked = checkDotOverride(input);
+  if (!checked.ok) {
+    return { error: checked.error };
+  }
+  if (!(await adminGetApp(appId))) {
+    return { error: { code: "app.notFound" } };
+  }
+  try {
+    await db().insert(dotOverrides).values({ appId, name: checked.name });
+  } catch (err) {
+    if (isDuplicateEntry(err)) {
+      return { error: { code: "dotOverride.taken" } };
+    }
+    throw err;
+  }
+  return {};
+}
+
+export async function adminRemoveDotOverride(appId: AppId, name: string): Promise<void> {
+  await requireAdmin();
+  await db().delete(dotOverrides).where(and(eq(dotOverrides.appId, appId), eq(dotOverrides.name, name)));
 }
 
 export async function adminListReleases(appId: AppId) {
@@ -374,7 +465,7 @@ export async function adminUpdateRelease(
       .set(changes)
       .where(and(eq(releases.appId, appId), eq(releases.serial, serial)));
   } catch (err) {
-    if ((err as { code?: string }).code === "ER_DUP_ENTRY") {
+    if (isDuplicateEntry(err)) {
       return { error: { code: "version.taken" } };
     }
     throw err;
@@ -425,10 +516,6 @@ async function slugTaken(slug: string, exceptId?: number): Promise<boolean> {
   return rows.some((row) => row.id !== exceptId);
 }
 
-function duplicate(err: unknown): boolean {
-  return (err as { code?: string }).code === "ER_DUP_ENTRY";
-}
-
 export async function adminAddCategory(slug: string, name: string): Promise<{ error?: Problem }> {
   await requireAdmin();
   if (await slugTaken(slug)) {
@@ -437,7 +524,7 @@ export async function adminAddCategory(slug: string, name: string): Promise<{ er
   try {
     await db().insert(categories).values({ slug, name });
   } catch (err) {
-    if (duplicate(err)) {
+    if (isDuplicateEntry(err)) {
       return { error: { code: "category.taken" } };
     }
     throw err;
@@ -453,7 +540,7 @@ export async function adminUpdateCategory(id: number, slug: string, name: string
   try {
     await db().update(categories).set({ slug, name }).where(eq(categories.id, id));
   } catch (err) {
-    if (duplicate(err)) {
+    if (isDuplicateEntry(err)) {
       return { error: { code: "category.taken" } };
     }
     throw err;

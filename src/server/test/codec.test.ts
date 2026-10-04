@@ -68,6 +68,7 @@ const FIND_HEX = reply(
 
 const INFO_PAGE: InfoPage = {
   app: {
+    id: "tst001" as AppId,
     username: user,
     title: "Test App",
     description: "A test app",
@@ -77,6 +78,7 @@ const INFO_PAGE: InfoPage = {
       { slot: 1, width: 256 },
       { slot: 3, width: 320 },
     ],
+    installDir: null,
   },
   total: 2,
   page: 1,
@@ -87,19 +89,21 @@ const INFO_PAGE: InfoPage = {
   ],
 };
 
-const INFO_HEX = reply(
+const INFO_BODY =
   counts(2, 1, 1) +
-    field(0x12, ascii(user)) +
-    field(0x13, ascii("Test App")) +
-    field(0x80, ascii("A test app")) +
-    field(0x16, le(7, 4)) +
-    field(0x19, ascii("Games")) +
-    field(0x19, ascii("Tools")) +
-    field(0x1a, field(0x1b, "01") + field(0x1c, le(256, 2))) +
-    field(0x1a, field(0x1b, "03") + field(0x1c, le(320, 2))) +
-    field(0x18, field(0x14, le(2, 2)) + field(0x15, ascii("1.1")) + field(0x17, ascii("2026-09-26"))) +
-    field(0x18, field(0x14, le(1, 2)) + field(0x15, ascii("1.0")) + field(0x17, ascii("2020-05-17"))),
-);
+  field(0x11, ascii("tst001")) +
+  field(0x12, ascii(user)) +
+  field(0x13, ascii("Test App")) +
+  field(0x80, ascii("A test app")) +
+  field(0x16, le(7, 4)) +
+  field(0x19, ascii("Games")) +
+  field(0x19, ascii("Tools")) +
+  field(0x1a, field(0x1b, "01") + field(0x1c, le(256, 2))) +
+  field(0x1a, field(0x1b, "03") + field(0x1c, le(320, 2))) +
+  field(0x18, field(0x14, le(2, 2)) + field(0x15, ascii("1.1")) + field(0x17, ascii("2026-09-26"))) +
+  field(0x18, field(0x14, le(1, 2)) + field(0x15, ascii("1.0")) + field(0x17, ascii("2020-05-17")));
+
+const INFO_HEX = reply(INFO_BODY);
 
 const CHANGELOG: Changelog = { serial: 3, version: "1.2", date: "2026-10-01", changelog: "Fixed\nthings" };
 
@@ -131,6 +135,15 @@ test("SPINFO encodes to the agreed bytes", () => {
 
 test("SPINFO decodes the agreed bytes", () => {
   assert.deepEqual(decodeInfo(bytes(INFO_HEX)), INFO_PAGE);
+});
+
+test("SPINFO sends the suggested install directory after the download count, only when there is one", () => {
+  const suggested: InfoPage = { ...INFO_PAGE, app: { ...INFO_PAGE.app, installDir: "/apps/wifi/spun" } };
+  const expected = reply(
+    INFO_BODY.replace(field(0x16, le(7, 4)), field(0x16, le(7, 4)) + field(0x1d, ascii("/apps/wifi/spun"))),
+  );
+  assert.equal(toHex(encodeInfo(suggested)), expected);
+  assert.deepEqual(decodeInfo(bytes(expected)), suggested);
 });
 
 test("SPCLOG encodes and decodes the agreed bytes", () => {
@@ -194,7 +207,16 @@ test("decode rejects an error text and an unknown format version", () => {
 });
 
 // The largest values the CMS allows (src/web/src/lib/rules.ts and the column sizes).
-const MAX = { username: 16, title: 32, version: 16, description: 256, category: 32, changelog: 1024, slots: 5 };
+const MAX = {
+  username: 16,
+  title: 32,
+  version: 16,
+  description: 256,
+  category: 32,
+  changelog: 1024,
+  slots: 5,
+  installDir: 64,
+};
 
 const largestApp = {
   id: "zzzzzz" as AppId,
@@ -221,12 +243,14 @@ test("the largest SPFIND and SPLIST pages fit in one block", () => {
 test("the largest SPINFO page fits in one block", () => {
   const page = encodeInfo({
     app: {
+      id: "zzzzzz" as AppId,
       username: "u".repeat(MAX.username),
       title: "t".repeat(MAX.title),
       description: "d".repeat(MAX.description),
       downloads: 0xffffffff,
       categories: Array.from({ length: INFO_CATEGORIES_MAX }, () => "c".repeat(MAX.category)),
       screenshots: Array.from({ length: MAX.slots }, (_, i) => ({ slot: i + 1, width: 320 })),
+      installDir: "/".repeat(MAX.installDir),
     },
     total: 0xffff,
     page: 0xffff,
@@ -237,9 +261,9 @@ test("the largest SPINFO page fits in one block", () => {
       date: "2026-10-01",
     })),
   });
-  // counts 12, username 18, title 34, description 259, downloads 6,
+  // counts 12, app id 8, username 18, title 34, description 259, downloads 6, install directory 66,
   // categories 34 each, screenshots 9 each, releases 36 each.
-  const body = 12 + 18 + 34 + 259 + 6 + INFO_CATEGORIES_MAX * 34 + MAX.slots * 9 + INFO_PAGE_SIZE * 36;
+  const body = 12 + 8 + 18 + 34 + 259 + 6 + 66 + INFO_CATEGORIES_MAX * 34 + MAX.slots * 9 + INFO_PAGE_SIZE * 36;
   assert.equal(page.length - 5, body);
   assert.ok(body <= MAX_BLOCK_SIZE);
 });

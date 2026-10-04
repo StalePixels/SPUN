@@ -1,6 +1,8 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { checkNxi, chooseSize, convertImage, decodeNxi, NXI_MODES, type Frame } from "./nxi";
+import { deflateSync } from "node:zlib";
+import { checkNxi, chooseSize, convertImage, decodeNxi, NXI_MODES, oneAtATime, type Frame } from "./nxi";
+import { MAX_IMAGE_PIXELS } from "./rules";
 
 // The 8 levels the Next shows for each 3-bit channel.
 const LEVELS = [0, 36, 73, 109, 146, 182, 219, 255];
@@ -154,3 +156,69 @@ describe("NXI upload check", () => {
     },
   );
 });
+
+// A black 1-bit PNG of any size, a few kilobytes even when it is huge, as an
+// attacker would send it. interlace makes libvips decode the whole image.
+function blackPng(width: number, height: number, interlace = false): Buffer {
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (data: Buffer) => {
+    let c = 0xffffffff;
+    for (const byte of data) c = crcTable[(c ^ byte) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type: string, data: Buffer) => {
+    const head = Buffer.alloc(8);
+    head.writeUInt32BE(data.length, 0);
+    head.write(type, 4, "latin1");
+    const tail = Buffer.alloc(4);
+    tail.writeUInt32BE(crc(Buffer.concat([head.subarray(4), data])), 0);
+    return Buffer.concat([head, data, tail]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 1;
+  header[12] = interlace ? 1 : 0;
+  const rows = Buffer.alloc((1 + Math.ceil(width / 8)) * height * (interlace ? 2 : 1));
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", header),
+    chunk("IDAT", deflateSync(rows)),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+describe("the image size limit", () => {
+  it("takes an image of exactly 4 megapixels", async () => {
+    expect(MAX_IMAGE_PIXELS).toBe(4_000_000);
+    expect((await convertImage(blackPng(2000, 2000))).ok).toBe(true);
+  });
+
+  it("refuses an image over 4 megapixels from its header, huge or just over", async () => {
+    const refused = { ok: false, error: { code: "screenshot.tooManyPixels" } };
+    expect(await convertImage(blackPng(2000, 2001))).toEqual(refused);
+    expect(await convertImage(blackPng(16383, 16383, true))).toEqual(refused);
+  });
+});
+
+describe("oneAtATime", () => {
+  it("starts each task only when the one before has ended, also after a failure", async () => {
+    const order: string[] = [];
+    const task = (name: string, ms: number, fail = false) => async () => {
+      order.push(`${name} start`);
+      await new Promise((resolve) => setTimeout(resolve, ms));
+      order.push(`${name} end`);
+      if (fail) throw new Error(name);
+      return name;
+    };
+    const runs = [oneAtATime(task("a", 30)), oneAtATime(task("b", 5, true)), oneAtATime(task("c", 1))];
+    const results = await Promise.allSettled(runs);
+    expect(order).toEqual(["a start", "a end", "b start", "b end", "c start", "c end"]);
+    expect(results.map((result) => result.status)).toEqual(["fulfilled", "rejected", "fulfilled"]);
+  });
+});
+

@@ -1,7 +1,15 @@
 import { existsSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { makeApiKey, signedFetch, signedJson, type ApiKey } from "../support/api";
-import { insertApp, insertUser, releaseRow, removeApps, removeTestUser } from "../support/db";
+import {
+  insertApp,
+  insertDotOverride,
+  insertUser,
+  releaseRow,
+  removeApps,
+  removeTestUser,
+  userByUsername,
+} from "../support/db";
 import { binFile, expect, fileSize, releaseFile, test, todayUtc, uniqueTitle } from "../support/pages";
 import { accounts } from "../support/settings";
 import { makeZip, sampleEntries } from "../support/zips";
@@ -135,6 +143,79 @@ test("the API refuses a zip the Next cannot unzip, one with bad names and one ov
   }
 });
 
+test("the API judges a zip by the names the Next uses, refuses a name part ending in a dot or space, and caps the unpacked size", async ({
+  page,
+}) => {
+  const key = await makeApiKey(page);
+  const id = await createApp(page, key);
+  try {
+    const hidden = makeZip([...sampleEntries(), { name: "MV.dot", data: Buffer.from("a"), unicodeName: "z.dot" }]);
+    expect(await upload(page, key, id, { version: "1.0" }, hidden)).toEqual({
+      status: 400,
+      body: { error: { code: "file.twoNames", names: ["MV.dot"] } },
+    });
+    const partEnd = makeZip([...sampleEntries(), { name: "GAME./A.TXT", data: Buffer.from("a") }]);
+    expect(await upload(page, key, id, { version: "1.0" }, partEnd)).toEqual({
+      status: 400,
+      body: { error: { code: "file.badNames", names: ["GAME./A.TXT"] } },
+    });
+    const half = 8 * 1024 * 1024;
+    const big = makeZip([
+      { name: "A.BIN", data: Buffer.from("a"), usize: half },
+      { name: "B.BIN", data: Buffer.from("b"), usize: half + 1 },
+    ]);
+    expect(await upload(page, key, id, { version: "1.0" }, big)).toEqual({
+      status: 400,
+      body: { error: { code: "file.unpackedTooLarge", max: 16 * 1024 * 1024 } },
+    });
+    expect(await releaseRow(id, 1)).toBeUndefined();
+    expect(existsSync(releaseFile(client.username, id, 1))).toBe(false);
+
+    const same = makeZip([...sampleEntries(), { name: "MINE.dot", data: Buffer.from("a"), unicodeName: "MINE.dot" }]);
+    expect(await upload(page, key, id, { version: "1.0" }, same)).toEqual({
+      status: 201,
+      body: { serial: 1, dotMoves: [{ file: "MINE.dot", to: "C:/dot/MINE" }] },
+    });
+  } finally {
+    await removeApps([id]);
+  }
+});
+
+test("the API ships a reserved dot command only for an app with an override, and refuses a name ending in a dot or space", async ({
+  page,
+}) => {
+  const key = await makeApiKey(page);
+  const id = await createApp(page, key);
+  // Straight into the database, as the app limit allows the client one app of its own.
+  const other = await insertApp((await userByUsername(client.username)).id, uniqueTitle("API other"));
+  try {
+    const zip = () => makeZip([...sampleEntries(), { name: "SPUN.DOT", data: Buffer.from("a") }]);
+    expect(await upload(page, key, id, { version: "1.0" }, zip())).toEqual({
+      status: 400,
+      body: { error: { code: "file.dotCommandTaken", names: ["SPUN"] } },
+    });
+    for (const name of ["LS .dot", "ls..dot"]) {
+      expect(await upload(page, key, id, { version: "1.0" }, makeZip([...sampleEntries(), { name, data: Buffer.from("a") }]))).toEqual({
+        status: 400,
+        body: { error: { code: "file.dotNameEnd", names: [name.slice(0, -4)] } },
+      });
+    }
+    expect(await releaseRow(id, 1)).toBeUndefined();
+
+    await insertDotOverride(id, "spun");
+    expect(await upload(page, key, other, { version: "1.0" }, zip()), "another app's override does not count").toEqual({
+      status: 400,
+      body: { error: { code: "file.dotCommandTaken", names: ["SPUN"] } },
+    });
+    expect(await upload(page, key, id, { version: "1.0" }, zip())).toEqual({
+      status: 201,
+      body: { serial: 1, dotMoves: [{ file: "SPUN.DOT", to: "C:/dot/SPUN" }] },
+    });
+  } finally {
+    await removeApps([id, other]);
+  }
+});
+
 test("the API names each root .dot file it will move, and refuses a dot command the Next already has", async ({
   page,
 }) => {
@@ -154,12 +235,12 @@ test("the API names each root .dot file it will move, and refuses a dot command 
     expect(existsSync(releaseFile(client.username, id, 1))).toBe(false);
 
     const moves = [
-      { file: "spun.dot", to: "C:/dot/spun" },
+      { file: "mine.dot", to: "C:/dot/mine" },
       { file: "TOOL.DOT", to: "C:/dot/TOOL" },
     ];
     const zip = makeZip([
       ...sampleEntries(),
-      { name: "spun.dot", data: Buffer.from("a") },
+      { name: "mine.dot", data: Buffer.from("a") },
       { name: "TOOL.DOT", data: Buffer.from("b") },
       { name: "BIN/LS.DOT", data: Buffer.from("c") },
     ]);

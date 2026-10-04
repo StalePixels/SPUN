@@ -1,17 +1,31 @@
 NAME ?= spun
-BUILD_DIR ?= ./BUILD-$(NAME)
 TMP_DIR ?= ./TMP
 COMMON ?= ../../vendor/NBNtools/clients/common
 UNZIP ?= ../unzip
 UNZIP_BANK ?= 33
 
-SERVER ?= spun.nextbestnetwork.com
-PORT ?= 48128
+PROD_SERVER := spun.nextbestnetwork.com
+PROD_PORT := 48128
+SERVER ?= $(PROD_SERVER)
+PORT ?= $(PROD_PORT)
+
+# A build for any other server goes to BUILD-dev, so it never overwrites the release build
+ifeq ($(SERVER):$(PORT),$(PROD_SERVER):$(PROD_PORT))
+BUILD_DIR ?= ./BUILD-$(NAME)
+else
+BUILD_DIR ?= ./BUILD-dev
+endif
+
+VERSION := $(shell cat ../VERSION)
+
+# The release zip: the dot command as spun.dot, then these files, all at the zip's root
+ZIP := $(BUILD_DIR)/$(NAME)-$(VERSION).zip
+ZIP_FILES := ../zip/README.txt
 
 CRT := 30
 
 CC=zcc
-CCFLAGS=+zxn -vn -O3 -startup=$(CRT) -clib=new -pragma-include:zpragma.inc
+CCFLAGS=+zxn -vn -O3 -startup=$(CRT) -clib=new -pragma-include:zpragma.inc '-DSPUN_VERSION=\"$(VERSION)\"'
 LDFLAGS=-m -lm
 # Main ends below the stack, which starts at $BFD8 (zpragma.inc) with 1K reserved;
 # above it are the mouse variables and the IM2 table (gui/isr.asm).
@@ -26,7 +40,7 @@ MV := mv
 POSIX_DIR ?= ./BUILD-posix
 POSIX_CC ?= cc
 POSIX_CFLAGS ?= -O2 -Wall -Wno-pointer-sign
-POSIX_DEFINES='-DSPUN_SERVER="$(SERVER)"' '-DSPUN_PORT="$(PORT)"'
+POSIX_DEFINES='-DSPUN_SERVER="$(SERVER)"' '-DSPUN_PORT="$(PORT)"' '-DSPUN_VERSION="$(VERSION)"'
 POSIX_SRC := spun.c common/file.c $(filter-out BANK_net/gui_%.c,$(wildcard BANK_net/*.c)) BANK_packages/catalogue.c BANK_packages/install.c BANK_packages/usage.c \
 	unzip_posix.c $(COMMON)/nbn.c $(COMMON)/nbn_pages.c $(COMMON)/net_posix.c $(COMMON)/posix.c
 POSIX_LIBZIP := $(shell pkg-config --cflags --libs libzip)
@@ -95,19 +109,29 @@ bank_43: dirs
 
 banks: bank_47 bank_47_nbn bank_46 bank_45 bank_44 bank_43 bank_42
 
+BANK_OBJS := $(addprefix $(TMP_DIR)/BANK_,net.o net_nbn.o packages.o gui.o screen.o sprites.o app.o)
+
 # Run inside $(UNZIP): INCLUDE resolves from the current directory
 $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin: $(UNZIP)/inflate.asm $(UNZIP)/inflate_job.inc
 	cd $(UNZIP) && z88dk-z80asm -mz80n -b inflate.asm && rm -f inflate.o inflate.bin
 
 dotn: banks $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin
-	$(CC) $(CCFLAGS) $(LDFLAGS) $(DEFINES) @spun.lst -o$(NAME) -create-app -subtype=dotn $(CZFLAGS)
+	$(CC) $(CCFLAGS) $(LDFLAGS) $(DEFINES) @spun.lst $(BANK_OBJS) -o$(NAME) -create-app -subtype=dotn $(CZFLAGS)
 	$(MV) $(NAME) $(BUILD_DIR)/$(NAME)
 
 binaries: dirs dotn
 
+zip: binaries
+	$(RM) $(BUILD_DIR)/zip $(ZIP)
+	$(MKDIR) $(BUILD_DIR)/zip
+	cp $(BUILD_DIR)/$(NAME) $(BUILD_DIR)/zip/spun.dot
+	cp $(ZIP_FILES) $(BUILD_DIR)/zip/
+	cd $(BUILD_DIR)/zip && zip -X -q $(abspath $(ZIP)) spun.dot $(notdir $(ZIP_FILES))
+	$(RM) $(BUILD_DIR)/zip
+
 posix: $(POSIX_DIR)/$(NAME)
 
-$(POSIX_DIR)/$(NAME): $(POSIX_SRC) $(POSIX_GEN) $(COMMON)/*.h *.h common/*.h BANK_*/*.h $(UNZIP)/unzip.h
+$(POSIX_DIR)/$(NAME): $(POSIX_SRC) $(POSIX_GEN) $(COMMON)/*.h *.h common/*.h BANK_*/*.h $(UNZIP)/unzip.h ../VERSION
 	$(POSIX_CC) $(POSIX_CFLAGS) $(POSIX_DEFINES) -o $@ $(POSIX_SRC) $(POSIX_GEN) $(POSIX_LIBZIP)
 
 $(POSIX_DIR)/messages.c: $(COMMON)/messages.asm $(COMMON)/messages2c.awk
@@ -123,4 +147,4 @@ $(POSIX_DIR)/help.c: help.txt
 	$(MKDIR) $(POSIX_DIR)
 	( echo "unsigned char help[] = {"; xxd -i < help.txt; echo ", 0 };" ) > $@
 
-.PHONY: all clean dirs banks bank_47 bank_47_nbn bank_46 bank_45 bank_44 bank_43 bank_42 dotn binaries posix
+.PHONY: all clean dirs banks bank_47 bank_47_nbn bank_46 bank_45 bank_44 bank_43 bank_42 dotn binaries zip posix

@@ -57,8 +57,11 @@ extern uint16_t serial;
 extern unsigned char version[17];
 extern uint32_t downloads;
 extern unsigned char installDir[256];
+// The publisher's suggested install directory, without the drive; empty if there is none
+extern unsigned char suggestDir[65];
 extern unsigned char zipPath[24];
 extern bool getInstalled;
+extern bool downloading;
 // The GUI's screen is not the ULA's, so .spun's lines of progress are not printed
 extern bool quiet;
 extern unsigned char *updateError;

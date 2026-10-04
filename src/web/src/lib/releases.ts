@@ -1,6 +1,6 @@
 import "server-only";
 import { and, eq, isNull, max } from "drizzle-orm";
-import { apps, releases, users } from "@/db/schema";
+import { apps, dotOverrides, releases, users } from "@/db/schema";
 import { ownedApp, type AppBinStore, type AppId } from "./apps";
 import { db } from "./db";
 import { checkDotMoves, dotMoves, type DotMove } from "./dotcommands";
@@ -16,7 +16,10 @@ import {
   SERIAL_MAX,
 } from "./rules";
 import { binScreenshots, unbinScreenshots } from "./screenshots";
+import { apiLimits } from "./apigate";
+import { countHit } from "./redis";
 import { binRelease, readRelease, releasePath, removeFile, unbinRelease, writeRelease } from "./storage";
+import { checkUploadRate } from "./uploadlimit";
 import { checkZip } from "./zip";
 
 export type Upload = { version: string; day: string; changelog: string | null; data: Buffer; dotMoves: DotMove[] };
@@ -42,6 +45,7 @@ export async function checkUpload(
   releaseDate: string,
   changelog: string,
   file: UploadFile | null,
+  overrides: string[],
 ): Promise<UploadCheck> {
   const versionError = checkVersion(version);
   if (versionError) {
@@ -66,11 +70,20 @@ export async function checkUpload(
     return { ok: false, error: zip.error };
   }
   const moves = dotMoves(zip.entries);
-  const clash = checkDotMoves(moves);
+  const clash = checkDotMoves(moves, overrides);
   if (clash) {
     return { ok: false, error: clash };
   }
   return { ok: true, upload: { version, day: date.day, changelog: log.changelog, data: file.data, dotMoves: moves } };
+}
+
+export async function appDotOverrides(appId: AppId): Promise<string[]> {
+  const rows = await db().select({ name: dotOverrides.name }).from(dotOverrides).where(eq(dotOverrides.appId, appId));
+  return rows.map((row) => row.name);
+}
+
+export async function uploadRate(userId: string): Promise<Problem | null> {
+  return checkUploadRate({ nowMs: () => Date.now(), count: countHit }, userId, apiLimits().uploadsPerHour);
 }
 
 export async function formFile(value: FormDataEntryValue | null): Promise<UploadFile | null> {
@@ -91,12 +104,17 @@ export async function uploadOwnRelease(
   if (!(await ownedApp(userId, appId))) {
     return { error: { code: "app.notFound" } };
   }
+  const limited = await uploadRate(userId);
+  if (limited) {
+    return { error: limited };
+  }
   const form = await readForm();
   const checked = await checkUpload(
     formText(form, "version"),
     formText(form, "releaseDate"),
     formText(form, "changelog"),
     await formFile(form.get("file")),
+    await appDotOverrides(appId),
   );
   if (!checked.ok) {
     return { error: checked.error };

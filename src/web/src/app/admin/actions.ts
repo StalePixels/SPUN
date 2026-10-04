@@ -5,7 +5,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  adminAddAlias,
   adminAddCategory,
+  adminAddDotOverride,
   adminClearScreenshot,
   adminDeleteApp,
   adminDeleteCategory,
@@ -14,8 +16,11 @@ import {
   adminDisableUser,
   adminEnableUser,
   adminGetUser,
+  adminMoveAlias,
   adminMoveApp,
   adminPutScreenshot,
+  adminRemoveAlias,
+  adminRemoveDotOverride,
   adminRenameUser,
   adminRestoreApp,
   adminRestoreCategory,
@@ -30,7 +35,7 @@ import {
 } from "@/lib/admin";
 import { parseAppId } from "@/lib/apps";
 import { liveCategories } from "@/lib/categories";
-import { checkUpload, formFile } from "@/lib/releases";
+import { appDotOverrides, checkUpload, formFile } from "@/lib/releases";
 import { checkScreenshot } from "@/lib/screenshots";
 import {
   checkCategoryChoice,
@@ -146,6 +151,7 @@ export async function uploadAdminRelease(
     text(formData, "releaseDate"),
     text(formData, "changelog"),
     await formFile(formData.get("file")),
+    await appDotOverrides(appId),
   );
   if (!checked.ok) {
     return { error: checked.error };
@@ -226,6 +232,71 @@ export async function moveAdminApp(rawId: string, _prev: FormState, formData: Fo
   }
   revalidatePath(appPath(appId));
   return { saved: true };
+}
+
+export async function addAdminAlias(rawId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const appId = parseAppId(rawId);
+  if (!appId) {
+    return { error: { code: "app.notFound" } };
+  }
+  const { error } = await adminAddAlias(appId, text(formData, "alias"));
+  if (error) {
+    return { error };
+  }
+  revalidatePath(appPath(appId));
+  return { saved: true };
+}
+
+export async function moveAdminAlias(
+  rawId: string,
+  alias: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  await requireAdmin();
+  const appId = parseAppId(rawId);
+  if (!appId) {
+    return { error: { code: "app.notFound" } };
+  }
+  const { error } = await adminMoveAlias(appId, alias, text(formData, "target"));
+  if (error) {
+    return { error };
+  }
+  revalidatePath(appPath(appId));
+  return { saved: true };
+}
+
+export async function removeAdminAlias(rawId: string, alias: string): Promise<void> {
+  await requireAdmin();
+  const appId = parseAppId(rawId);
+  if (appId) {
+    await adminRemoveAlias(appId, alias);
+    revalidatePath(appPath(appId));
+  }
+}
+
+export async function addAdminDotOverride(rawId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const appId = parseAppId(rawId);
+  if (!appId) {
+    return { error: { code: "app.notFound" } };
+  }
+  const { error } = await adminAddDotOverride(appId, text(formData, "name"));
+  if (error) {
+    return { error };
+  }
+  revalidatePath(appPath(appId));
+  return { saved: true };
+}
+
+export async function removeAdminDotOverride(rawId: string, name: string): Promise<void> {
+  await requireAdmin();
+  const appId = parseAppId(rawId);
+  if (appId) {
+    await adminRemoveDotOverride(appId, name);
+    revalidatePath(appPath(appId));
+  }
 }
 
 export async function saveAdminRelease(

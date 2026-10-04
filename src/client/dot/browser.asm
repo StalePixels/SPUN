@@ -9,7 +9,9 @@ PUBLIC _dos_mapping
 _fileTypes:
    defb $ff
 _browserHelp:
-   defm "Go to the install directory and press SPACE"
+   defm "Go to the install dir, press SPACE."
+   defb 13
+   defm "K: new dir. EDIT: parent dir."
    defb 0
 
 ; unsigned int dos_mapping(unsigned char drive) __z88dk_fastcall

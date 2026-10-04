@@ -4,6 +4,7 @@
 extern unsigned char *unzipErrors[];
 
 unsigned char install(char *id) __z88dk_fastcall;
+unsigned char *dir_make(void);
 unsigned char *spun_get(char *id);
 unsigned char *spun_update(void);
 unsigned char *install_check(char *id);

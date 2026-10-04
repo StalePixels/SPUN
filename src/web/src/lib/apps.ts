@@ -1,7 +1,7 @@
 import "server-only";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
-import { apps, releases } from "@/db/schema";
+import { aliases, apps, releases } from "@/db/schema";
 import { appCategoryList, liveCategories, setAppCategories } from "./categories";
 import { db } from "./db";
 import { appCount, appLimit } from "./limits";
@@ -34,9 +34,11 @@ function newAppId(): AppId {
   return generateId() as AppId;
 }
 
+// App ids and aliases share one namespace. Both lookups ignore case.
 export interface AppIdStore {
   // Must count deleted apps too: a deleted app keeps its id.
-  idExists(id: AppId): Promise<boolean>;
+  idExists(name: string): Promise<boolean>;
+  aliasExists(name: string): Promise<boolean>;
 }
 
 export async function allocateAppId(
@@ -45,10 +47,31 @@ export async function allocateAppId(
 ): Promise<AppId> {
   for (;;) {
     const id = generate();
-    if (!(await store.idExists(id))) {
+    if (!(await store.idExists(id)) && !(await store.aliasExists(id))) {
       return id;
     }
   }
+}
+
+export async function checkAliasFree(store: AppIdStore, alias: string): Promise<Problem | null> {
+  if (await store.idExists(alias)) {
+    return { code: "alias.isAppId" };
+  }
+  return (await store.aliasExists(alias)) ? { code: "alias.taken" } : null;
+}
+
+// The columns' collation ignores case.
+export function appIdStore(): AppIdStore {
+  return {
+    async idExists(name) {
+      const rows = await db().select({ id: apps.id }).from(apps).where(eq(apps.id, name as AppId));
+      return rows.length > 0;
+    },
+    async aliasExists(name) {
+      const rows = await db().select({ alias: aliases.alias }).from(aliases).where(eq(aliases.alias, name));
+      return rows.length > 0;
+    },
+  };
 }
 
 // The zips of an app are in DATA_DIR only while the app and the release are
@@ -165,12 +188,7 @@ export async function addApp(userId: string, fields: AppFields): Promise<{ error
   if (!canCreateApp(await appCount(userId), limit)) {
     return { error: { code: "app.limitReached", limit } };
   }
-  const id = await allocateAppId({
-    async idExists(candidate) {
-      const rows = await db().select({ id: apps.id }).from(apps).where(eq(apps.id, candidate));
-      return rows.length > 0;
-    },
-  });
+  const id = await allocateAppId(appIdStore());
   await db().transaction(async (tx) => {
     await tx
       .insert(apps)

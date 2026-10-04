@@ -48,10 +48,23 @@ Each run makes a new timestamp and nonce, so you can run the same command again.
 ## The order of the work
 
 1. **Categories.** Get the categories and choose the ids that fit the software. An app needs at least one.
-2. **Create the app.** Give it a title, a description and its categories. Keep the app id the answer gives you. If the app already exists, list the user's apps and use its id.
+2. **Create the app.** Give it a title, a description and its categories, and a suggested install directory if the software needs one (`installDir`, see below). Keep the app id the answer gives you. If the app already exists, list the user's apps and use its id. A change to an existing app sends all its fields again: a field left out is made empty.
 3. **Upload a release.** Upload the zip with its version, and a changelog if there is one. The app becomes public when it has a release.
-4. **Add screenshots.** Slot 1 is the main screenshot. Add more in the other slots if the user has them.
+4. **Add screenshots.** Slot 1 is the main screenshot. Add more in the other slots if the user has them. An image may have at most 4 megapixels, width times height (`screenshot.tooManyPixels`); the Next shows 320×256 at most, so scale a larger image down first.
 5. **Save apps.** If the user asks, save apps to their list, or remove them from it.
+
+## The suggested install directory
+
+`installDir` is optional. It is the directory where SPUN on the Next installs the app the first time. The user can change it, and SPUN does not use it after the first install. Leave it empty for no suggestion.
+
+The CMS stores it in one form: `\` becomes `/`, it starts with `/`, repeated slashes become one, and a slash at the end goes. `apps\wifi\spun` and `/apps/wifi/spun/` are both stored as `/apps/wifi/spun`. It refuses a directory that breaks any of these rules:
+
+- Up to 64 characters, in the stored form (`installDir.length`).
+- No colon, so no drive letter (`installDir.drive`).
+- Only printable ASCII (space to `}`), and none of `" * ? < > | ~` (`installDir.invalidCharacters`).
+- No `.` or `..` part (`installDir.dots`).
+- No part that ends with a dot or a space, such as `/games./x` (`installDir.partEnd`).
+- Not `/`, and not `/nextzxos`, `/sys`, `/dot` or `/machines` or anything under them, in any case (`installDir.banned`).
 
 ## What the CMS checks before it accepts a release
 
@@ -68,6 +81,7 @@ Check the zip and the version before you upload. The CMS refuses a release that 
 The Next unzips each release itself, with its own unzipper. The CMS refuses a zip that this unzipper cannot unzip (`file.incompatible`) or that is not a readable zip (`file.notZip`):
 
 - At most 4 MB (`file.tooLarge`).
+- The files in it add up to at most 16 MB unpacked (`file.unpackedTooLarge`).
 - One file, not split across several disks or parts.
 - Fewer than 65535 entries.
 - No ZIP64 records: no entry, and no zip, too large for the normal zip fields.
@@ -75,3 +89,22 @@ The Next unzips each release itself, with its own unzipper. The CMS refuses a zi
 - No encryption.
 - Each name is 1 to 252 bytes long.
 - No name starts with `/` or `\`, contains `:`, or has a `..` part.
+
+The CMS also refuses a zip with a name that is not printable ASCII (space to `}`), that has any of `" * < > ? | ~`, or that has a part ending with a dot or a space, such as `GAME./A.TXT` (`file.badNames`). The error lists those names in `names`.
+
+The Next reads only the name stored in each entry. Some zip tools add a second, Unicode name (the Info-ZIP Unicode Path field). The CMS refuses an entry whose second name differs from its own (`file.twoNames`), and lists those entries in `names`. Plain ASCII names never need one.
+
+### Dot commands
+
+A file at the root of the zip whose name ends `.dot`, in any case, is a dot command. After SPUN installs or updates the app on the Next, it moves each one to `C:/dot/` without the extension: `wifi.dot` goes to `C:/dot/wifi`. A `.dot` file in a directory of the zip stays where it is.
+
+The names of the dot commands the Next already ships, such as `ls`, `cd` and `nbnget`, and `spun`, are reserved. The CMS refuses a zip with a root `.dot` file of a reserved name, in any case (`file.dotCommandTaken`), unless an admin has given the app an override for that name. The error lists those names in `names`. If the user maintains such a command, they ask the SPUN admin for an override.
+
+The CMS also refuses a root `.dot` file whose name ends with a dot or a space before `.dot`, such as `LS .dot` (`file.dotNameEnd`). The error lists those names in `names`.
+
+When the CMS accepts the release, the answer lists each move in `dotMoves`. Tell the user about each one.
+
+## The upload limit
+
+Each user may make a set number of uploads an hour, releases and screenshots together; `/api.md` gives the number. Uploads with all of the user's keys and through the web forms count together. Over the limit the answer is `429` with `upload.tooMany`: `wait` and the `Retry-After` header give the seconds until uploads work again. Tell the user, and do not try again before then.
+

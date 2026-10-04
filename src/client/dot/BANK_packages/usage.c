@@ -2,7 +2,7 @@
 #include "usage.h"
 
 void help_and_exit(unsigned char *error) {
-    printf("%s\n", help);
+    printf(".spun " SPUN_VERSION "\n%s\n", help);
 
 #ifdef __ZXNEXT
     ZXN_NEXTREGA(REG_TURBO_MODE, old_cpu_speed);

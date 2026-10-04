@@ -9,9 +9,13 @@ export const CHANGELOG_MAX = 1024;
 export const SERIAL_MAX = 0xffff;
 export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 export const MAX_UPLOAD_TEXT = "4 MB";
+export const MAX_UNPACKED_BYTES = 16 * 1024 * 1024;
+export const MAX_UNPACKED_TEXT = "16 MB";
 export const SCREENSHOT_SLOTS = 5;
 export const MAX_SCREENSHOT_BYTES = 16 * 1024 * 1024;
 export const MAX_SCREENSHOT_TEXT = "16 MB";
+export const MAX_IMAGE_PIXELS = 4_000_000;
+export const MAX_IMAGE_PIXELS_TEXT = "4 megapixels";
 
 // API defaults, for production. A value of the same name in .env overrides each.
 export const API_JSON_BODY_MAX = 64 * 1024;
@@ -19,7 +23,7 @@ export const API_RELEASE_BODY_MAX = MAX_UPLOAD_BYTES + 64 * 1024;
 export const API_SCREENSHOT_BODY_MAX = MAX_SCREENSHOT_BYTES + 64 * 1024;
 export const API_IP_PER_MINUTE = 60;
 export const API_KEY_PER_MINUTE = 60;
-export const API_UPLOADS_PER_HOUR = 20;
+export const UPLOADS_PER_HOUR = 20;
 export const API_REQUEST_WINDOW_SECONDS = 5 * 60;
 export const KEY_NAME_MAX = TITLE_MAX;
 
@@ -117,14 +121,16 @@ export function checkChangelog(input: string): ChangelogCheck {
 }
 
 export const INSTALL_DIR_MAX = 64;
-export const INSTALL_DIR_BANNED = ["/", "/nextzxos", "/sys", "/dot"];
+export const INSTALL_DIR_BANNED = ["/", "/nextzxos", "/sys", "/dot", "/machines"];
 
-const INSTALL_DIR_CHAR = /(?!["*:<>?|])[\x20-\x7e]/;
+// "~" makes 8.3 aliases such as NEXTZX~1.
+const INSTALL_DIR_CHAR = /(?!["*:<>?|~])[\x20-\x7e]/;
 
 export type InstallDirCheck = { ok: true; installDir: string | null } | { ok: false; error: Problem };
 
 // FAT ignores case, so a banned directory is banned in any case, with all
-// that is under it; "/" is banned only by itself.
+// that is under it; "/" is banned only by itself. FAT also drops a dot or a
+// space at the end of a part, so "/dot." would be "/dot".
 export function checkInstallDir(input: string): InstallDirCheck {
   const value = input.trim();
   if (value === "") {
@@ -141,6 +147,9 @@ export function checkInstallDir(input: string): InstallDirCheck {
   if (parts.some((part) => part === "." || part === "..")) {
     return { ok: false, error: { code: "installDir.dots" } };
   }
+  if (parts.some((part) => /[. ]$/.test(part))) {
+    return { ok: false, error: { code: "installDir.partEnd" } };
+  }
   const installDir = `/${parts.join("/")}`;
   const key = installDir.toLowerCase();
   if (INSTALL_DIR_BANNED.some((banned) => key === banned || (banned !== "/" && key.startsWith(`${banned}/`)))) {
@@ -150,6 +159,24 @@ export function checkInstallDir(input: string): InstallDirCheck {
     return { ok: false, error: { code: "installDir.length", max: INSTALL_DIR_MAX } };
   }
   return { ok: true, installDir };
+}
+
+export const ALIAS_MAX = 16;
+
+const ALIAS_CHAR = /[a-z0-9_-]/;
+
+export type AliasCheck = { ok: true; alias: string } | { ok: false; error: Problem };
+
+export function checkAlias(input: string): AliasCheck {
+  const alias = input.toLowerCase();
+  const bad = invalidCharacters(alias, ALIAS_CHAR);
+  if (bad.length > 0) {
+    return { ok: false, error: { code: "alias.invalidCharacters", chars: bad } };
+  }
+  if (alias.length < 1 || alias.length > ALIAS_MAX) {
+    return { ok: false, error: { code: "alias.length", min: 1, max: ALIAS_MAX } };
+  }
+  return { ok: true, alias };
 }
 
 export const CATEGORY_SLUG_MAX = 16;

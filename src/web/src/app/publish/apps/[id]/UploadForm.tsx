@@ -9,6 +9,8 @@ import { uploadRelease, type UploadState } from "../../../actions";
 import { ChangelogField } from "../../../ChangelogField";
 import { Field, FieldRow, RequiredNote } from "../../../Field";
 
+// React resets the form after each action. The box is uncontrolled, so it and historic go
+// back to unticked together.
 export function UploadForm({
   appId,
   upload,
@@ -23,7 +25,7 @@ export function UploadForm({
   const [tooLarge, setTooLarge] = useState(false);
   const [historic, setHistoric] = useState(false);
   return (
-    <Form action={formAction}>
+    <Form action={formAction} onReset={() => setHistoric(false)}>
       <FormError problem={state.error} />
       <RequiredNote />
       <Field
@@ -43,7 +45,6 @@ export function UploadForm({
           type="checkbox"
           id="historic"
           label="Historic release"
-          checked={historic}
           onChange={(event) => setHistoric(event.target.checked)}
         />
         <fieldset disabled={!historic} className={`ms-4 mt-2${historic ? "" : " opacity-50"}`}>

@@ -3,7 +3,7 @@ import type { AppBinStore, AppId, AppIdStore, AppMoveStore } from "./apps";
 
 vi.mock("server-only", () => ({}));
 
-const { allocateAppId, deleteApp, moveApp, parseAppId, restoreApp } = await import("./apps");
+const { allocateAppId, checkAliasFree, deleteApp, moveApp, parseAppId, restoreApp } = await import("./apps");
 
 const K3X9QA = "k3x9qa" as AppId;
 
@@ -27,10 +27,14 @@ function memoryStore(
   rows: Row[],
   releases: Map<number, boolean>,
   files: Set<string>,
+  aliases: string[] = [],
 ): AppIdStore & AppBinStore {
   return {
-    async idExists(id) {
-      return rows.some((row) => row.id === id);
+    async idExists(name) {
+      return rows.some((row) => row.id === name.toLowerCase());
+    },
+    async aliasExists(name) {
+      return aliases.includes(name.toLowerCase());
     },
     async markDeleted(id) {
       const row = rows.find((r) => r.id === id);
@@ -79,9 +83,39 @@ describe("app delete", () => {
     expect(id).toBe("p7m2zz");
   });
 
+  it("skips an id that is already an alias", async () => {
+    const store = memoryStore([], new Map(), new Set(), ["promo1"]);
+    const candidates = ["promo1", "p7m2zz"];
+    const id = await allocateAppId(store, () => candidates.shift()! as AppId);
+    expect(id).toBe("p7m2zz");
+  });
+
   it("generates 6-character ids", async () => {
     const id = await allocateAppId(memoryStore([], new Map(), new Set()));
     expect(id).toMatch(/^[0-9a-z]{6}$/);
+  });
+});
+
+describe("alias namespace", () => {
+  const rows: Row[] = [
+    { id: "k3x9qa", deleted: false },
+    { id: "d3l3t3", deleted: true },
+  ];
+  const store = memoryStore(rows, new Map(), new Set(), ["promoted"]);
+
+  it("refuses an alias that is an app id, live or deleted, in any case", async () => {
+    expect(await checkAliasFree(store, "k3x9qa")).toEqual({ code: "alias.isAppId" });
+    expect(await checkAliasFree(store, "K3X9QA")).toEqual({ code: "alias.isAppId" });
+    expect(await checkAliasFree(store, "d3l3t3")).toEqual({ code: "alias.isAppId" });
+  });
+
+  it("refuses an alias that another alias has, in any case", async () => {
+    expect(await checkAliasFree(store, "promoted")).toEqual({ code: "alias.taken" });
+    expect(await checkAliasFree(store, "Promoted")).toEqual({ code: "alias.taken" });
+  });
+
+  it("accepts a free name", async () => {
+    expect(await checkAliasFree(store, "spun-wifi")).toBeNull();
   });
 });
 

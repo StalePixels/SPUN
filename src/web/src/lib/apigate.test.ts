@@ -7,7 +7,7 @@ import {
   API_KEY_PER_MINUTE,
   API_RELEASE_BODY_MAX,
   API_SCREENSHOT_BODY_MAX,
-  API_UPLOADS_PER_HOUR,
+  UPLOADS_PER_HOUR,
 } from "./rules";
 
 const SERVER_KEY = "server-key-for-tests";
@@ -91,7 +91,6 @@ function signedCall(clock: { nowSeconds(): number }, input: CallInput = {}): Api
 }
 
 const JSON_CALL: ApiOptions = { body: "json" };
-const UPLOAD_CALL: ApiOptions = { body: "release", upload: true };
 
 describe("checkApiCall: signature", () => {
   let clock: ReturnType<typeof fakeDeps>;
@@ -305,24 +304,6 @@ describe("checkApiCall: rate limits", () => {
     clock.advance(15);
     expect((await checkApiCall(signedCall(clock, { ip: "198.51.100.1" }), JSON_CALL, clock.deps)).ok).toBe(true);
   });
-
-  it("gives api.tooManyRequests one upload over the limit per key, until the hour ends", async () => {
-    const upload = () =>
-      signedCall(clock, { method: "POST", headers: { "content-length": "100" }, ip: `192.0.2.${nonceCounter % 250}` });
-    clock.advance(10 * 60);
-    for (let i = 0; i < API_UPLOADS_PER_HOUR; i++) {
-      expect((await checkApiCall(upload(), UPLOAD_CALL, clock.deps)).ok).toBe(true);
-    }
-    expect(await checkApiCall(upload(), UPLOAD_CALL, clock.deps)).toEqual({
-      ok: false,
-      status: 429,
-      error: { code: "api.tooManyRequests" },
-      retryAfter: 50 * 60,
-    });
-    expect((await checkApiCall(signedCall(clock), JSON_CALL, clock.deps)).ok, "a call that is not an upload").toBe(true);
-    clock.advance(50 * 60);
-    expect((await checkApiCall(upload(), UPLOAD_CALL, clock.deps)).ok).toBe(true);
-  });
 });
 
 describe("apiLimits", () => {
@@ -333,7 +314,7 @@ describe("apiLimits", () => {
       screenshotBody: API_SCREENSHOT_BODY_MAX,
       ipPerMinute: API_IP_PER_MINUTE,
       keyPerMinute: API_KEY_PER_MINUTE,
-      uploadsPerHour: API_UPLOADS_PER_HOUR,
+      uploadsPerHour: UPLOADS_PER_HOUR,
     });
   });
 
@@ -345,7 +326,7 @@ describe("apiLimits", () => {
         API_SCREENSHOT_BODY_MAX: "3000",
         API_IP_PER_MINUTE: "4",
         API_KEY_PER_MINUTE: "5",
-        API_UPLOADS_PER_HOUR: "0",
+        UPLOADS_PER_HOUR: "0",
       }),
     ).toEqual({
       jsonBody: 1000,

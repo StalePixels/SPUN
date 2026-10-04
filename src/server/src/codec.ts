@@ -25,6 +25,7 @@ export const Tag = {
   screenshot: 0x1a,
   slot: 0x1b,
   width: 0x1c,
+  installDir: 0x1d,
   description: 0x80,
   changelog: 0x81,
 } as const;
@@ -132,10 +133,14 @@ export function encodeFind(page: FindPage): Uint8Array {
 export function encodeInfo(page: InfoPage): Uint8Array {
   const out = new Writer();
   counts(out, page);
+  out.text(Tag.appId, page.app.id);
   out.text(Tag.username, page.app.username);
   out.text(Tag.title, page.app.title);
   out.text(Tag.description, page.app.description);
   out.u32(Tag.downloads, page.app.downloads);
+  if (page.app.installDir !== null) {
+    out.text(Tag.installDir, page.app.installDir);
+  }
   for (const category of page.app.categories) {
     out.text(Tag.category, category);
   }
@@ -267,14 +272,16 @@ export function decodeFind(bytes: Uint8Array): FindPage {
 
 export function decodeInfo(bytes: Uint8Array): InfoPage {
   const fields = readReply(bytes);
-  const app: AppInfo = { username: "", title: "", description: "", downloads: 0, categories: [], screenshots: [] };
+  const app: AppInfo = { id: "" as AppId, username: "", title: "", description: "", downloads: 0, categories: [], screenshots: [], installDir: null };
   const releases: Release[] = [];
   for (const { tag, value } of fields) {
+    if (tag === Tag.appId) app.id = fieldText(value) as AppId;
     if (tag === Tag.username) app.username = fieldText(value);
     if (tag === Tag.title) app.title = fieldText(value);
     if (tag === Tag.description) app.description = fieldText(value);
     if (tag === Tag.downloads) app.downloads = fieldNumber(value);
     if (tag === Tag.category) app.categories.push(fieldText(value));
+    if (tag === Tag.installDir) app.installDir = fieldText(value);
     if (tag === Tag.screenshot) {
       const shot: Screenshot = { slot: 0, width: 0 };
       for (const inner of readFields(value)) {

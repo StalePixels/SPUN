@@ -85,6 +85,28 @@ export const apps = mysqlTable("apps", {
   deletedAt: timestamp("deleted_at"),
 });
 
+// A second name for an app. Aliases and app ids share one namespace.
+export const aliases = mysqlTable("aliases", {
+  alias: varchar("alias", { length: 16 }).primaryKey(),
+  appId: char("app_id", { length: 6 })
+    .$type<AppId>()
+    .notNull()
+    .references(() => apps.id),
+});
+
+// A reserved dot command name that the app may ship. Only an admin adds or removes one.
+export const dotOverrides = mysqlTable(
+  "dot_overrides",
+  {
+    appId: char("app_id", { length: 6 })
+      .$type<AppId>()
+      .notNull()
+      .references(() => apps.id),
+    name: varchar("name", { length: 16 }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.appId, t.name] })],
+);
+
 export const releases = mysqlTable(
   "releases",
   {

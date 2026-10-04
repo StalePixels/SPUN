@@ -3,10 +3,10 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { screenshots } from "@/db/schema";
 import { ownedApp, type AppId } from "./apps";
 import { db } from "./db";
-import { checkNxi, convertImage, previewPng, type NxiWidth } from "./nxi";
+import { checkNxi, convertImage, oneAtATime, previewPng, type NxiWidth } from "./nxi";
 import type { Problem } from "./problems";
 import { makeThumbnail } from "./thumbs";
-import { formFile, type UploadFile } from "./releases";
+import { formFile, uploadRate, type UploadFile } from "./releases";
 import { MAX_SCREENSHOT_BYTES, screenshotUrl } from "./rules";
 import { binScreenshot, removeScreenshot, unbinScreenshot, writeScreenshot } from "./storage";
 
@@ -24,13 +24,15 @@ export async function checkScreenshot(file: UploadFile | null): Promise<Screensh
   if (file.data.length > MAX_SCREENSHOT_BYTES) {
     return { ok: false, error: { code: "screenshot.tooLarge" } };
   }
-  const result = file.name.toLowerCase().endsWith(".nxi")
-    ? { ...checkNxi(file.data), nxi: file.data }
-    : await convertImage(file.data);
-  if (!result.ok) {
-    return result;
-  }
-  return { ok: true, shot: { nxi: result.nxi, width: result.width, png: await previewPng(result.nxi) } };
+  return oneAtATime(async (): Promise<ScreenshotCheck> => {
+    const result = file.name.toLowerCase().endsWith(".nxi")
+      ? { ...checkNxi(file.data), nxi: file.data }
+      : await convertImage(file.data);
+    if (!result.ok) {
+      return result;
+    }
+    return { ok: true, shot: { nxi: result.nxi, width: result.width, png: await previewPng(result.nxi) } };
+  });
 }
 
 export async function appScreenshots(appId: AppId): Promise<Screenshot[]> {
@@ -81,6 +83,10 @@ export async function uploadOwnScreenshot(
 ): Promise<{ error: Problem } | { width: NxiWidth }> {
   if (!(await ownedApp(user.id, appId))) {
     return { error: { code: "app.notFound" } };
+  }
+  const limited = await uploadRate(user.id);
+  if (limited) {
+    return { error: limited };
   }
   const checked = await checkScreenshot(await formFile((await readForm()).get("file")));
   if (!checked.ok) {

@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 import { thumbSize } from "../../src/lib/thumbs";
 import { makeApiKey, signedFetch, signedJson, type ApiKey } from "../support/api";
 import { insertApp, insertUser, removeApps, removeTestUser, screenshotRows } from "../support/db";
-import { readyNxi, stripesPng } from "../support/images";
+import { blackPng, readyNxi, stripesPng } from "../support/images";
 import { expect, test, uniqueTitle } from "../support/pages";
 import { accounts, settings } from "../support/settings";
 
@@ -117,7 +117,7 @@ test("upload, replace and clear screenshots through the API", async ({ page }) =
   }
 });
 
-test("the API refuses a file that is not an image, a wrong-size NXI and a file over 16 MB", async ({ page }) => {
+test("the API refuses a file that is not an image, a wrong-size NXI, a file over 16 MB and an image over 4 megapixels", async ({ page }) => {
   const key = await makeApiKey(page);
   const id = await createApp(page, key);
   try {
@@ -130,8 +130,11 @@ test("the API refuses a file that is not an image, a wrong-size NXI and a file o
     expect(await upload(page, key, id, 3, "huge.nxi", Buffer.alloc(MAX_SCREENSHOT_BYTES + 1))).toEqual(
       badRequest("screenshot.tooLarge"),
     );
+    expect(await upload(page, key, id, 4, "big.png", await blackPng(2000, 2001))).toEqual(
+      badRequest("screenshot.tooManyPixels"),
+    );
     expect(await screenshotRows(id)).toEqual([]);
-    for (const slot of [1, 2, 3]) {
+    for (const slot of [1, 2, 3, 4]) {
       for (const file of shotFiles(id, slot)) {
         expect(existsSync(file), file).toBe(false);
       }

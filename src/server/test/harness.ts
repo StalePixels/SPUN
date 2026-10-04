@@ -11,17 +11,26 @@ if (!process.env.TEST_VERBOSE) {
 }
 
 // Starts SPUNServer the way main.ts does, through the engine's startServer(),
-// which reads its settings from NBN_* environment variables.
+// which reads its settings from NBN_* environment variables. extra sets more
+// of them for this server only, such as { NBN_IDLE: "300" }.
 export async function startSpunServer(
   catalogue: Catalogue,
   filePath: string,
+  extra: Record<string, string> = {},
 ): Promise<{ server: net.Server; port: number }> {
   process.env.NBN_FILEPATH = filePath;
   process.env.NBN_IP = "127.0.0.1";
   process.env.NBN_PORT = "0";
-  const server = startServer(spunServer(catalogue));
-  await once(server, "listening");
-  return { server, port: (server.address() as net.AddressInfo).port };
+  Object.assign(process.env, extra);
+  try {
+    const server = startServer(spunServer(catalogue));
+    await once(server, "listening");
+    return { server, port: (server.address() as net.AddressInfo).port };
+  } finally {
+    for (const name of Object.keys(extra)) {
+      delete process.env[name];
+    }
+  }
 }
 
 // A client that reads exact byte counts, like the Next does from the UART.

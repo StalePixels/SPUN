@@ -35,6 +35,9 @@ export function apiError(status: number, error: Problem, retryAfter?: number): R
 }
 
 export function apiProblem(error: Problem): Response {
+  if (error.code === "upload.tooMany") {
+    return apiError(429, error, error.wait);
+  }
   return apiError(error.code.endsWith(".notFound") ? 404 : 400, error);
 }
 

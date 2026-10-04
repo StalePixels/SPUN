@@ -1,5 +1,5 @@
 import mysql, { type RowDataPacket } from "mysql2/promise";
-import type { AppId, Catalogue, Changelog, FoundApp, Release, Screenshot } from "./catalogue.js";
+import type { AppId, AppName, Catalogue, Changelog, FoundApp, Release, Screenshot } from "./catalogue.js";
 
 const PUBLIC = `a.deleted_at IS NULL
   AND EXISTS (SELECT 1 FROM releases WHERE app_id = a.id AND deleted_at IS NULL)`;
@@ -29,6 +29,16 @@ export function mysqlCatalogue(uri: string): Catalogue {
   const pool = mysql.createPool({ uri, dateStrings: true });
 
   return {
+    async resolve(name: AppName) {
+      const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT id FROM apps WHERE id = ?
+         UNION ALL
+         SELECT app_id AS id FROM aliases WHERE alias = ?`,
+        [name, name],
+      );
+      return rows.length === 0 ? null : ((rows[0].id as string).toLowerCase() as AppId);
+    },
+
     async find(text, offset, limit) {
       const pattern = likePattern(text);
       const [[count]] = await pool.query<RowDataPacket[]>(
@@ -61,7 +71,7 @@ export function mysqlCatalogue(uri: string): Catalogue {
 
     async app(id) {
       const [rows] = await pool.query<RowDataPacket[]>(
-        `SELECT u.username, a.title, a.description, a.downloads
+        `SELECT u.username, a.title, a.description, a.downloads, a.install_dir
          FROM apps a
          JOIN users u ON u.id = a.user_id
          WHERE a.id = ? AND ${PUBLIC}`,
@@ -84,12 +94,14 @@ export function mysqlCatalogue(uri: string): Catalogue {
       );
       const [app] = rows;
       return {
+        id,
         username: app.username,
         title: app.title,
         description: app.description,
         downloads: Number(app.downloads),
         categories: categories.map((row) => row.name as string),
         screenshots: screenshots as Screenshot[],
+        installDir: app.install_dir,
       };
     },
 

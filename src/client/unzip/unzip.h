@@ -11,10 +11,18 @@
 #define UNZIP_E_WRITE       7
 #define UNZIP_E_DATA        8
 #define UNZIP_E_CHECK       9
+#define UNZIP_E_ABORT       10
+
+// overwrite_ask's answers: the keys that give them
+#define OVERWRITE_ONCE      'o'
+#define OVERWRITE_ALL       'a'
+#define OVERWRITE_CANCEL    'c'
 
 #define PROGRESS_DOWNLOAD   0
 #define PROGRESS_UNZIP      1
 extern void progress(unsigned char stage, unsigned int done, unsigned int total, unsigned char *name);
+
+extern unsigned char overwrite_ask(const char *name);
 
 extern unsigned char unzip(const char *zip_path, const char *dir_path);
 

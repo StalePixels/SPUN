@@ -3,7 +3,7 @@ import path from "node:path";
 import type { Page } from "@playwright/test";
 import { thumbSize } from "../../src/lib/thumbs";
 import { appRow, screenshotRows } from "../support/db";
-import { readyNxi as readyNxiData, stripesPng } from "../support/images";
+import { blackPng, readyNxi as readyNxiData, stripesPng } from "../support/images";
 import { clickHydrated, deleteAppInUi, expect, test, uploadRelease, waitForHydration } from "../support/pages";
 import { accounts, settings } from "../support/settings";
 import { makeZip, sampleEntries, tempFiles } from "../support/zips";
@@ -123,6 +123,18 @@ test("a text file shows screenshot.notImage, and a wrong-size NXI screenshot.bad
     "screenshot.badNxi",
   );
   expect(await screenshotRows(id)).toEqual([]);
+});
+
+test("an image over 4 megapixels shows screenshot.tooManyPixels and stores nothing", async ({ page, apps }) => {
+  const id = await apps.create("BigShot");
+  await page.goto(`/publish/apps/${id}`);
+  await uploadScreenshot(page, 2, files.write("big.png", await blackPng(2000, 2001)));
+  await expect(page.getByTestId("screenshot-slot-2").getByTestId("form-error")).toHaveAttribute(
+    "data-error",
+    "screenshot.tooManyPixels",
+  );
+  expect(await screenshotRows(id)).toEqual([]);
+  expect(existsSync(nxiFile(id, 2))).toBe(false);
 });
 
 // The restore runs in a second browser context with the admin login.

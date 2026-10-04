@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Button from "react-bootstrap/Button";
-import { adminGetApp, adminListOwners, adminListReleases, requireAdmin } from "@/lib/admin";
+import {
+  adminGetApp,
+  adminListAliases,
+  adminListDotOverrides,
+  adminListOwners,
+  adminListReleases,
+  requireAdmin,
+} from "@/lib/admin";
 import { parseAppId } from "@/lib/apps";
 import { appCategoryList, liveCategories } from "@/lib/categories";
 import { formatDay, isoDay } from "@/lib/rules";
@@ -19,6 +26,8 @@ import {
   uploadAdminRelease,
   uploadAdminScreenshot,
 } from "../../actions";
+import { Aliases } from "./Aliases";
+import { DotOverrides } from "./DotOverrides";
 import { MoveApp } from "./MoveApp";
 
 export default async function AdminAppPage({ params }: { params: Promise<{ id: string }> }) {
@@ -33,6 +42,8 @@ export default async function AdminAppPage({ params }: { params: Promise<{ id: s
   }
   const rows = await adminListReleases(id);
   const owners = await adminListOwners();
+  const aliases = await adminListAliases(id);
+  const overrides = await adminListDotOverrides(id);
   const categories = await liveCategories();
   const selected = (await appCategoryList(id)).map((category) => category.id);
   const screenshots = await appScreenshots(id);
@@ -136,6 +147,26 @@ export default async function AdminAppPage({ params }: { params: Promise<{ id: s
             selected={selected}
             save={saveAdminApp.bind(null, app.id)}
           />
+        </div>
+      </div>
+
+      <div className="card mb-4" data-testid="aliases">
+        <div className="card-header">
+          <i className="bi bi-tags me-1" />
+          Aliases
+        </div>
+        <div className="card-body">
+          <Aliases appId={app.id} aliases={aliases} />
+        </div>
+      </div>
+
+      <div className="card mb-4" data-testid="dot-overrides">
+        <div className="card-header">
+          <i className="bi bi-terminal me-1" />
+          Reserved dot commands
+        </div>
+        <div className="card-body">
+          <DotOverrides appId={app.id} names={overrides} />
         </div>
       </div>
 

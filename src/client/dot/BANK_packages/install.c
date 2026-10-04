@@ -2,13 +2,24 @@
 #include "../BANK_net/net.h"
 #include "catalogue.h"
 #include "install.h"
+#ifdef __ZXNEXT
+#include "../gui/gui.h"
+#endif
 
 static uint16_t updates;
 
 unsigned char *unzipErrors[] = {
     err_no_memory, err_unzip_read, err_unzip_format, err_unzip_unsupported, err_unzip_path,
-    err_unzip_create, err_unzip_write, err_unzip_data, err_unzip_check
+    err_unzip_create, err_unzip_write, err_unzip_data, err_unzip_check, err_unzip_abort
 };
+
+#ifdef __ZXNEXT
+static const struct gui_button overwriteButtons[] = {
+    { MODAL_COL + 2, MODAL_BUTTON_ROW, OVERWRITE_ONCE, "Once" },
+    { MODAL_COL + 10, MODAL_BUTTON_ROW, OVERWRITE_ALL, "All" },
+    { MODAL_COL + 17, MODAL_BUTTON_ROW, OVERWRITE_CANCEL, "Cancel" },
+};
+#endif
 
 static void print_error(unsigned char *text) __z88dk_fastcall {
     unsigned char chr;
@@ -20,14 +31,15 @@ static void print_error(unsigned char *text) __z88dk_fastcall {
     putchar('\n');
 }
 
-static bool ask(void) {
+// Returns the key pressed, one of keys. At the end of POSIX input it returns the last key, the safe answer
+static unsigned char ask(const char *keys) __z88dk_fastcall {
     unsigned char chr;
 
 #ifdef __ZXNEXT
     in_wait_nokey();
     do {
         chr = tolower(in_inkey());
-    } while(chr != 'y' && chr != 'n');
+    } while(!chr || !strchr(keys, chr));
     in_wait_nokey();
     printf("%c\n", chr);
 #else
@@ -35,11 +47,66 @@ static bool ask(void) {
 
     do {
         fflush(stdout);
-        if(!fgets(answer, sizeof(answer), stdin)) return false;
+        if(!fgets(answer, sizeof(answer), stdin)) return keys[strlen(keys) - 1];
         chr = tolower(answer[0]);
-    } while(chr != 'y' && chr != 'n');
+    } while(!chr || !strchr(keys, chr));
 #endif
-    return chr == 'y';
+    return chr;
+}
+
+// unzip calls it inside the GUI's os_call, with interrupts off, and the dialog waits for them
+unsigned char overwrite_ask(const char *name) {
+#ifdef __ZXNEXT
+    unsigned char *lines[2];
+    uint8_t choice;
+
+    if(guiOpen) {
+        lines[0] = (unsigned char *)"Overwrite?";
+        lines[1] = (unsigned char *)name;
+        intrinsic_ei();
+        choice = modal_ask(lines, 2, overwriteButtons, 3);
+        intrinsic_di();
+        pointer_hide();
+        return overwriteButtons[choice].shortcut;
+    }
+#endif
+    printf("Overwrite %s? (o)nce (a)ll (c)ancel ", name);
+    return ask("oac");
+}
+
+static bool make_dir(void) {
+#ifdef __ZXNEXT
+    errno = 0;
+    esx_f_mkdir(installDir);
+    return !errno || errno == ESX_EEXIST;
+#else
+    return card_mkdir(installDir);
+#endif
+}
+
+// The suggested directory and its parents may not exist yet. installDir starts with the drive, "C:/"
+unsigned char *dir_make(void) {
+    unsigned char *at = installDir + 3;
+    unsigned char chr;
+
+    do {
+        while(*at && *at != '/') at++;
+        chr = *at;
+        *at = 0;
+        if(!make_dir()) {
+            *at = chr;
+            return err_bad_directory;
+        }
+        *at++ = chr;
+    } while(chr);
+    return NULL;
+}
+
+static bool use_suggested(void) {
+    if(!*suggestDir) return false;
+    sprintf(installDir, "C:%s", suggestDir);
+    printf("Install to %s? (y/n) ", installDir);
+    return ask("yn") == 'y';
 }
 
 unsigned char install(char *id) __z88dk_fastcall {
@@ -67,23 +134,32 @@ unsigned char install(char *id) __z88dk_fastcall {
     return UNZIP_OK;
 }
 
+// id may be an alias. The reply names the app's real id, which alone goes on: to the catalogue,
+// the zip's path and the directory choice. An old server sends no id, and the typed name stays
 unsigned char *spun_get(char *id) {
     unsigned char *error;
     unsigned char result;
 
+    *appid = 0;
     if((error = _farWithPointer(BANK_NET, (void *(*)(void *))latest, id))) return error;
+    if(*appid && strcmp(appid, id)) {
+        id = (char *)appid;
+        check_catalogue(id);
+    }
 
     printf("%s\n%s\n", title, version);
     if(installed) {
         if(installedSerial > serial) return err_installed_newer;
         if(installedSerial == serial) {
             printf("Installed. Install again? (y/n) ");
-            if(!ask()) return NULL;
+            if(ask("yn") != 'y') return NULL;
         }
+    } else if(use_suggested()) {
+        if((error = dir_make())) return error;
     } else {
         if(!choose_dir()) return NULL;
         printf("Install to %s? (y/n) ", installDir);
-        if(!ask()) return NULL;
+        if(ask("yn") != 'y') return NULL;
     }
 
     check_install_drive();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_UPLOAD_BYTES } from "./rules";
+import { MAX_UNPACKED_BYTES, MAX_UPLOAD_BYTES } from "./rules";
 import { checkZip, NEXT_NAME_MAX } from "./zip";
 
 const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -24,7 +24,21 @@ type ZipOptions = {
   // End record counts and offset of 0xffff and 0xffffffff, with zip64 end records
   zip64End?: boolean;
   localSig?: number;
+  // The uncompressed size written to the central directory, instead of the real one
+  usize?: number;
+  // An Info-ZIP Unicode Path extra field (0x7075) in the central directory, by raw name
+  unicodeNames?: Record<string, string>;
 };
+
+function unicodePath(rawName: Buffer, name: string): Buffer {
+  const utf8 = Buffer.from(name, "utf8");
+  const field = Buffer.alloc(9);
+  field.writeUInt16LE(0x7075, 0);
+  field.writeUInt16LE(5 + utf8.length, 2);
+  field.writeUInt8(1, 4);
+  field.writeUInt32LE(crc32(rawName), 5);
+  return Buffer.concat([field, utf8]);
+}
 
 // A minimal zip with stored (uncompressed) entries. The method field can be
 // set to any value; the data stays stored, as only the directory is read.
@@ -47,13 +61,15 @@ function makeZip(files: Record<string, Buffer>, options: ZipOptions = {}): Buffe
     header.writeUInt16LE(nameBuf.length, 26);
     local.push(header, nameBuf, data);
 
-    const extra = Buffer.alloc(options.zip64Sizes ? 20 : 0);
+    const zip64 = Buffer.alloc(options.zip64Sizes ? 20 : 0);
     if (options.zip64Sizes) {
-      extra.writeUInt16LE(0x0001, 0);
-      extra.writeUInt16LE(16, 2);
-      extra.writeBigUInt64LE(BigInt(data.length), 4);
-      extra.writeBigUInt64LE(BigInt(data.length), 12);
+      zip64.writeUInt16LE(0x0001, 0);
+      zip64.writeUInt16LE(16, 2);
+      zip64.writeBigUInt64LE(BigInt(data.length), 4);
+      zip64.writeBigUInt64LE(BigInt(data.length), 12);
     }
+    const unicode = options.unicodeNames?.[name];
+    const extra = unicode === undefined ? zip64 : Buffer.concat([zip64, unicodePath(nameBuf, unicode)]);
     const size = options.zip64Sizes ? 0xffffffff : data.length;
     const entry = Buffer.alloc(46);
     entry.writeUInt32LE(0x02014b50, 0);
@@ -63,7 +79,7 @@ function makeZip(files: Record<string, Buffer>, options: ZipOptions = {}): Buffe
     entry.writeUInt16LE(method, 10);
     entry.writeUInt32LE(crc, 16);
     entry.writeUInt32LE(size, 20);
-    entry.writeUInt32LE(size, 24);
+    entry.writeUInt32LE(options.usize ?? size, 24);
     entry.writeUInt16LE(nameBuf.length, 28);
     entry.writeUInt16LE(extra.length, 30);
     entry.writeUInt32LE(offset, 42);
@@ -211,7 +227,7 @@ describe("zip check", () => {
   });
 
   it("accepts every other printable ASCII character in a name", async () => {
-    expect((await checkZip(makeZip({ "GAME/A b!#$%&'()+,-.;=@[\\]^_`{}~.TXT": Buffer.from("a") }))).ok).toBe(true);
+    expect((await checkZip(makeZip({ "GAME/A b!#$%&'()+,-.;=@[\\]^_`{}.TXT": Buffer.from("a") }))).ok).toBe(true);
   });
 
   it("rejects a damaged local header as not a zip", async () => {
@@ -224,5 +240,37 @@ describe("zip check", () => {
   it("accepts data descriptors and directory entries", async () => {
     expect((await checkZip(makeZip(a, { flags: 8 }))).ok).toBe(true);
     expect((await checkZip(makeZip({ "GAME/": Buffer.alloc(0), "GAME/A.TXT": Buffer.from("a") }))).ok).toBe(true);
+  });
+
+  it("takes each name from the central directory as the Next does, never from a Unicode Path field", async () => {
+    expect(await checkZip(makeZip({ "MV.dot": Buffer.from("a") }, { unicodeNames: { "MV.dot": "z.dot" } }))).toEqual({
+      ok: false,
+      error: { code: "file.twoNames", names: ["MV.dot"] },
+    });
+    expect(await checkZip(makeZip({ "MV.dot": Buffer.from("a") }, { unicodeNames: { "MV.dot": "MV.dot" } }))).toEqual({
+      ok: true,
+      entries: ["MV.dot"],
+    });
+  });
+
+  it("refuses a ~ in a name, and a name part that ends with a dot or a space", async () => {
+    for (const bad of ["NEXTZX~1/A.TXT", "GAME./A.TXT", "GAME /A.TXT", "GAME/A.", "GAME/A ", "./A.TXT", "GAME\\B./A.TXT"]) {
+      expect(await checkZip(makeZip({ "OK.TXT": Buffer.from("a"), [bad]: Buffer.from("a") }))).toEqual({
+        ok: false,
+        error: { code: "file.badNames", names: [bad] },
+      });
+    }
+    expect((await checkZip(makeZip({ ".HIDDEN/A.B.TXT": Buffer.from("a") }))).ok).toBe(true);
+  });
+
+  it("refuses a zip whose files add up to more than 16 MB unpacked", async () => {
+    const half = MAX_UNPACKED_BYTES / 2;
+    expect(await checkZip(makeZip({ "A.BIN": Buffer.from("a"), "B.BIN": Buffer.from("b") }, { method: 8, usize: half }))).toEqual({
+      ok: true,
+      entries: ["A.BIN", "B.BIN"],
+    });
+    expect(
+      await checkZip(makeZip({ "A.BIN": Buffer.from("a"), "B.BIN": Buffer.from("b") }, { method: 8, usize: half + 1 })),
+    ).toEqual({ ok: false, error: { code: "file.unpackedTooLarge", max: MAX_UNPACKED_BYTES } });
   });
 });

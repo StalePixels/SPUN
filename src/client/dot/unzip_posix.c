@@ -16,7 +16,9 @@ static zip_t *archive;
 static zip_int64_t entries;
 static char path[256];
 static uint16_t dir_len;
+static char dot[256];
 static unsigned char buffer[8192];
+static bool overwrite_all;
 
 // The esxdos shim keeps its $HOME/.nbn mapping private and has no mkdir
 bool card_mkdir(const char *dir) {
@@ -91,6 +93,40 @@ static unsigned char check_entry(zip_uint64_t index) {
     return UNZIP_OK;
 }
 
+// The same rule as unzip.c: a .dot file at the root of the zip goes to C:/dot without its extension
+static bool dot_target(void) {
+    const char *name = path + dir_len + 1;
+    size_t len = strlen(name);
+
+    if (len < 5 || strpbrk(name, "/\\") || strcasecmp(name + len - 4, ".dot")) return false;
+    snprintf(dot, sizeof(dot), "C:/dot/%.*s", (int)(len - 4), name);
+    return true;
+}
+
+static unsigned char check_existing(void) {
+    const char *target = dot_target() ? dot : path;
+    unsigned char answer;
+    uint8_t fd;
+
+    if (overwrite_all || path[strlen(path) - 1] == '/') return UNZIP_OK;
+    errno = 0;
+    fd = esxdos_f_open(target, ESXDOS_MODE_R);
+    if (errno) return UNZIP_OK;
+    esxdos_f_close(fd);
+    answer = overwrite_ask(target);
+    if (answer == OVERWRITE_CANCEL) return UNZIP_E_ABORT;
+    if (answer == OVERWRITE_ALL) overwrite_all = true;
+    return UNZIP_OK;
+}
+
+// The pretend card is all drive C:, so a rename always moves the file. Unlike a Next's card it may have no /dot
+static unsigned char move_dot(void) {
+    if (!card_mkdir("/dot")) return UNZIP_E_CREATE;
+    esxdos_f_unlink(dot);
+    errno = 0;
+    return esx_f_rename(path, dot) ? UNZIP_E_CREATE : UNZIP_OK;
+}
+
 static unsigned char make_dirs(char *end) {
     char *p;
     bool made;
@@ -154,6 +190,7 @@ unsigned char unzip(const char *zip_path, const char *dir_path) {
     int error;
     zip_int64_t e;
 
+    overwrite_all = false;
     dir_len = strlen(dir_path);
     while (dir_len && dir_path[dir_len - 1] == '/') dir_len--;
     if (dir_len + 2 >= sizeof(path)) return UNZIP_E_PATH;
@@ -175,10 +212,15 @@ unsigned char unzip(const char *zip_path, const char *dir_path) {
     for (e = 0; r == UNZIP_OK && e < entries; e++) {
         r = entry_name(e);
         if (r == UNZIP_OK) r = check_entry(e);
+        if (r == UNZIP_OK) r = check_existing();
     }
     for (e = 0; r == UNZIP_OK && e < entries; e++) {
         r = entry_name(e);
         if (r == UNZIP_OK) r = extract_entry(e);
+    }
+    for (e = 0; r == UNZIP_OK && e < entries; e++) {
+        r = entry_name(e);
+        if (r == UNZIP_OK && dot_target()) r = move_dot();
     }
 
     error = errno;

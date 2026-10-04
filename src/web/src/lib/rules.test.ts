@@ -10,6 +10,7 @@ import {
   checkCategoryChoice,
   checkCategoryName,
   checkCategorySlug,
+  checkAlias,
   checkChangelog,
   checkInstallDir,
   checkReleaseDate,
@@ -379,7 +380,7 @@ describe("checkInstallDir", () => {
   });
 
   it("refuses characters FAT does not allow and anything outside printable ASCII, and names each bad one", () => {
-    for (const char of ['"', "*", "?", "<", ">", "|", "\x00", "\x1f", "\x7f"]) {
+    for (const char of ['"', "*", "?", "<", ">", "|", "~", "\x00", "\x1f", "\x7f"]) {
       expect(checkInstallDir(`/apps/a${char}b`)).toEqual({
         ok: false,
         error: { code: "installDir.invalidCharacters", chars: [char] },
@@ -395,10 +396,32 @@ describe("checkInstallDir", () => {
     });
   });
 
-  it("refuses /, and /nextzxos, /sys and /dot with everything under them, in any case", () => {
-    for (const input of ["/", "\\", "//", "/nextzxos", "/NextZXOS/", "/sys", "/sys/foo", "sys\\foo", "/dot", "/DOT/x"]) {
+  it("refuses /, and /nextzxos, /sys, /dot and /machines with everything under them, in any case", () => {
+    for (const input of [
+      "/",
+      "\\",
+      "//",
+      "/nextzxos",
+      "/NextZXOS/",
+      "/sys",
+      "/sys/foo",
+      "sys\\foo",
+      "/dot",
+      "/DOT/x",
+      "/machines",
+      "/Machines/next",
+      "/dot ",
+    ]) {
       expect(stored(input)).toBe("installDir.banned");
     }
+  });
+
+  it("refuses a part that ends with a dot or a space, and the 8.3 alias of a banned directory", () => {
+    for (const input of ["/dot.", "/sys.", "/nextzxos.", "/dot /x", "/ dot /x", "/apps/v1./x", "/apps/x.."]) {
+      expect(stored(input)).toBe("installDir.partEnd");
+    }
+    expect(stored("/NEXTZX~1")).toBe("installDir.invalidCharacters");
+    expect(stored("/ dot")).toBe("/ dot");
   });
 
   it("allows names that only start like a banned directory", () => {
@@ -413,5 +436,25 @@ describe("checkInstallDir", () => {
     expect(stored(`${dir}/`)).toBe(dir);
     expect(stored(`//${"a".repeat(63)}//`)).toBe(dir);
     expect(checkInstallDir(`/${"a".repeat(64)}`)).toEqual({ ok: false, error: { code: "installDir.length", max: 64 } });
+  });
+});
+
+describe("checkAlias", () => {
+  it("accepts a-z, 0-9, - and _, and stores the lowercase form", () => {
+    expect(checkAlias("promoted")).toEqual({ ok: true, alias: "promoted" });
+    expect(checkAlias("Spun-WiFi_2")).toEqual({ ok: true, alias: "spun-wifi_2" });
+  });
+
+  it("refuses other characters, and names each one", () => {
+    expect(checkAlias("my app.x")).toEqual({ ok: false, error: { code: "alias.invalidCharacters", chars: [" ", "."] } });
+    expect(checkAlias("café")).toEqual({ ok: false, error: { code: "alias.invalidCharacters", chars: ["é"] } });
+    expect(checkAlias("a/b")).toEqual({ ok: false, error: { code: "alias.invalidCharacters", chars: ["/"] } });
+  });
+
+  it("needs 1 to 16 characters", () => {
+    expect(checkAlias("")).toEqual({ ok: false, error: { code: "alias.length", min: 1, max: 16 } });
+    expect(checkAlias("a")).toEqual({ ok: true, alias: "a" });
+    expect(checkAlias("a".repeat(16))).toEqual({ ok: true, alias: "a".repeat(16) });
+    expect(checkAlias("a".repeat(17))).toEqual({ ok: false, error: { code: "alias.length", min: 1, max: 16 } });
   });
 });

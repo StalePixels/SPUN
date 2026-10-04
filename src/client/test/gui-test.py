@@ -5,6 +5,7 @@ usage: gui-test.py rows HOST PORT < SCENARIO.in > SCENARIO
        gui-test.py pointers SCENARIO RUNDIR
        gui-test.py layer2 SCENARIO RUNDIR HOST PORT DATADIR
        gui-test.py proxy LISTEN HOST PORT SLOW LOG
+       gui-test.py drop LISTEN HOST PORT STAGE LOG
 
 rows   copies the scenario and expands each line "@ROWS T COMMAND": it sends
        COMMAND (for example "SPLIST 2" or "SPFIND 1 zebra") to the SPUNServer
@@ -39,11 +40,25 @@ layer2 checks each "@LAYER2" dump of the expanded SCENARIO in RUNDIR. A page
        or missing.
 
 proxy  listens on 127.0.0.1:LISTEN and passes each connection on to
-       HOST:PORT. It writes each command line that the client sends to LOG.
+       HOST:PORT. It writes each command line that the client sends to LOG,
+       and each error reply of the server, such as NoApp_ERROR, after "< ".
        The reply to the first command that starts with SLOW goes to the
        client one byte every 5 ms, until the client sends again, so that the
        read takes some seconds and a scenario can look at the machine while
        it runs.
+
+drop   listens on 127.0.0.1:LISTEN and passes each connection on to
+       HOST:PORT, as proxy does, but closes the first connection at STAGE:
+       connect  as soon as it is made, before the client sends anything;
+       request  when the client's first command line arrives, which is not
+                passed on, so no reply comes;
+       midblock in the middle of the first block of a file: after the client
+                acknowledges the file header, 1000 bytes of the block pass;
+       between  between blocks: when the client acknowledges the first whole
+                block, which is not passed on.
+       Later connections, such as the ESP8266's own reconnect in passthrough
+       mode, pass untouched. It writes each command line and "dropped STAGE"
+       to LOG.
 """
 import os
 import re
@@ -600,6 +615,90 @@ def layer2(scenario, rundir, host, port, datadir):
     return 0 if all(line.endswith(' MATCH') for line in lines) else 1
 
 
+def drop(listen, host, port, stage, log_path):
+    log = open(log_path, 'a', buffering=1)
+    state = {'dropped': False}
+    lock = threading.Lock()
+
+    def first():
+        with lock:
+            if state['dropped']:
+                return False
+            state['dropped'] = True
+            return True
+
+    def close_both(client, upstream):
+        log.write(f'{time.time():.3f} dropped {stage}\n')
+        for sock in (client, upstream):
+            try:
+                sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            sock.close()
+
+    def serve(client, dropping):
+        if dropping and stage == 'connect':
+            close_both(client, socket.socket())
+            return
+        upstream = socket.create_connection((host, port))
+        for sock in (client, upstream):
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        seen = {'get': False, 'acks': 0, 'block': None}
+
+        def from_client():
+            line = b''
+            try:
+                while data := client.recv(4096):
+                    line += data
+                    lines = []
+                    while b'\n' in line:
+                        command, line = line.split(b'\n', 1)
+                        lines.append(command.decode('latin-1').strip())
+                    for command in lines:
+                        if command:
+                            log.write(f'{time.time():.3f} {command}\n')
+                    if dropping and stage == 'request' and lines:
+                        close_both(client, upstream)
+                        return
+                    if dropping and seen['get'] and any(c.startswith('!') for c in lines):
+                        seen['acks'] += 1
+                        if stage == 'midblock' and seen['acks'] == 1:
+                            seen['block'] = 1000
+                        if stage == 'between' and seen['acks'] == 2:
+                            close_both(client, upstream)
+                            return
+                    if any(c.startswith('GET ') for c in lines):
+                        seen['get'] = True
+                    upstream.sendall(data)
+            except OSError:
+                pass
+            upstream.close()
+
+        def from_server():
+            try:
+                while data := upstream.recv(4096):
+                    if seen['block'] is not None:
+                        client.sendall(data[:seen['block']])
+                        close_both(client, upstream)
+                        return
+                    client.sendall(data)
+            except OSError:
+                pass
+            client.close()
+
+        threading.Thread(target=from_client, daemon=True).start()
+        threading.Thread(target=from_server, daemon=True).start()
+
+    server = socket.socket()
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(('127.0.0.1', listen))
+    server.listen()
+    print(f'listening on 127.0.0.1:{listen}', flush=True)
+    while True:
+        client, _ = server.accept()
+        serve(client, first())
+
+
 def proxy(listen, host, port, slow, log_path):
     log = open(log_path, 'a', buffering=1)
     state = {'slowed': False}
@@ -633,6 +732,8 @@ def proxy(listen, host, port, slow, log_path):
         def from_server():
             try:
                 while data := upstream.recv(4096):
+                    if re.fullmatch(rb'[A-Za-z]+_ERROR\r\n', data):
+                        log.write(f'{time.time():.3f} < {data.decode("latin-1").strip()}\n')
                     if trickle.is_set():
                         for byte in data:
                             client.sendall(bytes([byte]))
@@ -663,6 +764,8 @@ if __name__ == '__main__':
         sys.exit(pointers(sys.argv[2], sys.argv[3]))
     elif len(sys.argv) == 7 and sys.argv[1] == 'layer2':
         sys.exit(layer2(sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5]), sys.argv[6]))
+    elif len(sys.argv) == 7 and sys.argv[1] == 'drop':
+        drop(int(sys.argv[2]), sys.argv[3], int(sys.argv[4]), sys.argv[5], sys.argv[6])
     elif len(sys.argv) == 7 and sys.argv[1] == 'proxy':
         proxy(int(sys.argv[2]), sys.argv[3], int(sys.argv[4]), sys.argv[5], sys.argv[6])
     else:

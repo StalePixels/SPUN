@@ -80,6 +80,8 @@ key 35.5 {ENTER}
 # Key H: the help text from row 3 column 2; key H again: page 1 again
 key 38.5 h
 expect 39.5 S\x04P\x04U\x04N\x04 322 2e 00 73 00 70 00 75 00 6e 00
+# The help also hides the catalogue counter on the status line, row 25
+expect 39.5 S\x04P\x04U\x04N\x04 3840 20 00 20 00 20 00 20 00 20 00 20 00 20 00 20 00 20 00 20 00
 key 40.5 h
 @ROWS 42.5 SPLIST 1
 

@@ -3130,7 +3130,7 @@ WriteByte2:	inc h
 
 
 ; 'Finish' the data in the (fully or partially filled) OutputBuffer. This is
-;  - update OutputCount
+;  - update OutputCount, and stop with UNZIP_E_CHECK past the stated size
 ;  - update Crc32Value
 ;  - write the data to disk
 ;  - reinitialize OutputBufPos
@@ -3154,6 +3154,17 @@ FinishBlock2:	push bc
 		inc hl
 		ld (OutputCount + 2),hl
 SkipInc64:
+
+; Stop before writing more than the entry's stated size: a zip bomb would fill the card
+		ld hl,(JobA + J_USIZE)
+		ld bc,(OutputCount + 0)
+		or a
+		sbc hl,bc
+		ld hl,(JobA + J_USIZE + 2)
+		ld bc,(OutputCount + 2)
+		sbc hl,bc
+		ld a,UNZIP_E_CHECK
+		jp c,Unwind
 
 ; Update CRC32
 		ld a,(NoCrcCheck)

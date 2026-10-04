@@ -4,7 +4,7 @@ import type * as net from "node:net";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, test } from "node:test";
-import type { Catalogue } from "../src/catalogue.js";
+import type { AppId, Catalogue } from "../src/catalogue.js";
 import { checksum, decodeChangelog, decodeFind, decodeInfo } from "../src/codec.js";
 import { fakeCatalogue, type AppRow, type ReleaseRow, type Tables } from "./fakeCatalogue.js";
 import { SpoofClient, startSpunServer } from "./harness.js";
@@ -66,6 +66,7 @@ const tables: Tables = {
         { slot: 4, width: 256 },
         { slot: 1, width: 320 },
       ],
+      installDir: "/apps/mixed",
     },
     {
       id: "long01",
@@ -103,6 +104,13 @@ const tables: Tables = {
     ...longReleases,
     ...pagerReleases,
   ],
+  aliases: [
+    { alias: "testapp", appId: "tst001" },
+    { alias: "my_app-2", appId: "tst002" },
+    { alias: "gonealias", appId: "gone01" },
+    { alias: "emptyalias", appId: "allgn1" },
+    { alias: "promoted", appId: "tst001" },
+  ],
 };
 
 // Two full blocks and a short last block.
@@ -138,6 +146,7 @@ after(() => {
 // tst001 with its deleted release left out.
 const TST001_INFO = reply(
   counts(1, 1, 1) +
+    field(0x11, ascii("tst001")) +
     field(0x12, ascii(user)) +
     field(0x13, ascii("Test App")) +
     field(0x80, ascii("A test app")) +
@@ -305,6 +314,7 @@ describe("SPINFO", () => {
       { slot: 1, width: 320 },
       { slot: 4, width: 256 },
     ]);
+    assert.equal(page.app.installDir, "/apps/mixed");
   });
 
   test("sends at most 16 categories", async () => {
@@ -436,14 +446,14 @@ describe("GET", () => {
 });
 
 // A whole GET as .spun does it: one "!" for the header and for each block.
-const expectFile = async (name: string, bytes: Buffer): Promise<void> => {
+const expectFile = async (name: string, bytes: Buffer, served = name): Promise<void> => {
   client.send(`GET ${user}/${name}\n`);
   const header = Buffer.alloc(11);
   header[0] = 2;
   header.writeUInt32LE(bytes.length, 1);
   header.writeUInt32LE(Math.floor(bytes.length / BLOCK), 5);
   header.writeUInt16LE(bytes.length % BLOCK, 9);
-  const expected = Buffer.concat([header, Buffer.from(`${name}\0`)]);
+  const expected = Buffer.concat([header, Buffer.from(`${served}\0`)]);
   assert.deepEqual(await client.read(expected.length), expected);
 
   for (let from = 0; from <= bytes.length; from += BLOCK) {
@@ -550,12 +560,92 @@ describe("download count", () => {
   });
 });
 
+describe("aliases", () => {
+  beforeEach(connect);
+  afterEach(() => client.close());
+
+  const alias = (name: string) => tables.aliases?.find((row) => row.alias === name);
+
+  test("SPINFO of an alias, in any case, sends the app's own bytes, with its real id", async () => {
+    client.send("SPINFO tst001\n");
+    const byId = await client.reply(decodeInfo);
+    client.send("SPINFO TestApp\n");
+    const byAlias = await client.reply(decodeInfo);
+    assert.equal(byAlias.app.id, "tst001");
+    assert.deepEqual(byAlias, byId);
+  });
+
+  test("an alias with _ and - names its app", async () => {
+    client.send("SPINFO my_app-2\n");
+    assert.equal((await client.reply(decodeInfo)).app.id, "tst002");
+  });
+
+  test("SPCLOG of an alias gives the app's changelog", async () => {
+    client.send("SPCLOG promoted 1\n");
+    assert.equal((await client.reply(decodeChangelog)).version, "test-upload-01");
+  });
+
+  test("an unknown alias, an alias of a deleted app and one of an app with no live release give NoApp_ERROR", async () => {
+    for (const name of ["nosuchalias", "gonealias", "emptyalias", "bad.name", "seventeenchars123"]) {
+      await expectError(`SPINFO ${name}\n`, "NoApp_ERROR");
+      await expectError(`SPCLOG ${name} 1\n`, "NoApp_ERROR");
+    }
+    await expectOpen();
+  });
+
+  test("an alias moved to another app names the new app at the next request on the same connection", async () => {
+    const row = alias("promoted");
+    assert.ok(row);
+    client.send("SPINFO promoted\n");
+    assert.equal((await client.reply(decodeInfo)).app.id, "tst001");
+    row.appId = "abc123";
+    try {
+      client.send("SPINFO promoted\n");
+      assert.equal((await client.reply(decodeInfo)).app.id, "abc123");
+    } finally {
+      row.appId = "tst001";
+    }
+  });
+
+  test("a zip GET by alias sends the app's zip and counts the real id", async () => {
+    const before = downloads("tst001");
+    await expectFile("testapp-0001.zip", fileBytes, "tst001-0001.zip");
+    await client.drain();
+    assert.equal(downloads("tst001"), before + 1);
+    await expectOpen();
+  });
+
+  test("a screenshot GET by alias, also after CD, sends the app's screenshot", async () => {
+    client.send(`GET ${user}/nxi/promoted/1\n`);
+    await client.read(11 + 2);
+    for (let block = 0; block < 3; block++) {
+      client.send("!\r\n");
+      await client.read(block < 2 ? BLOCK + 1 : 101);
+    }
+    client.send("!\r\n");
+    await client.drain();
+
+    client.send(`CD ${user}/nxi\n`);
+    await client.drain();
+    client.send("GET testapp/1\n");
+    assert.equal((await client.read(11 + 2)).subarray(11).toString(), "1\0");
+    await client.drain();
+  });
+
+  test("a GET by an unknown alias gives NoFile_ERROR", async () => {
+    await expectError(`GET ${user}/nosuchalias-0001.zip\n`, "NoFile_ERROR");
+    await expectOpen();
+  });
+});
+
 describe("a database failure", () => {
   let failing: net.Server;
   let failingPort: number;
 
   before(async () => {
+    // resolve() works, so that a GET reaches the download count
     const broken: Catalogue = {
+      resolve: (name) => Promise.resolve(name as string as AppId),
       find: () => Promise.reject(new Error("database down")),
       list: () => Promise.reject(new Error("database down")),
       app: () => Promise.reject(new Error("database down")),
@@ -602,6 +692,7 @@ describe("lines sent together", () => {
     const later = <T>(value: Promise<T>): Promise<T> =>
       new Promise((resolve) => setTimeout(() => resolve(value), 100));
     const delayed: Catalogue = {
+      resolve: (...args) => later(fast.resolve(...args)),
       find: (...args) => later(fast.find(...args)),
       list: (...args) => later(fast.list(...args)),
       app: (...args) => later(fast.app(...args)),

@@ -22,6 +22,7 @@ PUBLIC _err_unzip_create
 PUBLIC _err_unzip_write
 PUBLIC _err_unzip_data
 PUBLIC _err_unzip_check
+PUBLIC _err_unzip_abort
 
 _err_no_release:
    defm "App has no releas", 'e' + 0x80
@@ -57,6 +58,8 @@ _err_unzip_data:
    defm "Zip data is damage", 'd' + 0x80
 _err_unzip_check:
    defm "Extracted file failed chec", 'k' + 0x80
+_err_unzip_abort:
+   defm "Install cancelle", 'd' + 0x80
 _err_browser:
    defm "File browser faile", 'd' + 0x80
 _err_drive:

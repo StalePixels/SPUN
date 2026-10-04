@@ -7,6 +7,7 @@ import { signIn, signOut } from "@/auth";
 import { users } from "@/db/schema";
 import { addApp, deleteOwnApp, editApp, parseAppId, type AppFields } from "@/lib/apps";
 import { db } from "@/lib/db";
+import { isDuplicateEntry } from "@/lib/dberrors";
 import { checkUsernameInput, parseSerial, parseSlot } from "@/lib/rules";
 import { deleteOwnRelease, editChangelog, uploadOwnRelease } from "@/lib/releases";
 import { saveApp, unsaveApp } from "@/lib/saved";
@@ -63,7 +64,7 @@ export async function chooseUsername(_prev: FormState, formData: FormData): Prom
       .set({ username })
       .where(and(eq(users.id, user.id), isNull(users.username)));
   } catch (err) {
-    if ((err as { code?: string }).code === "ER_DUP_ENTRY") {
+    if (isDuplicateEntry(err)) {
       return { error: { code: "username.taken" } };
     }
     throw err;
