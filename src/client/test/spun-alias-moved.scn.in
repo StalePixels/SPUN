@@ -1,0 +1,20 @@
+# spun.cat holds als001, and mame-alias.sh has moved @ALIAS@ to als002 in the
+# database. .spun get by the alias now gets als002, which is not installed,
+# so it offers als002's suggested directory; y installs it. Then .spun get of
+# an alias that names no app, through gui-test.py's proxy (@PORT@), ends with
+# an error. ON ERROR (tokens $90 $8F, see spun-error.scn.in) traps it, which
+# keeps the autoexec running but also keeps BASIC from printing the report,
+# so the screen shows "Opening" and no app title. mame-alias.sh checks the
+# proxy's log for the server's NoApp_ERROR, and mame.log for the trap (BASIC
+# at $0000 on the line of the second get) and for no machine reset.
+put @SPUN@ /dot/SPUN
+put @CAT@ /sys/spun.cat
+autostart .spun get @ALIAS@
+autostart \x90\x8fFOR i=0 TO 1 STEP 0: NEXT i
+autostart .spun -p @PORT@ get nosuchalias
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 35
+key 16 y
+snap 15 20 26 34
+screen 34 Alias Test B
+screen 34 Install to C:/apps/alsb? (y/n) y

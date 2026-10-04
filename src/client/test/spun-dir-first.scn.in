@@ -1,0 +1,15 @@
+# .spun get of dir001, whose publisher suggests /apps/spundir/deep, on an
+# image where no part of that path exists: y takes the suggestion and .spun
+# creates the directory and its parents (BANK_packages/install.c). mame-dir.sh
+# checks the files, C:/dot and spun.cat after the run.
+put @SPUN@ /dot/SPUN
+autostart .spun get dir001
+autostart PRINT "SPUNDIRDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 35
+noreset 7.5
+key 16 y
+snap 15 20 34
+screen 34 Install to C:/apps/spundir/deep
+screen 34 Installed
+screen 34 SPUNDIRDONE

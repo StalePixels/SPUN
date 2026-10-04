@@ -1,0 +1,22 @@
+# .spun get of dir001 again, over an older DIRTEST.TXT and C:/dot/SPUNDIR.
+# y installs it again; C at the first Overwrite question cancels. The first
+# pass of unzip (unzip/unzip.c) asks before anything is written, so the app
+# directory and C:/dot stay as they were, and so does spun.cat. The error ends
+# .spun, so ON ERROR keeps the autoexec running (see spun-error.scn.in); that
+# also means no noreset, and mame-dir.sh checks mame.log for a reset instead.
+# ON ERROR also keeps BASIC from printing the error, so the message is checked
+# in spun-dir-update.scn.in, where .spun prints it itself.
+put @SPUN@ /dot/SPUN
+put @CAT@ /sys/spun.cat
+put @OLD@ /apps/spundir/deep/DIRTEST.TXT
+put @OLD@ /dot/SPUNDIR
+autostart \x90\x8fGO TO 50
+autostart .spun get dir001
+autostart PRINT "SPUNTRAPPED"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 35
+key 16 y
+key 20 c
+snap 15 19 23 34
+screen 34 Installed. Install again?
+screen 34 Overwrite C:/apps/spundir/deep/

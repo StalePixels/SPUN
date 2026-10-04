@@ -1,0 +1,19 @@
+# .spun update with dir001 and @APP@ in spun.cat, both older than on the
+# server. dir001 is first and goes to its directory in spun.cat, never to the
+# publisher's suggestion; its DIRTEST.TXT exists, so C at the Overwrite
+# question cancels it. .spun prints the message, goes on with @APP@ and
+# installs it. mame-dir.sh checks that dir001's line in spun.cat and its files
+# are as they were, and that @APP@'s line has the new release.
+put @SPUN@ /dot/SPUN
+put @UPDCAT@ /sys/spun.cat
+put @OLD@ /apps/spundir/deep/DIRTEST.TXT
+autostart .spun update
+autostart PRINT "SPUNDIRDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 40
+noreset 7.5
+key 16 c
+snap 15 20 25 39
+screen 39 Overwrite C:/apps/spundir/deep/
+screen 39 dir001 Install cancelled
+screen 39 SPUNDIRDONE

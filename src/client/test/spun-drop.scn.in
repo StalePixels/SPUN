@@ -1,0 +1,19 @@
+# .spun get drop01 through gui-test.py's drop proxy, which closes the
+# connection once, at the stage of the run (mame-drop.sh). drop01's install
+# directory is suggested, so y at 16 s answers "Install to C:/apps/drop?".
+# Every stage ends .spun with an error. ON ERROR keeps BASIC's screen; without
+# it the autoexec would end at the error and NextZXOS would show its menu. As
+# spun-error.scn.in tells, in MAME the trapped error never reaches line 40:
+# BASIC fetches $0000 once a frame with PPC on line 20, the .spun line, and
+# the harness logs each fetch as a "reset" line in mame.log. mame-drop.sh
+# takes the first of them as the moment .spun ended. BASIC does not print a
+# trapped error's message, so the screen shows .spun's own lines only.
+put @SPUN@ /dot/SPUN
+autostart \x90\x8fGO TO 40
+autostart .spun -s @HOST@ -p @PORT@ get drop01
+autostart PRINT "SPUNDROPDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 40
+key 16 y
+snap 9 10 12 14 17 20 25 39
+screen 39 Opening @HOST@

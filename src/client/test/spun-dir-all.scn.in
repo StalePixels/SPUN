@@ -1,0 +1,21 @@
+# .spun get of dir001 again, over an older DATA/ONE.BIN, DIRTEST.TXT and
+# C:/dot/SPUNDIR. y installs it again; O overwrites ONE.BIN and asks again at
+# DIRTEST.TXT; A overwrites it and all the rest with no more questions, so
+# .spun ends without another key. mame-dir.sh checks that every file has the
+# zip's bytes after the run.
+put @SPUN@ /dot/SPUN
+put @CAT@ /sys/spun.cat
+put @OLD@ /apps/spundir/deep/DATA/ONE.BIN
+put @OLD@ /apps/spundir/deep/DIRTEST.TXT
+put @OLD@ /dot/SPUNDIR
+autostart .spun get dir001
+autostart PRINT "SPUNDIRDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 40
+noreset 7.5
+key 16 y
+key 20 o
+key 24 a
+snap 15 19 23 27 39
+screen 39 Installed. Install again?
+screen 39 SPUNDIRDONE
