@@ -6,3 +6,5 @@ scratchpad
 .CLAUDE.md
 tools/nbnget
 /data-e2e
+/.env
+.DS_Store
