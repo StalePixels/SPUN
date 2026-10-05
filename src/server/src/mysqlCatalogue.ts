@@ -1,5 +1,14 @@
 import mysql, { type RowDataPacket } from "mysql2/promise";
-import type { AppId, AppName, Catalogue, Changelog, FoundApp, Release, Screenshot } from "./catalogue.js";
+import {
+  FEATURED,
+  type AppId,
+  type AppName,
+  type Catalogue,
+  type Changelog,
+  type FoundApp,
+  type Release,
+  type Screenshot,
+} from "./catalogue.js";
 
 const PUBLIC = `a.deleted_at IS NULL
   AND EXISTS (SELECT 1 FROM releases WHERE app_id = a.id AND deleted_at IS NULL)`;
@@ -30,6 +39,17 @@ export function mysqlCatalogue(uri: string): Catalogue {
 
   return {
     async resolve(name: AppName) {
+      if (name === FEATURED) {
+        const [rows] = await pool.query<RowDataPacket[]>(
+          `SELECT f.app_id AS id
+           FROM features f
+           JOIN apps a ON a.id = f.app_id
+           WHERE f.published AND f.deleted_at IS NULL AND f.publish_at <= NOW() AND ${PUBLIC}
+           ORDER BY f.publish_at DESC, f.id DESC
+           LIMIT 1`,
+        );
+        return rows.length === 0 ? null : ((rows[0].id as string).toLowerCase() as AppId);
+      }
       const [rows] = await pool.query<RowDataPacket[]>(
         `SELECT id FROM apps WHERE id = ?
          UNION ALL

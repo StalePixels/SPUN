@@ -167,6 +167,11 @@ const ALIAS_CHAR = /[a-z0-9_-]/;
 
 export type AliasCheck = { ok: true; alias: string } | { ok: false; error: Problem };
 
+export const FEATURED = "featured";
+
+// Computed on every read, never a row in aliases; also kept off category slugs.
+export const RESERVED_ALIASES = [FEATURED];
+
 export function checkAlias(input: string): AliasCheck {
   const alias = input.toLowerCase();
   const bad = invalidCharacters(alias, ALIAS_CHAR);
@@ -175,6 +180,9 @@ export function checkAlias(input: string): AliasCheck {
   }
   if (alias.length < 1 || alias.length > ALIAS_MAX) {
     return { ok: false, error: { code: "alias.length", min: 1, max: ALIAS_MAX } };
+  }
+  if (RESERVED_ALIASES.includes(alias)) {
+    return { ok: false, error: { code: "alias.reserved" } };
   }
   return { ok: true, alias };
 }
@@ -206,7 +214,7 @@ export const RESERVED_PATHS = [
 export const APP_ID_RE = /^[0-9a-z]{6}$/;
 
 export function checkCategorySlug(value: string): Problem | null {
-  if (RESERVED_PATHS.includes(value)) {
+  if (RESERVED_PATHS.includes(value) || RESERVED_ALIASES.includes(value)) {
     return { code: "category.reserved" };
   }
   const bad = invalidCharacters(value, CATEGORY_SLUG_CHAR);
@@ -323,6 +331,44 @@ export function checkReleaseDate(input: string, uploadDate: Date): DateCheck {
     return { ok: false, error: { code: "releaseDate.future" } };
   }
   return { ok: true, day: input };
+}
+
+export const ARTICLE_MAX = 1024;
+
+export type ArticleCheck = { ok: true; article: string } | { ok: false; error: Problem };
+
+// A browser sends CR LF from a textarea; the stored text uses LF only.
+export function checkArticle(input: string): ArticleCheck {
+  const article = input.replace(/\r\n/g, "\n");
+  if (article.length < 1 || article.length > ARTICLE_MAX) {
+    return { ok: false, error: { code: "feature.articleLength", min: 1, max: ARTICLE_MAX } };
+  }
+  return { ok: true, article };
+}
+
+export type PublishAtCheck = { ok: true; publishAt: Date | null } | { ok: false; error: Problem };
+
+// The input is UTC, as the browser's toISOString() writes it. The form sends
+// the stored time back as it was unless the admin changed it, and only a
+// changed time must not be in the past.
+export function checkPublishAt(input: string, stored: Date | null, now: Date): PublishAtCheck {
+  if (input === "") {
+    return { ok: true, publishAt: null };
+  }
+  const publishAt = new Date(input);
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{3})?)?Z$/.test(input) || Number.isNaN(publishAt.getTime())) {
+    return { ok: false, error: { code: "feature.publishInvalid" } };
+  }
+  const changed = stored === null || stored.getTime() !== publishAt.getTime();
+  if (changed && publishAt < now) {
+    return { ok: false, error: { code: "feature.publishPast" } };
+  }
+  return { ok: true, publishAt };
+}
+
+// Accepts only the plain decimal form, so each feature has one URL.
+export function parseFeatureId(value: string): number | null {
+  return /^[1-9][0-9]{0,8}$/.test(value) ? Number(value) : null;
 }
 
 const dayFormat = new Intl.DateTimeFormat("en", {

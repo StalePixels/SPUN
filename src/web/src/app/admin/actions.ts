@@ -9,12 +9,15 @@ import {
   adminAddCategory,
   adminAddDotOverride,
   adminClearScreenshot,
+  adminCreateFeature,
   adminDeleteApp,
   adminDeleteCategory,
+  adminDeleteFeature,
   adminDeleteRelease,
   adminDeleteUser,
   adminDisableUser,
   adminEnableUser,
+  adminGetFeature,
   adminGetUser,
   adminMoveAlias,
   adminMoveApp,
@@ -26,24 +29,29 @@ import {
   adminRestoreCategory,
   adminRestoreRelease,
   adminSetAppLimit,
+  adminUnpublishFeature,
   adminUpdateApp,
   adminUpdateCategory,
+  adminUpdateFeature,
   adminUpdateRelease,
   adminUpdateUser,
   adminUploadRelease,
   requireAdmin,
+  type FeatureFields,
 } from "@/lib/admin";
 import { parseAppId } from "@/lib/apps";
 import { liveCategories } from "@/lib/categories";
 import { appDotOverrides, checkUpload, formFile } from "@/lib/releases";
 import { checkScreenshot } from "@/lib/screenshots";
 import {
+  checkArticle,
   checkCategoryChoice,
   checkCategoryName,
   checkCategorySlug,
   checkChangelog,
   checkDescription,
   checkInstallDir,
+  checkPublishAt,
   checkReleaseDate,
   checkTitle,
   checkUsernameInput,
@@ -451,4 +459,79 @@ export async function restoreAdminCategory(id: number): Promise<void> {
   await requireAdmin();
   await adminRestoreCategory(id);
   revalidatePath("/admin/categories");
+}
+
+const FEATURED_PATH = "/admin/featured";
+
+// A published feature stays published on save; unpublish is its own action.
+function featureFields(
+  formData: FormData,
+  stored: { published: boolean; publishAt: Date | null } | null,
+): { error: Problem } | FeatureFields {
+  const article = checkArticle(text(formData, "article"));
+  if (!article.ok) {
+    return { error: article.error };
+  }
+  const time = checkPublishAt(text(formData, "publishAt"), stored?.publishAt ?? null, new Date());
+  if (!time.ok) {
+    return { error: time.error };
+  }
+  const published = stored?.published === true || text(formData, "intent") === "publish";
+  return { article: article.article, published, publishAt: time.publishAt ?? (published ? "now" : null) };
+}
+
+export async function createAdminFeature(rawAppId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const appId = parseAppId(rawAppId);
+  if (!appId) {
+    return { error: { code: "app.notFound" } };
+  }
+  const fields = featureFields(formData, null);
+  if ("error" in fields) {
+    return { error: fields.error };
+  }
+  const result = await adminCreateFeature(appId, fields);
+  if (result.error) {
+    return { error: result.error };
+  }
+  revalidatePath(FEATURED_PATH);
+  redirect(FEATURED_PATH);
+}
+
+export async function saveAdminFeature(id: number, _prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const feature = await adminGetFeature(id);
+  if (!feature) {
+    return { error: { code: "feature.notFound" } };
+  }
+  const fields = featureFields(formData, feature);
+  if ("error" in fields) {
+    return { error: fields.error };
+  }
+  const result = await adminUpdateFeature(id, fields);
+  if (result.error) {
+    return { error: result.error };
+  }
+  revalidatePath(FEATURED_PATH);
+  redirect(FEATURED_PATH);
+}
+
+export async function unpublishAdminFeature(id: number): Promise<FormState> {
+  await requireAdmin();
+  const result = await adminUnpublishFeature(id);
+  if (result.error) {
+    return { error: result.error };
+  }
+  revalidatePath(FEATURED_PATH);
+  redirect(FEATURED_PATH);
+}
+
+export async function deleteAdminFeature(id: number): Promise<FormState> {
+  await requireAdmin();
+  const result = await adminDeleteFeature(id);
+  if (result.error) {
+    return { error: result.error };
+  }
+  revalidatePath(FEATURED_PATH);
+  redirect(FEATURED_PATH);
 }

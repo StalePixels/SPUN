@@ -12,8 +12,10 @@ import {
   checkCategoryName,
   checkCategorySlug,
   checkAlias,
+  checkArticle,
   checkChangelog,
   checkInstallDir,
+  checkPublishAt,
   checkReleaseDate,
   parseLimit,
   checkDescription,
@@ -24,6 +26,7 @@ import {
   checkVersionUnused,
   formatDay,
   isValidSlug,
+  parseFeatureId,
   parsePage,
   parseQuery,
   parseSerial,
@@ -322,6 +325,10 @@ describe("checkCategorySlug", () => {
   it.each(RESERVED_PATHS)("refuses the reserved name %s", (name) => {
     expect(checkCategorySlug(name)).toEqual({ code: "category.reserved" });
   });
+
+  it("refuses a reserved alias", () => {
+    expect(checkCategorySlug("featured")).toEqual({ code: "category.reserved" });
+  });
 });
 
 describe("RESERVED_PATHS", () => {
@@ -476,5 +483,68 @@ describe("checkAlias", () => {
     expect(checkAlias("a")).toEqual({ ok: true, alias: "a" });
     expect(checkAlias("a".repeat(16))).toEqual({ ok: true, alias: "a".repeat(16) });
     expect(checkAlias("a".repeat(17))).toEqual({ ok: false, error: { code: "alias.length", min: 1, max: 16 } });
+  });
+
+  it("refuses a reserved alias in any case", () => {
+    expect(checkAlias("featured")).toEqual({ ok: false, error: { code: "alias.reserved" } });
+    expect(checkAlias("Featured")).toEqual({ ok: false, error: { code: "alias.reserved" } });
+  });
+});
+
+describe("checkArticle", () => {
+  it("needs 1 to 1024 characters", () => {
+    const error = { ok: false, error: { code: "feature.articleLength", min: 1, max: 1024 } };
+    expect(checkArticle("")).toEqual(error);
+    expect(checkArticle("a".repeat(1025))).toEqual(error);
+    expect(checkArticle("a")).toEqual({ ok: true, article: "a" });
+    expect(checkArticle("a".repeat(1024))).toEqual({ ok: true, article: "a".repeat(1024) });
+  });
+
+  it("stores CR LF as LF, and counts it as one character", () => {
+    expect(checkArticle("one\r\ntwo")).toEqual({ ok: true, article: "one\ntwo" });
+    expect(checkArticle(`${"a".repeat(1022)}\r\n`)).toEqual({ ok: true, article: `${"a".repeat(1022)}\n` });
+  });
+});
+
+describe("checkPublishAt", () => {
+  const now = new Date("2026-10-05T12:00:00.000Z");
+  const past = new Date("2026-10-05T11:59:00.000Z");
+  const future = new Date("2026-10-05T12:01:00.000Z");
+
+  it("gives no time for an empty field", () => {
+    expect(checkPublishAt("", null, now)).toEqual({ ok: true, publishAt: null });
+    expect(checkPublishAt("", past, now)).toEqual({ ok: true, publishAt: null });
+  });
+
+  it("takes a future time", () => {
+    expect(checkPublishAt(future.toISOString(), null, now)).toEqual({ ok: true, publishAt: future });
+    expect(checkPublishAt(future.toISOString(), past, now)).toEqual({ ok: true, publishAt: future });
+  });
+
+  it("refuses a changed time in the past", () => {
+    const error = { ok: false, error: { code: "feature.publishPast" } };
+    expect(checkPublishAt(past.toISOString(), null, now)).toEqual(error);
+    expect(checkPublishAt(past.toISOString(), new Date("2026-10-01T00:00:00.000Z"), now)).toEqual(error);
+  });
+
+  it("keeps a stored time in the past that did not change", () => {
+    expect(checkPublishAt(past.toISOString(), past, now)).toEqual({ ok: true, publishAt: past });
+  });
+
+  it("refuses a time that is not UTC or not real", () => {
+    const error = { ok: false, error: { code: "feature.publishInvalid" } };
+    for (const input of ["tomorrow", "2026-10-06T12:00", "2026-10-06 12:00:00Z", "2026-13-06T12:00:00.000Z"]) {
+      expect(checkPublishAt(input, null, now), input).toEqual(error);
+    }
+  });
+});
+
+describe("parseFeatureId", () => {
+  it("accepts only a plain positive number", () => {
+    expect(parseFeatureId("1")).toBe(1);
+    expect(parseFeatureId("42")).toBe(42);
+    for (const value of ["", "0", "01", "-1", "1.5", "new", "1e3"]) {
+      expect(parseFeatureId(value), value).toBeNull();
+    }
   });
 });

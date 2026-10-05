@@ -94,6 +94,22 @@ export const aliases = mysqlTable("aliases", {
     .references(() => apps.id),
 });
 
+export const features = mysqlTable("features", {
+  id: int("id", { unsigned: true }).autoincrement().primaryKey(),
+  appId: char("app_id", { length: 6 })
+    .$type<AppId>()
+    .notNull()
+    .references(() => apps.id),
+  article: varchar("article", { length: 1024 }).notNull(),
+  articleHtml: text("article_html").notNull(),
+  published: boolean("published").notNull().default(false),
+  // Null only for a draft that never had a publish time.
+  publishAt: timestamp("publish_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at"),
+});
+
 // A reserved dot command name that the app may ship. Only an admin adds or removes one.
 export const dotOverrides = mysqlTable(
   "dot_overrides",

@@ -96,7 +96,7 @@ export async function CatalogueRows({ rows }: { rows: CatalogueRow[] }) {
             className="d-flex flex-grow-1 align-items-center gap-3 text-reset text-decoration-none"
           >
             <span className="flex-shrink-0" style={{ width: 64 }}>
-              {app.screenshot && (
+              {app.screenshot ? (
                 <Screenshot
                   url={app.screenshot.url}
                   width={app.screenshot.width}
@@ -104,6 +104,8 @@ export async function CatalogueRows({ rows }: { rows: CatalogueRow[] }) {
                   testId="catalogue-screenshot"
                   className="d-block"
                 />
+              ) : (
+                <Screenshot url="/placeholder.png" width={320} alt="" testId="catalogue-placeholder" className="d-block" />
               )}
             </span>
             <span className="flex-grow-1">

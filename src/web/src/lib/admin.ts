@@ -1,12 +1,14 @@
 import "server-only";
 import { and, asc, count, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { aliases, apps, categories, dotOverrides, releases, sessions, settings, users } from "@/db/schema";
+import { aliases, apps, categories, dotOverrides, features, releases, sessions, settings, users } from "@/db/schema";
 import { appIdStore, checkAliasFree, deleteApp, moveApp, notifyAppEdit, parseAppId, restoreApp, type AppId } from "./apps";
+import { isPublic, matches } from "./catalogue";
 import { setAppCategories } from "./categories";
 import { checkDotOverride } from "./dotcommands";
 import { db } from "./db";
 import { isDuplicateEntry } from "./dberrors";
+import { isLive, liveFeature, renderArticle } from "./featured";
 import type { Problem } from "./problems";
 import { appSnapshot, notify, releaseSnapshot } from "./notify";
 import { addRelease, appBinStore, notifyRelease, notifyReleaseEdit, type Upload } from "./releases";
@@ -573,4 +575,154 @@ export async function adminDeleteCategory(id: number): Promise<void> {
 export async function adminRestoreCategory(id: number): Promise<void> {
   await requireAdmin();
   await db().update(categories).set({ deletedAt: null }).where(eq(categories.id, id));
+}
+
+function appPublic() {
+  return sql`${isPublic()}`.mapWith((value) => Number(value) === 1);
+}
+
+// Unlike the catalogue, it also finds apps with no live release; never deleted ones.
+export async function adminSearchApps(query: string) {
+  await requireAdmin();
+  return db()
+    .select({ id: apps.id, title: apps.title, owner: users.username, appPublic: appPublic() })
+    .from(apps)
+    .innerJoin(users, eq(users.id, apps.userId))
+    .where(and(isNull(apps.deletedAt), matches(query)))
+    .orderBy(asc(apps.title), asc(apps.id));
+}
+
+export async function adminFeatureApp(appId: AppId) {
+  await requireAdmin();
+  const [app] = await db()
+    .select({ id: apps.id, title: apps.title, appPublic: appPublic() })
+    .from(apps)
+    .where(and(eq(apps.id, appId), isNull(apps.deletedAt)));
+  return app;
+}
+
+// Deleted features count: the editor starts from the article last saved.
+export async function adminLastArticle(appId: AppId): Promise<string | null> {
+  await requireAdmin();
+  const [row] = await db()
+    .select({ article: features.article })
+    .from(features)
+    .where(eq(features.appId, appId))
+    .orderBy(desc(features.updatedAt), desc(features.id))
+    .limit(1);
+  return row?.article ?? null;
+}
+
+const featureColumns = {
+  id: features.id,
+  appId: features.appId,
+  title: apps.title,
+  article: features.article,
+  articleHtml: features.articleHtml,
+  published: features.published,
+  publishAt: features.publishAt,
+};
+
+export async function adminListFeatures() {
+  await requireAdmin();
+  const rows = await db()
+    .select({ ...featureColumns, appPublic: appPublic() })
+    .from(features)
+    .innerJoin(apps, eq(apps.id, features.appId))
+    .where(isNull(features.deletedAt))
+    .orderBy(desc(features.publishAt), desc(features.id));
+  return { rows, liveId: (await liveFeature())?.id ?? null };
+}
+
+export async function adminGetFeature(id: number) {
+  await requireAdmin();
+  const [feature] = await db()
+    .select({ ...featureColumns, appPublic: appPublic() })
+    .from(features)
+    .innerJoin(apps, eq(apps.id, features.appId))
+    .where(and(eq(features.id, id), isNull(features.deletedAt)));
+  return feature;
+}
+
+// Several features can be live at once; the home page shows the latest.
+async function onlyLiveFeature(id: number): Promise<boolean> {
+  const rows = await db()
+    .select({ id: features.id })
+    .from(features)
+    .innerJoin(apps, eq(apps.id, features.appId))
+    .where(isLive())
+    .limit(2);
+  return rows.length === 1 && rows[0].id === id;
+}
+
+// "now" is the database's clock, which decides when a feature is live.
+export type FeatureFields = { article: string; published: boolean; publishAt: Date | "now" | null };
+
+function publishAtValue(publishAt: FeatureFields["publishAt"]) {
+  return publishAt === "now" ? sql`now()` : publishAt;
+}
+
+export async function adminCreateFeature(appId: AppId, fields: FeatureFields): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  if (!(await adminFeatureApp(appId))) {
+    return { error: { code: "app.notFound" } };
+  }
+  await db()
+    .insert(features)
+    .values({
+      appId,
+      article: fields.article,
+      articleHtml: renderArticle(fields.article),
+      published: fields.published,
+      publishAt: publishAtValue(fields.publishAt),
+    });
+  return {};
+}
+
+export async function adminUpdateFeature(id: number, fields: FeatureFields): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  const feature = await adminGetFeature(id);
+  if (!feature) {
+    return { error: { code: "feature.notFound" } };
+  }
+  const leavesNow = !fields.published || (fields.publishAt instanceof Date && fields.publishAt > new Date());
+  if (leavesNow && (await onlyLiveFeature(id))) {
+    return { error: { code: "feature.lastLive" } };
+  }
+  await db()
+    .update(features)
+    .set({
+      article: fields.article,
+      articleHtml: renderArticle(fields.article),
+      published: fields.published,
+      publishAt: publishAtValue(fields.publishAt),
+      updatedAt: sql`now()`,
+    })
+    .where(eq(features.id, id));
+  return {};
+}
+
+// Keeps the publish time, so a republish puts the feature back in its place.
+export async function adminUnpublishFeature(id: number): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  if (!(await adminGetFeature(id))) {
+    return { error: { code: "feature.notFound" } };
+  }
+  if (await onlyLiveFeature(id)) {
+    return { error: { code: "feature.lastLive" } };
+  }
+  await db().update(features).set({ published: false }).where(eq(features.id, id));
+  return {};
+}
+
+export async function adminDeleteFeature(id: number): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  if (!(await adminGetFeature(id))) {
+    return { error: { code: "feature.notFound" } };
+  }
+  if (await onlyLiveFeature(id)) {
+    return { error: { code: "feature.lastLive" } };
+  }
+  await db().update(features).set({ deletedAt: new Date() }).where(eq(features.id, id));
+  return {};
 }

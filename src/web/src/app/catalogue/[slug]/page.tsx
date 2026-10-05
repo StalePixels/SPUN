@@ -1,10 +1,12 @@
+import { notFound, redirect } from "next/navigation";
 import { parseAppId } from "@/lib/apps";
-import { parsePage, parseQuery } from "@/lib/rules";
+import { liveFeature } from "@/lib/featured";
+import { FEATURED, parsePage, parseQuery } from "@/lib/rules";
 import { requireRegistration } from "@/lib/session";
 import { Catalogue } from "../../Catalogue";
 import { AppPage } from "./AppPage";
 
-// An app id and a category slug never have the same form (checkCategorySlug).
+// An app id, featured and a category slug never clash (checkCategorySlug).
 export default async function CatalogueEntry({
   params,
   searchParams,
@@ -14,6 +16,13 @@ export default async function CatalogueEntry({
 }) {
   await requireRegistration();
   const { slug } = await params;
+  if (slug === FEATURED) {
+    const feature = await liveFeature();
+    if (!feature) {
+      notFound();
+    }
+    redirect(`/catalogue/${feature.appId}`);
+  }
   if (parseAppId(slug)) {
     return <AppPage id={slug} />;
   }

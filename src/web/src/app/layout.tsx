@@ -63,14 +63,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </Link>
               )}
               {user ? (
-                <form action={logOut}>
+                <form action={logOut} suppressHydrationWarning>
                   <button type="submit" className="btn btn-outline-light btn-sm" data-testid="nav-logout">
                     <i className="bi bi-box-arrow-right me-1" />
                     Log out
                   </button>
                 </form>
               ) : (
-                <form action={logIn}>
+                <form action={logIn} suppressHydrationWarning>
                   <button type="submit" className="btn btn-light btn-sm" data-testid="nav-login">
                     <i className="bi bi-box-arrow-in-right me-1" />
                     Log in

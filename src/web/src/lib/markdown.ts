@@ -1,6 +1,8 @@
 import "server-only";
-import { appView, catalogueView, type AppView, type CatalogueView } from "./catalogue";
+import type { AppId } from "./apps";
+import { appView, catalogueView, publicAppIdByAlias, type AppView, type CatalogueView } from "./catalogue";
 import { liveCategories, type Category } from "./categories";
+import { liveFeature, type LiveFeature } from "./featured";
 import {
   API_IP_PER_MINUTE,
   API_JSON_BODY_MAX,
@@ -122,6 +124,32 @@ function appMarkdown({ app, releases, categories, screenshots }: AppView): strin
       lines.push(fenced(release.changelog), "");
     }
   }
+  return lines.join("\n");
+}
+
+function homeMarkdown(feature: LiveFeature | null, spun: AppId | null): string {
+  const lines = ["# SPUN", ""];
+  if (feature) {
+    lines.push(
+      `## Featured: ${escapeText(feature.title)}`,
+      "",
+      feature.article,
+      "",
+      link(feature.title, `/catalogue/${feature.appId}.md`),
+      "",
+    );
+  }
+  if (spun) {
+    lines.push(
+      "## Install SPUN",
+      "",
+      link("Download the SPUN zip", `/catalogue/${spun}/download`),
+      "",
+      "On the Next, you can also run `.nbnget /dot/spun : ../spun get spun`. It downloads the SPUN dot command from the NBN CDN into the current directory, then runs it to install SPUN with SPUN.",
+      "",
+    );
+  }
+  lines.push("## Catalogue", "", link("Browse the catalogue", "/catalogue.md"), "");
   return lines.join("\n");
 }
 
@@ -448,6 +476,10 @@ export async function catalogueResponse(slug: string | null, request: Request): 
 export async function appResponse(id: string): Promise<Response> {
   const view = await appView(id);
   return markdownResponse(view ? appMarkdown(view) : null);
+}
+
+export async function homeResponse(): Promise<Response> {
+  return markdownResponse(homeMarkdown(await liveFeature(), await publicAppIdByAlias("spun")));
 }
 
 export function apiResponse(): Response {

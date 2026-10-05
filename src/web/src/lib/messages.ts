@@ -86,6 +86,8 @@ export function problemMessage(problem: Problem): string {
       return "Another alias already has that name.";
     case "alias.notFound":
       return "This app has no such alias.";
+    case "alias.reserved":
+      return "That alias is reserved by the site. Choose another.";
     case "category.invalidCharacters":
       return `A category slug or name cannot use: ${characters(problem.chars)}`;
     case "category.length":
@@ -102,6 +104,16 @@ export function problemMessage(problem: Problem): string {
       return "The release date is not a real date.";
     case "releaseDate.future":
       return "The release date cannot be after the upload date.";
+    case "feature.notFound":
+      return "There is no such feature.";
+    case "feature.articleLength":
+      return `The article must be ${min} to ${max} characters.`;
+    case "feature.publishInvalid":
+      return "The publish time is not a real time.";
+    case "feature.publishPast":
+      return "The publish time cannot be in the past. Leave it empty to publish now.";
+    case "feature.lastLive":
+      return "This is the only live feature. Publish another feature first.";
     case "file.missing":
       return "Choose a zip file to upload.";
     case "file.tooLarge":

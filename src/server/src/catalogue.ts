@@ -56,6 +56,8 @@ export interface Slice<T> {
 // serial that is not deleted. find(), list() and app() show only apps that have one.
 // resolve() gives the id that an app id or an alias names, deleted or not; an alias
 // can move to another app at any time, so the server resolves on every request.
+// featured gives the app of the live feature: the latest published one whose time
+// has passed and whose app is public.
 export interface Catalogue {
   resolve(name: AppName): Promise<AppId | null>;
   find(text: string, offset: number, limit: number): Promise<Slice<FoundApp>>;
@@ -78,6 +80,9 @@ export function parseAppId(value: string): AppId | null {
 export type AppName = string & { readonly __brand: "AppName" };
 
 const APP_NAME_RE = /^[0-9a-z_-]{1,16}$/;
+
+// Not a row in aliases: resolve() computes it on every request.
+export const FEATURED = "featured";
 
 export function parseAppName(value: string): AppName | null {
   const name = value.toLowerCase();

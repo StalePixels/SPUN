@@ -5,7 +5,8 @@ import { aliases, appCategories, apps, releases, savedApps, users } from "@/db/s
 import { parseAppId, type AppId } from "./apps";
 import { appCategoryList, appCategoryMap, liveCategories, liveCategory, type Category } from "./categories";
 import { db } from "./db";
-import { CATALOGUE_PAGE_SIZE } from "./rules";
+import { liveFeature } from "./featured";
+import { CATALOGUE_PAGE_SIZE, FEATURED } from "./rules";
 import { appScreenshots, mainScreenshots, type Screenshot } from "./screenshots";
 
 export type CatalogueRow = {
@@ -31,7 +32,7 @@ export type PublicRelease = { serial: number; version: string; releaseDate: stri
 
 // The rule SPUNServer uses (src/server/src/mysqlCatalogue.ts): not deleted, and
 // at least one live release.
-function isPublic() {
+export function isPublic() {
   const live = alias(releases, "live");
   return and(
     isNull(apps.deletedAt),
@@ -67,7 +68,7 @@ function likePattern(text: string): string {
 
 // A copy of SPUNServer's FIND rule (src/server/src/mysqlCatalogue.ts), so the
 // web and the Next find the same apps for the same text.
-function matches(query: string) {
+export function matches(query: string) {
   const pattern = likePattern(query);
   return or(sql`lower(${apps.title}) like ${pattern}`, sql`lower(${apps.description}) like ${pattern}`);
 }
@@ -161,6 +162,9 @@ export async function publicApp(id: AppId): Promise<PublicApp | null> {
 
 // An app id or an alias, as `.spun get` takes them: both share one namespace.
 export async function publicAppIdByName(name: string): Promise<AppId | null> {
+  if (name.toLowerCase() === FEATURED) {
+    return (await liveFeature())?.appId ?? null;
+  }
   const id = parseAppId(name);
   if (id && (await publicApp(id))) {
     return id;
