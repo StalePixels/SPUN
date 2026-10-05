@@ -1,0 +1,69 @@
+# Production: the CMS, SPUNServer, MariaDB and Redis as one project.
+# Development and make e2e use src/web/compose.yml and src/server/docker-compose.yml.
+name: spun
+
+services:
+  cms:
+    build: ../src/web
+    env_file: cms.env
+    environment:
+      DATABASE_URL: mysql://${MARIADB_USER}:${MARIADB_PASSWORD}@mariadb:3306/${MARIADB_DATABASE}
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_DIR: /storage
+    ports:
+      - "${CMS_PORT:-127.0.0.1:48180}:3000"
+    volumes:
+      - "${STORAGE_DIR_HOST:?set STORAGE_DIR_HOST in .env}:/storage"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  spun-server:
+    build:
+      context: ../src
+      dockerfile: server/Dockerfile
+    env_file:
+      - path: server.env
+        required: false
+    environment:
+      DATABASE_URL: mysql://${MARIADB_USER}:${MARIADB_PASSWORD}@mariadb:3306/${MARIADB_DATABASE}
+      NBN_FILEPATH: /data
+    ports:
+      - "${SPUN_PORT:-48128}:48128"
+    volumes:
+      - "${STORAGE_DIR_HOST:?set STORAGE_DIR_HOST in .env}/public:/data:ro"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      MARIADB_DATABASE: ${MARIADB_DATABASE:?set MARIADB_DATABASE in .env}
+      MARIADB_USER: ${MARIADB_USER:?set MARIADB_USER in .env}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:?set MARIADB_PASSWORD in .env}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?set MARIADB_ROOT_PASSWORD in .env}
+    volumes:
+      - "${MARIADB_DATA_HOST:?set MARIADB_DATA_HOST in .env}:/var/lib/mysql"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - "${REDIS_DATA_HOST:?set REDIS_DATA_HOST in .env}:/data"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
