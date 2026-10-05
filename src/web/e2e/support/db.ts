@@ -7,7 +7,7 @@ import { settings } from "./settings";
 // Direct database reads, to check what the CMS stored. The writes are the
 // restores of settings a test changed, the users and apps that the admin
 // tests make for themselves (so no real account is renamed or disabled), and
-// the app row of the setup's test app.
+// the app row and the feature of the setup's test app.
 
 async function query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
   const connection = await mysql.createConnection(settings.databaseUrl);
@@ -114,6 +114,102 @@ export async function insertAlias(alias: string, appId: string): Promise<void> {
   await query("insert into aliases (alias, app_id) values (?, ?)", [alias, appId]);
 }
 
+// The setup's feature of the test app, published now, as the first feature in production is.
+export async function insertPublishedFeature(appId: string, article: string, articleHtml: string): Promise<void> {
+  await query("insert into features (app_id, article, article_html, published, publish_at) values (?, ?, ?, true, now())", [
+    appId,
+    article,
+    articleHtml,
+  ]);
+}
+
+export async function featureRows(appId: string) {
+  return query<{ id: number; article: string; article_html: string; published: number }>(
+    "select id, article, article_html, published from features where app_id = ? and deleted_at is null order by id",
+    [appId],
+  );
+}
+
+export async function publishedFeatureIds(): Promise<number[]> {
+  const rows = await query<{ id: number }>("select id from features where published and deleted_at is null");
+  return rows.map((row) => row.id);
+}
+
+// Only to take features out and put them back, as a test found them.
+export async function setFeaturesPublished(ids: number[], published: boolean): Promise<void> {
+  if (ids.length === 0) return;
+  await query("update features set published = ? where id in (?)", [published, ids]);
+}
+
+export type FeatureRow = {
+  id: number;
+  app_id: string;
+  article: string;
+  article_html: string;
+  published: number;
+  publish_at: Date | null;
+  updated_at: Date;
+  deleted_at: Date | null;
+};
+
+export async function featureRow(id: number): Promise<FeatureRow | undefined> {
+  const [row] = await query<FeatureRow>(
+    "select id, app_id, article, article_html, published, publish_at, updated_at, deleted_at from features where id = ?",
+    [id],
+  );
+  return row;
+}
+
+// Deleted ones too, newest first.
+export async function allFeatureRows(appId: string): Promise<FeatureRow[]> {
+  return query<FeatureRow>(
+    "select id, app_id, article, article_html, published, publish_at, updated_at, deleted_at from features where app_id = ? order by id desc",
+    [appId],
+  );
+}
+
+// Only on an app that the test made. removeApps() removes it again.
+export async function insertFeature(
+  appId: string,
+  article: string,
+  options: { updatedSecondsAgo: number; deleted?: boolean },
+): Promise<number> {
+  const connection = await mysql.createConnection(settings.databaseUrl);
+  try {
+    const [result] = await connection.query<ResultSetHeader>(
+      `insert into features (app_id, article, article_html, updated_at, deleted_at)
+       values (?, ?, '', now() - interval ? second, ${options.deleted ? "now()" : "null"})`,
+      [appId, article, options.updatedSecondsAgo],
+    );
+    return result.insertId;
+  } finally {
+    await connection.end();
+  }
+}
+
+// Only on a feature that the test made: no browser can enter a time in the past.
+export async function setFeaturePublishAt(id: number, secondsFromNow: number): Promise<void> {
+  await query("update features set publish_at = now() + interval ? second where id = ?", [secondsFromNow, id]);
+}
+
+// To put a feature back as a test found it, after a check that should have refused a change.
+export async function restoreFeature(row: FeatureRow): Promise<void> {
+  await query("update features set published = ?, publish_at = ?, deleted_at = ? where id = ?", [
+    row.published,
+    row.publish_at,
+    row.deleted_at,
+    row.id,
+  ]);
+}
+
+// Only on an app that the test made.
+export async function setReleaseDeleted(appId: string, serial: number, deleted: boolean): Promise<void> {
+  await query(`update releases set deleted_at = ${deleted ? "now()" : "null"} where app_id = ? and serial = ?`, [
+    appId,
+    serial,
+  ]);
+}
+
 export async function dotOverrideNames(appId: string): Promise<string[]> {
   const rows = await query<{ name: string }>("select name from dot_overrides where app_id = ? order by name", [appId]);
   return rows.map((row) => row.name);
@@ -171,7 +267,7 @@ export async function removeApps(appIds: string[]): Promise<void> {
     "select apps.id, users.username from apps join users on users.id = apps.user_id where apps.id in (?)",
     [appIds],
   );
-  for (const table of ["aliases", "dot_overrides", "app_categories", "saved_apps", "screenshots", "releases"]) {
+  for (const table of ["aliases", "dot_overrides", "app_categories", "saved_apps", "screenshots", "releases", "features"]) {
     await query(`delete from ${table} where app_id in (?)`, [appIds]);
   }
   await query("delete from apps where id in (?)", [appIds]);

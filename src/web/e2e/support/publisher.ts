@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { removeApps } from "./db";
+import { stripesPng } from "./images";
 import {
   clickHydrated,
   createApp,
@@ -8,6 +9,7 @@ import {
   test as base,
   uniqueTitle,
   uploadRelease,
+  waitForHydration,
 } from "./pages";
 import { accounts } from "./settings";
 import { makeZip, sampleEntries, tempFiles } from "./zips";
@@ -21,6 +23,8 @@ export type Publisher = {
   upload(appId: string, version: string, serial: number): Promise<void>;
   deleteRelease(appId: string, serial: number): Promise<void>;
   deleteApp(appId: string): Promise<void>;
+  uploadScreenshot(appId: string, slot: number): Promise<void>;
+  clearScreenshot(appId: string, slot: number): Promise<void>;
 };
 
 export const test = base.extend<{ publisher: Publisher }>({
@@ -49,6 +53,20 @@ export const test = base.extend<{ publisher: Publisher }>({
         },
         async deleteApp(appId) {
           await deleteAppInUi(page, appId);
+        },
+        async uploadScreenshot(appId, slot) {
+          await page.goto(`/publish/apps/${appId}`);
+          await waitForHydration(page.getByTestId(`screenshot-upload-${slot}`));
+          await page
+            .getByTestId(`screenshot-file-${slot}`)
+            .setInputFiles(files.write(`${appId}-${slot}.png`, await stripesPng(320, 256)));
+          await clickHydrated(page.getByTestId(`screenshot-upload-${slot}`));
+          await expect(page.getByTestId(`screenshot-preview-${slot}`)).toBeVisible();
+        },
+        async clearScreenshot(appId, slot) {
+          await page.goto(`/publish/apps/${appId}`);
+          await clickHydrated(page.getByTestId(`screenshot-clear-${slot}`));
+          await expect(page.getByTestId(`screenshot-empty-${slot}`)).toBeVisible();
         },
       });
       await removeApps(created);

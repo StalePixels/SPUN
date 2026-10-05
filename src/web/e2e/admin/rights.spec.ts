@@ -182,6 +182,7 @@ test("aliases: add, refuse bad names and clashes, move to another app, remove", 
     ["bad name!", "alias.invalidCharacters"],
     [second.toUpperCase(), "alias.isAppId"],
     ["x".repeat(17), "alias.length"],
+    ["Featured", "alias.reserved"],
     [gone, "alias.isAppId"],
     [alias, "alias.taken"],
   ]) {
@@ -190,6 +191,7 @@ test("aliases: add, refuse bad names and clashes, move to another app, remove", 
   }
   expect(await aliasRow(second)).toBeUndefined();
   expect(await aliasRow(gone)).toBeUndefined();
+  expect(await aliasRow("featured")).toBeUndefined();
 
   const row = page.getByTestId(`alias-${alias}`);
   await row.getByTestId("alias-move-target").fill("zzzzzz");

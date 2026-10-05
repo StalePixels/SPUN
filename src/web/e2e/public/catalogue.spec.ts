@@ -1,9 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
+import type { Locator } from "@playwright/test";
 import { insertAlias, liveCategorySlugs } from "../support/db";
 import { formatDay, pathname, releaseFile, todayUtc } from "../support/pages";
 import { catalogueRow, expect, test } from "../support/publisher";
-import { accounts } from "../support/settings";
+import { accounts, settings } from "../support/settings";
 
 const client = accounts.client;
 
@@ -54,6 +55,48 @@ test("the app page lists the live releases, and not the deleted ones", async ({ 
     items.map((item) => item.getAttribute("data-testid")),
   );
   expect(listed).toEqual(["public-release-3", "public-release-1"]);
+});
+
+// The image loaded, at the Next's pixel size.
+async function naturalWidth(image: Locator): Promise<number> {
+  await expect(image).toBeVisible();
+  await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.complete)).toBe(true);
+  return image.evaluate((element: HTMLImageElement) => element.naturalWidth);
+}
+
+test("an app with no main screenshot shows the placeholder in the catalogue and on its page", async ({
+  page,
+  publisher,
+}) => {
+  const id = await publisher.create("Placeholder");
+  await publisher.upload(id, "1.0", 1);
+
+  let row = await catalogueRow(page, id);
+  expect(await naturalWidth(row!.getByTestId("catalogue-placeholder"))).toBe(320);
+  await expect(row!.getByTestId("catalogue-placeholder")).toHaveAttribute("src", "/placeholder.png");
+  await expect(row!.getByTestId("catalogue-screenshot")).toHaveCount(0);
+  await page.goto(`/catalogue/${id}`);
+  expect(await naturalWidth(page.getByTestId("public-screenshot-placeholder"))).toBe(320);
+  await expect(page.getByTestId("public-screenshot-placeholder")).toHaveAttribute("src", "/placeholder.png");
+  await expect(page.getByTestId(/^public-screenshot-\d$/)).toHaveCount(0);
+
+  await publisher.uploadScreenshot(id, 2);
+  await page.goto(`/catalogue/${id}`);
+  await expect(page.getByTestId("public-screenshot-placeholder")).toBeVisible();
+  expect(await naturalWidth(page.getByTestId("public-screenshot-2"))).toBe(320);
+  await expect(page.getByTestId("public-screenshot-1")).toHaveCount(0);
+  row = await catalogueRow(page, id);
+  await expect(row!.getByTestId("catalogue-placeholder")).toBeVisible();
+  await expect(row!.getByTestId("catalogue-screenshot")).toHaveCount(0);
+
+  await publisher.uploadScreenshot(id, 1);
+  row = await catalogueRow(page, id);
+  await expect(row!.getByTestId("catalogue-screenshot")).toBeVisible();
+  await expect(row!.getByTestId("catalogue-placeholder")).toHaveCount(0);
+  await page.goto(`/catalogue/${id}`);
+  expect(await naturalWidth(page.getByTestId("public-screenshot-1"))).toBe(320);
+  await expect(page.getByTestId("public-screenshot-2")).toBeVisible();
+  await expect(page.getByTestId("public-screenshot-placeholder")).toHaveCount(0);
 });
 
 test("the download is the latest zip from the data directory; a deleted app gives 404", async ({
@@ -145,6 +188,18 @@ test("/get/<alias or id> sends to the app page for a public app only, and is not
   await publisher.deleteRelease(id, 1);
   expect(await statusOf(alias)).toBe(404);
   expect(await statusOf(id)).toBe(404);
+});
+
+// The setup's feature of the test app is the live one.
+test("/catalogue/featured and /get/featured send to the live feature's app, and are not permanent", async ({ page }) => {
+  for (const path of ["/catalogue/featured", "/get/featured"]) {
+    const response = await page.request.get(path, { maxRedirects: 0 });
+    expect(response.status(), path).toBe(307);
+    expect(new URL(response.headers()["location"], "http://x").pathname, path).toBe(`/catalogue/${settings.testApp}`);
+  }
+  await page.goto("/catalogue/featured");
+  expect(pathname(page)).toBe(`/catalogue/${settings.testApp}`);
+  await expect(page.getByTestId("public-app-title")).toBeVisible();
 });
 
 test("the navbar brand goes to the front page and Catalogue to the catalogue", async ({ page }) => {

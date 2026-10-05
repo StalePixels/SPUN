@@ -1,6 +1,6 @@
-import { userByUsername } from "../support/db";
+import { featureRows, userByUsername } from "../support/db";
 import { expect, test, uploadRelease } from "../support/pages";
-import { accounts } from "../support/settings";
+import { accounts, settings } from "../support/settings";
 import { makeZip, sampleEntries, tempFiles } from "../support/zips";
 
 const client = accounts.client;
@@ -20,7 +20,18 @@ test("navbar shows the user, the theme picker, Publishers and Log out, but no Ad
 
 test("admin pages give 404 to a user who is not an admin", async ({ page }) => {
   const { id } = await userByUsername(client.username);
-  for (const path of ["/admin", "/admin/settings", "/admin/users", "/admin/apps", `/admin/users/${id}`]) {
+  const [feature] = await featureRows(settings.testApp);
+  for (const path of [
+    "/admin",
+    "/admin/settings",
+    "/admin/users",
+    "/admin/apps",
+    `/admin/users/${id}`,
+    "/admin/featured",
+    "/admin/featured/new",
+    `/admin/featured/new?app=${settings.testApp}`,
+    `/admin/featured/${feature.id}`,
+  ]) {
     const response = await page.goto(path);
     expect(response?.status(), path).toBe(404);
   }

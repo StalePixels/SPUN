@@ -48,7 +48,7 @@ const test = base.extend<{ made: Made }>({
   ],
 });
 
-test("an admin adds, edits, deletes and restores a category; a reserved slug and an app id form are refused", async ({ page, made }) => {
+test("an admin adds, edits, deletes and restores a category; reserved slugs and an app id form are refused", async ({ page, made }) => {
   const slug = made.slug();
   await page.goto("/admin/categories");
   const add = page.getByTestId("category-add");
@@ -62,6 +62,11 @@ test("an admin adds, edits, deletes and restores a category; a reserved slug and
   await clickHydrated(add.getByTestId("category-submit"));
   await expect(add.getByTestId("form-error")).toHaveAttribute("data-error", "category.appIdForm");
   expect(await categoryBySlug("abc123")).toBeUndefined();
+
+  await add.getByTestId("category-slug").fill("featured");
+  await clickHydrated(add.getByTestId("category-submit"));
+  await expect(add.getByTestId("form-error")).toHaveAttribute("data-error", "category.reserved");
+  expect(await categoryBySlug("featured")).toBeUndefined();
 
   await add.getByTestId("category-slug").fill(slug);
   await add.getByTestId("category-name").fill("E2E Added");

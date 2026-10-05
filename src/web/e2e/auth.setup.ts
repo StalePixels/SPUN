@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test as setup, type Browser } from "@playwright/test";
-import { appRow, firstLiveCategoryId, insertAppWithId, linkCategory, userByUsername } from "./support/db";
+import { appRow, firstLiveCategoryId, insertAppWithId, insertPublishedFeature, linkCategory, userByUsername } from "./support/db";
 import { nextUid, waitForPin } from "./support/mail";
 import { clickHydrated, pathname, uploadRelease, waitForHydration } from "./support/pages";
 import { accounts, settings, type Account } from "./support/settings";
@@ -73,8 +73,9 @@ for (const account of [accounts.admin, accounts.client]) {
 
 // The client's app for the MAME test of .spun (src/client/test), which needs a
 // fixed id: the app row goes in directly, and the release is uploaded through
-// the CMS. Kept after the run, so the e2e SPUNServer serves it until the next
-// reset.
+// the CMS. Its published feature goes in directly, so every spec starts with
+// one live feature, as production does. Kept after the run, so the e2e
+// SPUNServer serves it until the next reset.
 setup("publish the client's test app", async ({ browser }) => {
   if (await appRow(settings.testApp)) {
     setup.info().annotations.push({ type: "test app", description: "already there" });
@@ -90,6 +91,7 @@ setup("publish the client's test app", async ({ browser }) => {
     await page.goto(`/publish/apps/${settings.testApp}`);
     await uploadRelease(page, { version: "1.0", file: files.write("next-test.zip", makeZip(sampleEntries())) });
     await expect(page).toHaveURL(new RegExp(`/publish/apps/${settings.testApp}/releases/1$`));
+    await insertPublishedFeature(settings.testApp, "The **Next Test** app.", "<p>The <strong>Next Test</strong> app.</p>\n");
   } finally {
     files.remove();
     await context.close();

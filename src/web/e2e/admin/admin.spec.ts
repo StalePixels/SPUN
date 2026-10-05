@@ -39,11 +39,11 @@ async function saveDefaultLimit(page: Page, value: string) {
   await expect(page.getByTestId("form-saved")).toBeVisible();
 }
 
-test("the Admin link leads to Settings, Users, Apps and Categories", async ({ page }) => {
+test("the Admin link leads to Settings, Users, Apps, Categories and Featured", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("nav-admin").click();
   await expect(page).toHaveURL(/\/admin$/);
-  for (const section of ["settings", "users", "apps", "categories"]) {
+  for (const section of ["settings", "users", "apps", "categories", "featured"]) {
     await page.getByTestId(`admin-link-${section}`).click();
     await expect(page).toHaveURL(new RegExp(`/admin/${section}$`));
     await page.goto("/admin");
