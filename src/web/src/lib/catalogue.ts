@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, exists, isNull, max, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
-import { appCategories, apps, releases, savedApps, users } from "@/db/schema";
+import { aliases, appCategories, apps, releases, savedApps, users } from "@/db/schema";
 import { parseAppId, type AppId } from "./apps";
 import { appCategoryList, appCategoryMap, liveCategories, liveCategory, type Category } from "./categories";
 import { db } from "./db";
@@ -157,6 +157,25 @@ export async function publicApp(id: AppId): Promise<PublicApp | null> {
     .innerJoin(users, eq(users.id, apps.userId))
     .where(and(eq(apps.id, id), isPublic()));
   return app ?? null;
+}
+
+// An app id or an alias, as `.spun get` takes them: both share one namespace.
+export async function publicAppIdByName(name: string): Promise<AppId | null> {
+  const id = parseAppId(name);
+  if (id && (await publicApp(id))) {
+    return id;
+  }
+  return publicAppIdByAlias(name);
+}
+
+// The alias column's collation ignores case.
+export async function publicAppIdByAlias(name: string): Promise<AppId | null> {
+  const [row] = await db()
+    .select({ id: apps.id })
+    .from(aliases)
+    .innerJoin(apps, eq(apps.id, aliases.appId))
+    .where(and(eq(aliases.alias, name), isPublic()));
+  return row?.id ?? null;
 }
 
 // Latest first.

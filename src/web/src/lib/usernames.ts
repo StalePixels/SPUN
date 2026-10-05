@@ -1,8 +1,11 @@
 import "server-only";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { users } from "@/db/schema";
 import { db } from "./db";
-import { usernameKey } from "./rules";
+import { isDuplicateEntry } from "./dberrors";
+import { notify } from "./notify";
+import type { Problem } from "./problems";
+import { checkUsernameInput, usernameKey } from "./rules";
 
 // exceptUserId lets a user keep their own name in another case.
 export async function usernameTaken(username: string, exceptUserId?: string): Promise<boolean> {
@@ -17,4 +20,31 @@ export async function usernameTaken(username: string, exceptUserId?: string): Pr
     )
     .limit(1);
   return rows.length > 0;
+}
+
+// The end of registration: a user without a username chooses one.
+export async function chooseUsername(user: { id: string; username: string | null }, username: string): Promise<Problem | null> {
+  if (user.username) {
+    return { code: "username.fixed" };
+  }
+  const error = checkUsernameInput(username);
+  if (error) {
+    return error;
+  }
+  if (await usernameTaken(username)) {
+    return { code: "username.taken" };
+  }
+  try {
+    await db()
+      .update(users)
+      .set({ username })
+      .where(and(eq(users.id, user.id), isNull(users.username)));
+  } catch (err) {
+    if (isDuplicateEntry(err)) {
+      return { code: "username.taken" };
+    }
+    throw err;
+  }
+  notify({ kind: "publisherJoined", actorId: user.id });
+  return null;
 }

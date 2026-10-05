@@ -19,12 +19,12 @@ void net_open(void) {
     errno = NET_GetOK(false);
 
     if(errno) {
-        printf("Closing Existing connections...\n");
+        if(!quiet) printf("Closing Existing connections...\n");
         NET_Close(true);
     }
 #endif
 
-    printf("Opening %s\n", netServer);
+    if(!quiet) printf("Opening %s\n", netServer);
 
     NET_Connect(netServer, netPort);
 

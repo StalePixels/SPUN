@@ -80,15 +80,16 @@ test("with a default limit of 1, the New app form comes and goes", async ({ page
   expect(own.app_limit, "the admin account needs no own limit, so the default applies").toBeNull();
   await saveDefaultLimit(page, "1");
 
-  await page.goto("/publish");
+  await page.goto("/publish/new");
   await expect(page.getByTestId("app-submit")).toBeVisible();
   const id = await apps.create("Limit");
 
-  await page.goto("/publish");
+  await page.goto("/publish/new");
   await expect(page.getByTestId("app-limit-reached")).toBeVisible();
   await expect(page.getByTestId("app-submit")).toHaveCount(0);
 
   await deleteAppInUi(page, id);
+  await page.goto("/publish/new");
   await expect(page.getByTestId("app-submit")).toBeVisible();
   await expect(page.getByTestId("app-limit-reached")).toHaveCount(0);
 

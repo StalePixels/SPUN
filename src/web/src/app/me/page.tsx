@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { users } from "@/db/schema";
 import { db } from "@/lib/db";
 import { appCount, appLimit } from "@/lib/limits";
 import { requirePublisher } from "@/lib/session";
 import { AppLimit } from "../AppLimit";
+import { MeMenu } from "./MeMenu";
 
 export default async function Me() {
   const user = await requirePublisher();
@@ -13,6 +13,7 @@ export default async function Me() {
   const limit = await appLimit(user.id);
   return (
     <>
+      <MeMenu active="account" />
       <h1 className="h3 mb-3" data-testid="me-heading">Your account</h1>
       <dl className="row mb-4">
         <dt className="col-sm-3">Username</dt>
@@ -26,10 +27,6 @@ export default async function Me() {
           {count} of <AppLimit limit={limit} />
         </dd>
       </dl>
-      <Link href="/keys" className="btn btn-outline-primary" data-testid="me-keys">
-        <i className="bi bi-key me-1" />
-        API keys
-      </Link>
     </>
   );
 }

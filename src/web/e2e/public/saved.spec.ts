@@ -7,14 +7,15 @@ test("an anonymous user sees no Save button", async ({ page, publisher }) => {
   expect(await catalogueRow(page, id), "the app is in the catalogue").not.toBeNull();
   await expect(page.getByTestId(/^save-/)).toHaveCount(0);
 
-  await page.goto(`/apps/${id}`);
+  await page.goto(`/catalogue/${id}`);
   await expect(page.getByTestId("public-app-title")).toBeVisible();
   await expect(page.getByTestId(/^save-/)).toHaveCount(0);
 });
 
-test("/my sends an anonymous user to log in", async ({ page }) => {
-  await page.goto("/my");
-  await expect(page).toHaveURL((url) => url.pathname === "/");
-  await expect(page.getByTestId("nav-login")).toBeVisible();
-  await expect(page.getByTestId("nav-my")).toHaveCount(0);
+test("/me/apps and the old /my send an anonymous user to log in", async ({ page }) => {
+  for (const path of ["/me/apps", "/my"]) {
+    await page.goto(path);
+    await expect(page, path).toHaveURL((url) => url.pathname === "/");
+    await expect(page.getByTestId("nav-login"), path).toBeVisible();
+  }
 });

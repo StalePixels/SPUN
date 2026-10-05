@@ -48,18 +48,18 @@ function fenced(text: string): string {
 }
 
 function categoryLinks(categories: Category[]): string {
-  return categories.map((category) => link(category.name, `/${category.slug}.md`)).join(", ");
+  return categories.map((category) => link(category.name, `/catalogue/${category.slug}.md`)).join(", ");
 }
 
 function catalogueMarkdown(view: CatalogueView, page: number, query: string): string {
-  const base = view.category ? `/${view.category.slug}.md` : "/index.md";
+  const base = view.category ? `/catalogue/${view.category.slug}.md` : "/catalogue.md";
   const lines = [`# ${escapeText(view.category?.name ?? "Apps")}`, ""];
   if (query !== "") {
     lines.push(`Search: ${escapeText(query)}`, "");
   }
   if (view.categories.length > 0) {
     lines.push("## Categories", "");
-    lines.push(...view.categories.map((category) => `- ${link(category.name, `/${category.slug}.md`)}`), "");
+    lines.push(...view.categories.map((category) => `- ${link(category.name, `/catalogue/${category.slug}.md`)}`), "");
   }
   lines.push("## Apps", "");
   if (view.rows.length === 0) {
@@ -69,7 +69,7 @@ function catalogueMarkdown(view: CatalogueView, page: number, query: string): st
     const publisher = row.username ? ` by ${escapeText(row.username)}` : "";
     const categories = row.categories.length > 0 ? `. Categories: ${categoryLinks(row.categories)}` : "";
     lines.push(
-      `- ${link(row.title, `/apps/${row.id}.md`)}${publisher}: version ${escapeText(row.version)}, ${formatDay(row.releaseDate)}, ${row.downloads} downloads${categories}`,
+      `- ${link(row.title, `/catalogue/${row.id}.md`)}${publisher}: version ${escapeText(row.version)}, ${formatDay(row.releaseDate)}, ${row.downloads} downloads${categories}`,
     );
   }
   if (view.rows.length > 0) {
@@ -104,7 +104,7 @@ function appMarkdown({ app, releases, categories, screenshots }: AppView): strin
     `- Latest version: ${escapeText(latest.version)}`,
     `- Release date: ${formatDay(latest.releaseDate)}`,
     `- Download count: ${app.downloads}`,
-    `- Download: ${link(releaseFileName(app.id, latest.serial), `/apps/${app.id}/download`)}`,
+    `- Download: ${link(releaseFileName(app.id, latest.serial), `/catalogue/${app.id}/download`)}`,
     "",
   );
   if (screenshots.length > 0) {
@@ -135,23 +135,23 @@ function llmsText(categories: Category[]): string {
     "",
     "## Catalogue",
     "",
-    `- ${link("All apps", "/index.md")}: every public app by title, with its publisher, latest version, release date, download total and categories. 20 apps to a page; \`?page=N\` gives page N.`,
+    `- ${link("All apps", "/catalogue.md")}: every public app by title, with its publisher, latest version, release date, download total and categories. 20 apps to a page; \`?page=N\` gives page N.`,
     "",
     "## Categories",
     "",
-    ...categories.map((category) => `- ${link(category.name, `/${category.slug}.md`)}: the catalogue with only this category.`),
+    ...categories.map((category) => `- ${link(category.name, `/catalogue/${category.slug}.md`)}: the catalogue with only this category.`),
     "",
     "## Search",
     "",
-    "- `/index.md?q={text}`: the apps whose title or description contains the text, in any case. `/{category}.md?q={text}` searches in one category. `?page=N` works here too.",
+    "- `/catalogue.md?q={text}`: the apps whose title or description contains the text, in any case. `/catalogue/{category}.md?q={text}` searches in one category. `?page=N` works here too.",
     "",
     "## App pages",
     "",
-    "- `/apps/{id}.md`: one app, with its publisher, description, categories, download total and every live release with its changelog. The catalogue links each app.",
+    "- `/catalogue/{id}.md`: one app, with its publisher, description, categories, download total and every live release with its changelog. The catalogue links each app. An app id is 6 lowercase letters and digits, and a category slug never is, so `/catalogue/{x}` is an app when `x` has that form and a category otherwise.",
     "",
     "## Downloads",
     "",
-    "- `/apps/{id}/download`: the zip of the app's latest release. Older releases have no web download.",
+    "- `/catalogue/{id}/download`: the zip of the app's latest release. Older releases have no web download.",
     "",
     "## API",
     "",
@@ -171,7 +171,7 @@ function apiText(): string {
     "",
     "## API keys",
     "",
-    "A user makes a key on `/keys`. The way there is `/me`, the account page that the user name in the navbar links to. A user needs a username before they can make a key. The CMS shows the key once, when it is made, and never again. The user can delete a key on the same page; a deleted key stops working at once.",
+    "A user makes a key on `/me/keys`, the API keys tab of the account page that the user name in the navbar links to. A user needs a username before they can make a key. The CMS shows the key once, when it is made, and never again. The user can delete a key on the same page; a deleted key stops working at once.",
     "",
     "A key is one string: `nbnspun-<key id>-<secret>`.",
     "",
@@ -204,7 +204,7 @@ function apiText(): string {
     "",
     "```sh",
     "SITE=https://...  # the address of this site",
-    "KEY=nbnspun-...   # the key from /keys",
+    "KEY=nbnspun-...   # the key from /me/keys",
     "KEY_ID=$(printf '%s' \"$KEY\" | cut -d- -f2)",
     "SECRET=$(printf '%s' \"$KEY\" | cut -d- -f3)",
     "METHOD=GET",
@@ -274,7 +274,7 @@ function apiText(): string {
     '  "installDir": "/apps/myapp",',
     '  "categories": [1],',
     '  "releases": [{ "serial": 1, "version": "1.0", "releaseDate": "2026-10-02", "deletedDay": null }],',
-    '  "screenshots": [{ "slot": 1, "width": 256, "url": "/apps/abc123/screenshots/1?v=1759400000000" }]',
+    '  "screenshots": [{ "slot": 1, "width": 256, "url": "/catalogue/abc123/screenshots/1?v=1759400000000" }]',
     "}",
     "```",
     "",
@@ -312,7 +312,7 @@ function apiText(): string {
     `- \`version\`: 1 to ${VERSION_MAX} characters from \`A-Za-z0-9_.,#-\`. No two releases of an app can have the same version, deleted ones included, and capitals do not make a version different.`,
     "- `releaseDate`: optional, `YYYY-MM-DD`, for a historic release. It cannot be after today. Left out or empty, it is the upload date.",
     `- \`changelog\`: optional, up to ${CHANGELOG_MAX} characters of printable ASCII and line feeds.`,
-    `- \`file\`: the zip, up to ${MAX_UPLOAD_TEXT}. The Next must be able to unzip it. The files in it may add up to at most ${MAX_UNPACKED_TEXT} unpacked (\`file.unpackedTooLarge\`). Each name in the zip must be printable ASCII (space to \`}\`) without any of \`" * < > ? | ~\`, and no part of a name may end with a dot or a space; otherwise the zip is refused with \`file.badNames\`, and \`names\` lists the names to fix. An entry must not carry a second, Unicode name (the Info-ZIP Unicode Path field) that differs from its own name, as the Next uses only its own name; otherwise the zip is refused with \`file.twoNames\`, and \`names\` lists those entries.`,
+    `- \`file\`: the zip, up to ${MAX_UPLOAD_TEXT}. The Next must be able to unzip it. The files in it may add up to at most ${MAX_UNPACKED_TEXT} unpacked (\`file.unpackedTooLarge\`). Each name in the zip must be printable ASCII (space to \`}\`) without any of \`" * < > ? | ~\`, and no part of a name may end with a dot or a space; otherwise the zip is refused with \`file.badNames\`, and \`names\` lists the names to fix. An entry must not carry a second, Unicode name (the Info-ZIP Unicode Path field) that differs from its own name, as the Next uses only its own name; otherwise the zip is refused with \`file.twoNames\`, and \`names\` lists those entries. The zip must not hold macOS files: anything in a \`__MACOSX\` directory, a \`.DS_Store\` file or a file whose name starts with \`._\`, at any depth; otherwise it is refused with \`file.macFiles\`, and \`names\` lists them (a \`__MACOSX\` directory once). The files must be at the root of the zip: when every entry is inside one top-level directory, the zip is refused with \`file.oneDirectory\`, and \`names\` gives that directory.`,
     "",
     "Sign the request as usual: the body is not in the signature. With curl:",
     "",
@@ -327,7 +327,7 @@ function apiText(): string {
     "",
     'The answer is `201` and `{ "serial": 1, "dotMoves": [{ "file": "wifi.dot", "to": "C:/dot/wifi" }] }`, with one item in `dotMoves` for each dot command at the root of the zip that will be moved on install; it is empty when there is none. Serials count up from 1 and are never used again. The zip is then public on SPUNServer, at the `path` that `GET /api/apps/{id}/releases/{serial}` gives. Each upload counts towards the upload limit.',
     "",
-    "Errors, all `400` except `app.notFound` (`404`): `version.length`, `version.invalidCharacters`, `version.taken`, `releaseDate.invalid`, `releaseDate.future`, `changelog.length`, `changelog.invalidCharacters`, `file.missing`, `file.tooLarge`, `file.notZip` (not a readable zip), `file.incompatible` (a zip the Next cannot unzip), `file.unpackedTooLarge`, `file.badNames`, `file.twoNames`, `file.dotCommandTaken`, `file.dotNameEnd`, `upload.tooMany` (`429`), `app.releasesFull`, and `app.notFound`: no such app, it is deleted, or it is another user's.",
+    "Errors, all `400` except `app.notFound` (`404`): `version.length`, `version.invalidCharacters`, `version.taken`, `releaseDate.invalid`, `releaseDate.future`, `changelog.length`, `changelog.invalidCharacters`, `file.missing`, `file.tooLarge`, `file.notZip` (not a readable zip), `file.incompatible` (a zip the Next cannot unzip), `file.unpackedTooLarge`, `file.badNames`, `file.twoNames`, `file.macFiles`, `file.oneDirectory`, `file.dotCommandTaken`, `file.dotNameEnd`, `upload.tooMany` (`429`), `app.releasesFull`, and `app.notFound`: no such app, it is deleted, or it is another user's.",
     "",
     "### GET /api/apps/{id}/releases/{serial}",
     "",
@@ -428,6 +428,11 @@ function markdownResponse(text: string | null): Response {
 
 // Repeated parameters give an array, as in the searchParams of a page, so both
 // read the query string the same way.
+// For an old URL: a permanent redirect to its new path, with the same query.
+export function movedResponse(path: string, request: Request): Response {
+  return new Response(null, { status: 308, headers: { Location: `${path}${new URL(request.url).search}` } });
+}
+
 export async function catalogueResponse(slug: string | null, request: Request): Promise<Response> {
   const params = new URL(request.url).searchParams;
   const value = (name: string) => {

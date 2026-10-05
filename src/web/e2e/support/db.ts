@@ -109,6 +109,11 @@ export async function aliasRow(alias: string) {
   return row;
 }
 
+// Only on an app that the test made. removeApps() removes it again.
+export async function insertAlias(alias: string, appId: string): Promise<void> {
+  await query("insert into aliases (alias, app_id) values (?, ?)", [alias, appId]);
+}
+
 export async function dotOverrideNames(appId: string): Promise<string[]> {
   const rows = await query<{ name: string }>("select name from dot_overrides where app_id = ? order by name", [appId]);
   return rows.map((row) => row.name);

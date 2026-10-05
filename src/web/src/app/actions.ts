@@ -1,19 +1,15 @@
 "use server";
 
-import { and, eq, isNull } from "drizzle-orm";
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
-import { users } from "@/db/schema";
 import { addApp, deleteOwnApp, editApp, parseAppId, type AppFields } from "@/lib/apps";
-import { db } from "@/lib/db";
-import { isDuplicateEntry } from "@/lib/dberrors";
-import { checkUsernameInput, parseSerial, parseSlot } from "@/lib/rules";
+import { parseSerial, parseSlot } from "@/lib/rules";
 import { deleteOwnRelease, editChangelog, uploadOwnRelease } from "@/lib/releases";
 import { saveApp, unsaveApp } from "@/lib/saved";
 import { clearOwnScreenshot, uploadOwnScreenshot } from "@/lib/screenshots";
 import { requirePublisher, requireUser } from "@/lib/session";
-import { usernameTaken } from "@/lib/usernames";
+import { chooseUsername as chooseOwnUsername } from "@/lib/usernames";
 import type { Problem } from "@/lib/problems";
 
 export type FormState = { error?: Problem; saved?: boolean };
@@ -47,27 +43,9 @@ export async function logOut(): Promise<void> {
 
 export async function chooseUsername(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
-  if (user.username) {
-    return { error: { code: "username.fixed" } };
-  }
-  const username = text(formData, "username");
-  const error = checkUsernameInput(username);
+  const error = await chooseOwnUsername(user, text(formData, "username"));
   if (error) {
     return { error };
-  }
-  if (await usernameTaken(username)) {
-    return { error: { code: "username.taken" } };
-  }
-  try {
-    await db()
-      .update(users)
-      .set({ username })
-      .where(and(eq(users.id, user.id), isNull(users.username)));
-  } catch (err) {
-    if (isDuplicateEntry(err)) {
-      return { error: { code: "username.taken" } };
-    }
-    throw err;
   }
   revalidatePath("/", "layout");
   redirect("/");

@@ -197,6 +197,10 @@ int main(int argc, char** argv) {
             customPort = counter;
         } else
 
+        if (stricmp(argv[counter], "-q") == 0) {
+            quiet = true;
+        } else
+
         if (argv[counter][0]=='-') {
             usage(err_invalid_option);
         } else
@@ -244,7 +248,7 @@ int main(int argc, char** argv) {
 
     if(commandArg && stricmp(argv[commandArg], "update") == 0) {
         if(!_farWithPointer(BANK_PACKAGES, (void *(*)(void *))check_catalogue, NULL)) {
-            printf("No updates\n");
+            if(!quiet) printf("No updates\n");
             exit(0);
         }
     } else if (commandArg && stricmp(argv[commandArg], "get") == 0) {

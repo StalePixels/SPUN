@@ -3,14 +3,13 @@ import { notFound } from "next/navigation";
 import { appView } from "@/lib/catalogue";
 import { formatDay } from "@/lib/rules";
 import { savedIds } from "@/lib/saved";
-import { currentUser, requireRegistration } from "@/lib/session";
+import { currentUser } from "@/lib/session";
 import { Breadcrumbs } from "../../Breadcrumbs";
 import { SaveButton } from "../../SaveButton";
 import { Screenshot } from "../../Screenshot";
 
-export default async function PublicAppPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireRegistration();
-  const view = await appView((await params).id);
+export async function AppPage({ id }: { id: string }) {
+  const view = await appView(id);
   if (!view) {
     notFound();
   }
@@ -22,15 +21,15 @@ export default async function PublicAppPage({ params }: { params: Promise<{ id: 
   const saved = user ? (await savedIds(user.id, [app.id])).has(app.id) : null;
   return (
     <>
-      <link rel="alternate" type="text/markdown" href={`/apps/${app.id}.md`} />
-      <Breadcrumbs items={[{ label: "Apps", href: "/" }, { label: app.title }]} />
+      <link rel="alternate" type="text/markdown" href={`/catalogue/${app.id}.md`} />
+      <Breadcrumbs items={[{ label: "Apps", href: "/catalogue" }, { label: app.title }]} />
       <h1 className="h3 mb-1" data-testid="public-app-title">{app.title}</h1>
       <p className="text-body-secondary mb-2" data-testid="public-app-publisher">{app.username}</p>
       <p className="mb-4" data-testid="public-app-categories">
         {categories.map((category) => (
           <Link
             key={category.id}
-            href={`/${category.slug}`}
+            href={`/catalogue/${category.slug}`}
             className="badge text-bg-secondary text-decoration-none me-2"
             data-testid={`public-app-category-${category.slug}`}
           >
@@ -82,7 +81,7 @@ export default async function PublicAppPage({ params }: { params: Promise<{ id: 
           </dl>
           <div className="d-flex align-items-center gap-2">
             {saved !== null && <SaveButton appId={app.id} saved={saved} />}
-            <a href={`/apps/${app.id}/download`} className="btn btn-primary" data-testid="public-app-download" download>
+            <a href={`/catalogue/${app.id}/download`} className="btn btn-primary" data-testid="public-app-download" download>
               <i className="bi bi-download me-1" />
               Download
             </a>

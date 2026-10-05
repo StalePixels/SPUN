@@ -184,6 +184,27 @@ test("a zip whose entry hides another name in a Unicode Path field is refused, n
   await expect(page.getByTestId("form-error")).toContainText("MV.dot");
 });
 
+test("a zip with macOS files is refused, naming them", async ({ page, apps }) => {
+  const id = await apps.create("MacFiles");
+  const zip = makeZip([
+    ...sampleEntries(),
+    { name: "__MACOSX/._README.TXT", data: Buffer.from("a") },
+    { name: "GAME/.DS_Store", data: Buffer.from("a") },
+  ]);
+  await uploadRelease(page, { version: "1.0", file: files.write("mac.zip", zip) });
+  await expectRefused(page, id, "file.macFiles");
+  await expect(page.getByTestId("form-error")).toContainText("__MACOSX/");
+  await expect(page.getByTestId("form-error")).toContainText("GAME/.DS_Store");
+});
+
+test("a zip with all its files in one directory is refused, naming it", async ({ page, apps }) => {
+  const id = await apps.create("OneDir");
+  const zip = makeZip(sampleEntries().map((entry) => ({ ...entry, name: `mygame/${entry.name}` })));
+  await uploadRelease(page, { version: "1.0", file: files.write("onedir.zip", zip) });
+  await expectRefused(page, id, "file.oneDirectory");
+  await expect(page.getByTestId("form-error")).toContainText("mygame");
+});
+
 test("a zip over 16 MB unpacked is refused", async ({ page, apps }) => {
   const id = await apps.create("Unpacked");
   const zip = makeZip([{ name: "A.BIN", data: Buffer.from("a"), usize: 16 * 1024 * 1024 + 1 }]);

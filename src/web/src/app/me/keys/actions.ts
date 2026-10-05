@@ -14,12 +14,12 @@ export async function makeKey(_prev: KeyFormState, formData: FormData): Promise<
   if (result.error) {
     return { error: result.error };
   }
-  revalidatePath("/keys");
+  revalidatePath("/me/keys");
   return { key: result.key };
 }
 
 export async function removeKey(keyId: string): Promise<void> {
   const user = await requirePublisher();
   await deleteApiKey(user.id, keyId);
-  revalidatePath("/keys");
+  revalidatePath("/me/keys");
 }

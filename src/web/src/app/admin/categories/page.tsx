@@ -27,7 +27,7 @@ export default async function AdminCategoriesPage() {
         <div key={category.id} className="card mb-4" data-testid={`admin-category-${category.id}`}>
           <div className="card-header d-flex justify-content-between align-items-center">
             <span className={category.deletedAt ? "text-body-secondary" : "fw-medium"}>
-              {category.name} <code className="ms-1">/{category.slug}</code>
+              {category.name} <code className="ms-1">/catalogue/{category.slug}</code>
             </span>
             {category.deletedAt && (
               <span className="text-body-secondary" data-testid="category-deleted">

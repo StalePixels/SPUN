@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   appLimitFor,
   catalogueHref,
+  searchOf,
   invalidCharacters,
   canCreateApp,
   CHANGELOG_MAX,
@@ -140,6 +141,15 @@ describe("parseQuery", () => {
     expect(parseQuery("Next Test")).toBe("Next Test");
     expect(parseQuery(undefined)).toBe("");
     expect(parseQuery(["a", "b"])).toBe("");
+  });
+});
+
+describe("searchOf", () => {
+  it("gives the query string of a page's searchParams, keeping repeats and order", () => {
+    expect(searchOf({})).toBe("");
+    expect(searchOf({ q: undefined })).toBe("");
+    expect(searchOf({ q: "a b", page: "2" })).toBe("?q=a+b&page=2");
+    expect(searchOf({ q: ["x", "y"], other: "" })).toBe("?q=x&q=y&other=");
   });
 });
 
@@ -295,8 +305,18 @@ describe("checkCategorySlug", () => {
   it("allows 1 to 16 characters", () => {
     expect(checkCategorySlug("a")).toBeNull();
     expect(checkCategorySlug("a".repeat(16))).toBeNull();
+    expect(checkCategorySlug("a".repeat(7))).toBeNull();
     expect(checkCategorySlug("")).toEqual({ code: "category.length", min: 1, max: 16 });
     expect(checkCategorySlug("a".repeat(17))).toEqual({ code: "category.length", min: 1, max: 16 });
+  });
+
+  it("refuses the form of an app id, 6 lowercase letters and digits, and accepts the live slugs", () => {
+    for (const slug of ["abc123", "games1", "123456", "system"]) {
+      expect(checkCategorySlug(slug), slug).toEqual({ code: "category.appIdForm" });
+    }
+    for (const slug of ["apps", "games", "demos", "music", "basic", "systool", "other", "abc-12", "abc1234", "abc12"]) {
+      expect(checkCategorySlug(slug), slug).toBeNull();
+    }
   });
 
   it.each(RESERVED_PATHS)("refuses the reserved name %s", (name) => {

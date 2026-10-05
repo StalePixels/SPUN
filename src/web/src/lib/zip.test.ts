@@ -227,7 +227,7 @@ describe("zip check", () => {
   });
 
   it("accepts every other printable ASCII character in a name", async () => {
-    expect((await checkZip(makeZip({ "GAME/A b!#$%&'()+,-.;=@[\\]^_`{}.TXT": Buffer.from("a") }))).ok).toBe(true);
+    expect((await checkZip(makeZip({ "README.TXT": Buffer.from("a"), "GAME/A b!#$%&'()+,-.;=@[\\]^_`{}.TXT": Buffer.from("a") }))).ok).toBe(true);
   });
 
   it("rejects a damaged local header as not a zip", async () => {
@@ -239,7 +239,7 @@ describe("zip check", () => {
 
   it("accepts data descriptors and directory entries", async () => {
     expect((await checkZip(makeZip(a, { flags: 8 }))).ok).toBe(true);
-    expect((await checkZip(makeZip({ "GAME/": Buffer.alloc(0), "GAME/A.TXT": Buffer.from("a") }))).ok).toBe(true);
+    expect((await checkZip(makeZip({ "GAME/": Buffer.alloc(0), "GAME/A.TXT": Buffer.from("a"), "README.TXT": Buffer.from("b") }))).ok).toBe(true);
   });
 
   it("takes each name from the central directory as the Next does, never from a Unicode Path field", async () => {
@@ -260,7 +260,7 @@ describe("zip check", () => {
         error: { code: "file.badNames", names: [bad] },
       });
     }
-    expect((await checkZip(makeZip({ ".HIDDEN/A.B.TXT": Buffer.from("a") }))).ok).toBe(true);
+    expect((await checkZip(makeZip({ ".HIDDEN/A.B.TXT": Buffer.from("a"), "README.TXT": Buffer.from("b") }))).ok).toBe(true);
   });
 
   it("refuses a zip whose files add up to more than 16 MB unpacked", async () => {
@@ -272,5 +272,36 @@ describe("zip check", () => {
     expect(
       await checkZip(makeZip({ "A.BIN": Buffer.from("a"), "B.BIN": Buffer.from("b") }, { method: 8, usize: half + 1 })),
     ).toEqual({ ok: false, error: { code: "file.unpackedTooLarge", max: MAX_UNPACKED_BYTES } });
+  });
+
+  it("refuses macOS files at any depth, naming each one, and a __MACOSX directory once", async () => {
+    for (const bad of [".DS_Store", "GAME/.DS_Store", "GAME/SUB/.ds_store", "._README.TXT", "GAME/._MAIN.BAS", "._GAME/A.TXT"]) {
+      expect(await checkZip(makeZip({ "README.TXT": Buffer.from("a"), [bad]: Buffer.from("a") }))).toEqual({
+        ok: false,
+        error: { code: "file.macFiles", names: [bad] },
+      });
+    }
+    expect(
+      await checkZip(
+        makeZip({
+          "README.TXT": Buffer.from("a"),
+          "__MACOSX/": Buffer.alloc(0),
+          "__MACOSX/._README.TXT": Buffer.from("a"),
+          "GAME/__MACOSX/A.TXT": Buffer.from("a"),
+        }),
+      ),
+    ).toEqual({ ok: false, error: { code: "file.macFiles", names: ["__MACOSX/", "GAME/__MACOSX/"] } });
+  });
+
+  it("accepts names that only look like macOS files", async () => {
+    expect((await checkZip(makeZip({ "README.TXT": Buffer.from("a"), "GAME/A._B.TXT": Buffer.from("a"), "MACOSX/DS_STORE": Buffer.from("a") }))).ok).toBe(true);
+  });
+
+  it("refuses a zip whose entries are all in one top-level directory, naming it", async () => {
+    const oneDirectory = { ok: false, error: { code: "file.oneDirectory", names: ["GAME"] } };
+    expect(await checkZip(makeZip({ "GAME/": Buffer.alloc(0), "GAME/MAIN.BAS": Buffer.from("a"), "GAME/SUB/A.TXT": Buffer.from("b") }))).toEqual(oneDirectory);
+    expect(await checkZip(makeZip({ "GAME/MAIN.BAS": Buffer.from("a"), "game\\A.TXT": Buffer.from("b") }))).toEqual(oneDirectory);
+    expect((await checkZip(makeZip({ "GAME/MAIN.BAS": Buffer.from("a"), "TOOLS/A.TXT": Buffer.from("b") }))).ok).toBe(true);
+    expect((await checkZip(makeZip({ "MAIN.BAS": Buffer.from("a") }))).ok).toBe(true);
   });
 });

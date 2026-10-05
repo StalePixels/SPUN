@@ -51,11 +51,11 @@ test("an app needs a category; with two, it shows on both category pages and not
   const second = await made.category();
   const third = await made.category();
 
-  await page.goto("/publish");
+  await page.goto("/publish/new");
   await page.getByTestId("app-title").fill(uniqueTitle("NoCategory"));
   await clickHydrated(page.getByTestId("app-submit"));
   await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "category.missing");
-  expect(pathname(page)).toBe("/publish");
+  expect(pathname(page)).toBe("/publish/new");
 
   const id = await made.app(uniqueTitle("TwoCategories"), [first.slug, second.slug]);
   expect(await appCategoryIds(id)).toEqual([first.id, second.id]);
@@ -68,11 +68,11 @@ test("an app needs a category; with two, it shows on both category pages and not
     files.remove();
   }
 
-  expect(await listedAppIds(page, `/${first.slug}`)).toEqual([id]);
-  expect(await listedAppIds(page, `/${second.slug}`)).toEqual([id]);
-  expect(await listedAppIds(page, `/${third.slug}`)).toEqual([]);
+  expect(await listedAppIds(page, `/catalogue/${first.slug}`)).toEqual([id]);
+  expect(await listedAppIds(page, `/catalogue/${second.slug}`)).toEqual([id]);
+  expect(await listedAppIds(page, `/catalogue/${third.slug}`)).toEqual([]);
 
-  await page.goto(`/apps/${id}`);
+  await page.goto(`/catalogue/${id}`);
   await expect(page.getByTestId(`public-app-category-${first.slug}`)).toBeVisible();
   await expect(page.getByTestId(`public-app-category-${second.slug}`)).toBeVisible();
   await expect(page.getByTestId(`public-app-category-${third.slug}`)).toHaveCount(0);

@@ -42,10 +42,19 @@ function unicodeName(data: Buffer, from: number, to: number): Buffer | null {
   return null;
 }
 
+// macOS adds these when it makes a zip. A file under __MACOSX/ is named by that directory.
+function macFile(name: string): string | null {
+  const parts = name.split(/[/\\]/);
+  const macosx = parts.findIndex((part) => part.toLowerCase() === "__macosx");
+  if (macosx >= 0) return `${parts.slice(0, macosx + 1).join("/")}/`;
+  return parts.some((part) => part.toLowerCase() === ".ds_store" || part.startsWith("._")) ? name : null;
+}
+
 export type NextZip = { ok: true; entries: string[] } | { ok: false; error: ZipProblem | Problem };
 
 // The rules of the Next's unzipper (src/client/unzip/unzip.c), applied to the
-// raw records in its order, plus entry names in printable ASCII that FAT allows.
+// raw records in its order, plus entry names in printable ASCII that FAT allows,
+// no macOS files, and files at the root rather than in one parent directory.
 // The names are the raw central directory names the unzipper uses.
 export function readNextZip(data: Buffer): NextZip {
   const fail = (error: ZipProblem | Problem): NextZip => ({ ok: false, error });
@@ -68,6 +77,7 @@ export function readNextZip(data: Buffer): NextZip {
   const entries: string[] = [];
   const badNames: string[] = [];
   const twoNames: string[] = [];
+  const macFiles: string[] = [];
   let unpacked = 0;
   for (let entry = 0; entry < count; entry++) {
     if (at + 46 > data.length || data.readUInt32LE(at) !== CENTRAL_SIG) return fail("file.notZip");
@@ -80,6 +90,8 @@ export function readNextZip(data: Buffer): NextZip {
     if (BAD_NAME_BYTE.test(name) || name.split(/[/\\]/).some((part) => BAD_NAME_PART.test(part))) {
       badNames.push(displayName(raw));
     }
+    const mac = macFile(name);
+    if (mac) macFiles.push(mac);
     const unicode = unicodeName(data, at + 46 + nameLength, extraEnd);
     if (unicode && !unicode.equals(raw)) {
       twoNames.push(displayName(raw));
@@ -102,8 +114,13 @@ export function readNextZip(data: Buffer): NextZip {
     at = extraEnd + data.readUInt16LE(at + 32);
   }
   if (unpacked > MAX_UNPACKED_BYTES) return fail({ code: "file.unpackedTooLarge", max: MAX_UNPACKED_BYTES });
+  if (macFiles.length > 0) return fail({ code: "file.macFiles", names: [...new Set(macFiles)] });
   if (twoNames.length > 0) return fail({ code: "file.twoNames", names: [...new Set(twoNames)] });
   if (badNames.length > 0) return fail({ code: "file.badNames", names: [...new Set(badNames)] });
+  const tops = new Set(entries.map((name) => name.split(/[/\\]/)[0].toLowerCase()));
+  if (tops.size === 1 && entries.every((name) => /[/\\]/.test(name))) {
+    return fail({ code: "file.oneDirectory", names: [entries[0].split(/[/\\]/)[0]] });
+  }
   return { ok: true, entries };
 }
 

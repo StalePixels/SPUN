@@ -8,3 +8,4 @@ tools/nbnget
 /data-e2e
 /.env
 .DS_Store
+/docker/*.env

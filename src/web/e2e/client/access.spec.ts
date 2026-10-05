@@ -41,3 +41,59 @@ test("the admin app and release pages give 404 to a user who is not an admin", a
     expect(response?.status(), path).toBe(404);
   }
 });
+
+test("the publish menu links its three pages and marks the current one", async ({ page }) => {
+  const pages = [
+    { key: "apps", path: "/publish", shows: "publish-menu" },
+    { key: "new", path: "/publish/new", shows: "app-submit" },
+    { key: "docs", path: "/publish/docs", shows: "docs-zip-macos" },
+  ];
+  await page.goto("/publish");
+  for (const { key, path, shows } of pages) {
+    await page.getByTestId(`publish-menu-${key}`).click();
+    await expect(page).toHaveURL((url) => url.pathname === path);
+    await expect(page.getByTestId(shows), path).toBeVisible();
+    for (const other of pages) {
+      const entry = page.getByTestId(`publish-menu-${other.key}`);
+      if (other.key === key) await expect(entry, path).toHaveAttribute("aria-current", "page");
+      else await expect(entry, path).not.toHaveAttribute("aria-current", "page");
+    }
+  }
+  for (const id of ["docs-rules", "docs-zip-linux", "docs-zip-wsl"]) {
+    await expect(page.getByTestId(id), id).toBeVisible();
+  }
+  await expect(page.getByTestId("app-submit")).toHaveCount(0);
+});
+
+test("the account menu links its three tabs and marks the current one; /my and /keys redirect for good", async ({
+  page,
+}) => {
+  const pages = [
+    { key: "account", path: "/me", shows: "me-heading" },
+    { key: "apps", path: "/me/apps", shows: "my-heading" },
+    { key: "keys", path: "/me/keys", shows: "keys-heading" },
+  ];
+  await page.goto("/me");
+  for (const { key, path, shows } of pages) {
+    await page.getByTestId(`me-menu-${key}`).click();
+    await expect(page).toHaveURL((url) => url.pathname === path);
+    await expect(page.getByTestId(shows), path).toBeVisible();
+    for (const other of pages) {
+      const entry = page.getByTestId(`me-menu-${other.key}`);
+      if (other.key === key) await expect(entry, path).toHaveAttribute("aria-current", "page");
+      else await expect(entry, path).not.toHaveAttribute("aria-current", "page");
+    }
+  }
+  await page.goto("/me");
+  await expect(page.getByTestId("me-keys")).toHaveCount(0);
+  await expect(page.getByTestId("navbar").getByTestId("nav-my")).toHaveCount(0);
+
+  for (const [old, now] of [
+    ["/my", "/me/apps"],
+    ["/keys", "/me/keys"],
+  ]) {
+    const response = await page.request.get(old, { maxRedirects: 0 });
+    expect(response.status(), old).toBe(308);
+    expect(new URL(response.headers()["location"], "http://x").pathname, old).toBe(now);
+  }
+});

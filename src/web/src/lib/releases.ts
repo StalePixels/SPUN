@@ -20,9 +20,18 @@ import { apiLimits } from "./apigate";
 import { countHit } from "./redis";
 import { binRelease, readRelease, releasePath, removeFile, unbinRelease, writeRelease } from "./storage";
 import { checkUploadRate } from "./uploadlimit";
+import { fieldChanges } from "./notices";
+import { notify, releaseSnapshot } from "./notify";
 import { checkZip } from "./zip";
 
-export type Upload = { version: string; day: string; changelog: string | null; data: Buffer; dotMoves: DotMove[] };
+export type Upload = {
+  version: string;
+  day: string;
+  changelog: string | null;
+  data: Buffer;
+  files: string[];
+  dotMoves: DotMove[];
+};
 
 export type UploadFile = { name: string; data: Buffer };
 
@@ -74,7 +83,10 @@ export async function checkUpload(
   if (clash) {
     return { ok: false, error: clash };
   }
-  return { ok: true, upload: { version, day: date.day, changelog: log.changelog, data: file.data, dotMoves: moves } };
+  return {
+    ok: true,
+    upload: { version, day: date.day, changelog: log.changelog, data: file.data, files: zip.entries, dotMoves: moves },
+  };
 }
 
 export async function appDotOverrides(appId: AppId): Promise<string[]> {
@@ -120,7 +132,38 @@ export async function uploadOwnRelease(
     return { error: checked.error };
   }
   const result = await addRelease(appId, userId, checked.upload);
-  return "error" in result ? result : { serial: result.serial, dotMoves: checked.upload.dotMoves };
+  if ("error" in result) {
+    return result;
+  }
+  notifyRelease(userId, appId, result.serial, checked.upload);
+  return { serial: result.serial, dotMoves: checked.upload.dotMoves };
+}
+
+export function notifyRelease(actorId: string, appId: AppId, serial: number, upload: Upload): void {
+  notify({
+    kind: "releaseUploaded",
+    actorId,
+    appId,
+    serial,
+    version: upload.version,
+    releaseDate: upload.day,
+    changelog: upload.changelog,
+    files: upload.files,
+    dotMoves: upload.dotMoves,
+  });
+}
+
+export async function notifyReleaseEdit(
+  actorId: string,
+  appId: AppId,
+  serial: number,
+  before: Record<string, string>,
+): Promise<void> {
+  const after = await releaseSnapshot(appId, serial);
+  const changes = fieldChanges(before, after);
+  if (changes.length > 0) {
+    notify({ kind: "releaseEdited", actorId, appId, serial, version: after.Version, changes });
+  }
 }
 
 // ownerId null is the admin upload: any owner. The file goes under the owner's username.
@@ -211,10 +254,12 @@ export async function editChangelog(
   if (!log.ok) {
     return { error: log.error };
   }
+  const before = await releaseSnapshot(appId, serial);
   await db()
     .update(releases)
     .set({ changelog: log.changelog })
     .where(and(eq(releases.appId, appId), eq(releases.serial, serial), isNull(releases.deletedAt)));
+  await notifyReleaseEdit(userId, appId, serial, before);
   return {};
 }
 
@@ -236,6 +281,7 @@ export async function deleteOwnRelease(
     .set({ deletedAt: new Date() })
     .where(and(eq(releases.appId, appId), eq(releases.serial, serial)));
   await binRelease(user.username, appId, serial);
+  notify({ kind: "releaseDeleted", actorId: user.id, appId, serial, version: found.release.version });
   return {};
 }
 

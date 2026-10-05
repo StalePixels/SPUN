@@ -82,7 +82,7 @@ test("an upload stores its changelog, and the public app page shows it with its 
   // The browser sends CR LF from the textarea; the row holds LF only.
   expect((await releaseRow(id, 1))?.changelog).toBe("Fixed the border.\nAdded sound.");
 
-  await page.goto(`/apps/${id}`);
+  await page.goto(`/catalogue/${id}`);
   const changelog = page.getByTestId("public-changelog-1");
   await expect(changelog).toBeVisible();
   // innerText keeps a line break only where the page shows one.

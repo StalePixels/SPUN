@@ -4,6 +4,8 @@
 #include "install.h"
 #ifdef __ZXNEXT
 #include "../gui/gui.h"
+#else
+#define guiOpen false
 #endif
 
 static uint16_t updates;
@@ -147,7 +149,7 @@ unsigned char *spun_get(char *id) {
         check_catalogue(id);
     }
 
-    printf("%s\n%s\n", title, version);
+    if(!quiet) printf("%s\n%s\n", title, version);
     if(installed) {
         if(installedSerial > serial) return err_installed_newer;
         if(installedSerial == serial) {
@@ -193,7 +195,7 @@ unsigned char *spun_update(void) {
             if(error == err_wrong_version) return error;
 
             updateError = error;
-            if(quiet) continue;
+            if(guiOpen) continue;
             printf("%s ", appid);
             print_error(error);
             continue;
@@ -205,7 +207,7 @@ unsigned char *spun_update(void) {
         check_install_drive();
         if((result = install(appid))) {
             updateError = unzipErrors[result - 1];
-            if(quiet) continue;
+            if(guiOpen) continue;
             printf("%s ", appid);
             print_error(unzipErrors[result - 1]);
         }

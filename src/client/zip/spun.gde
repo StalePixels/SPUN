@@ -1,0 +1,74 @@
+@title SPUN
+@author D. Rimron-Soutter
+@-------------------------------------------------------------------------------
+@node MAIN
+@next MENU
+@{r}SPUN
+@{c}@{h1}SPUN
+
+SPUN is a package manager for the ZX Spectrum Next. It finds apps in the SPUN
+catalogue, installs them on your Next, and updates the apps it installed.
+
+SPUN is the dot command @{b}.spun@{ub}. It must be in @{i}C:/dot@{ui} with the name
+@{i}spun@{ui}, so that it runs from any directory.
+
+ @{" The SPUN menu " LINK MENU}
+ @{" The .spun command " LINK COMMAND}
+@-------------------------------------------------------------------------------
+@node MENU
+@prev MAIN
+@next COMMAND
+@toc MAIN
+@{r}SPUN
+@{c}@{h1}The SPUN menu
+
+Run @{b}spun.bas@{ub} to open the SPUN menu. When it starts, it moves
+@{i}spun.dot@{ui} from its own directory to @{i}C:/dot/spun@{ui}, if the file is
+there.
+
+@{b}Browse the catalogue@{ub}
+    Opens the SPUN browser, where you can find and install apps.
+
+@{b}Update installed apps@{ub}
+    Installs the latest release of each app that SPUN installed.
+
+@{b}Install an app@{ub}
+    Asks for the id or alias of an app, then installs it.
+
+@{b}Read the guide@{ub}
+    Opens this guide.
+
+Use the cursor keys and @{b}ENTER@{ub} to choose. @{b}BREAK@{ub} closes the menu.
+@-------------------------------------------------------------------------------
+@node COMMAND
+@prev MENU
+@toc MAIN
+@{r}SPUN
+@{c}@{h1}The .spun command
+
+@{b}.spun [OPTIONS] [COMMAND]@{ub}
+
+With no command, .spun opens the SPUN browser.
+
+@{h2}Commands
+
+@{b}find TEXT [PAGE]@{ub}
+    Lists the apps that match TEXT. Put TEXT with spaces in quotes:
+    .spun find "two words" 2
+
+@{b}info APPID [PAGE]@{ub}
+    Shows an app's details.
+
+@{b}get APPID@{ub}
+    Installs an app, then changes to the directory it is in. APPID can
+    also be the app's alias.
+
+@{b}update@{ub}
+    Installs the latest release of each app that SPUN installed.
+
+@{h2}Options
+
+@{b}-s xxxx@{ub}    Use another server
+@{b}-p xxxx@{ub}    Use another port
+@{b}-q@{ub}         Quiet: print no progress lines, and show no splash screen
+            when the browser opens

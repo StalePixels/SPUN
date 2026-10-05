@@ -2,13 +2,14 @@ import "server-only";
 import { and, asc, count, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { aliases, apps, categories, dotOverrides, releases, sessions, settings, users } from "@/db/schema";
-import { appIdStore, checkAliasFree, deleteApp, moveApp, parseAppId, restoreApp, type AppId } from "./apps";
+import { appIdStore, checkAliasFree, deleteApp, moveApp, notifyAppEdit, parseAppId, restoreApp, type AppId } from "./apps";
 import { setAppCategories } from "./categories";
 import { checkDotOverride } from "./dotcommands";
 import { db } from "./db";
 import { isDuplicateEntry } from "./dberrors";
 import type { Problem } from "./problems";
-import { addRelease, appBinStore, type Upload } from "./releases";
+import { appSnapshot, notify, releaseSnapshot } from "./notify";
+import { addRelease, appBinStore, notifyRelease, notifyReleaseEdit, type Upload } from "./releases";
 import { checkAlias, checkVersionUnused } from "./rules";
 import { currentUser, isAdmin } from "./session";
 import { DEFAULT_APP_LIMIT, getSetting } from "./settings";
@@ -345,14 +346,16 @@ export async function adminUpdateApp(
   changes: { title: string; description: string; installDir: string | null },
   categoryIds: number[],
 ): Promise<{ error?: Problem }> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   if (!(await adminGetApp(appId))) {
     return { error: { code: "app.notFound" } };
   }
+  const before = await appSnapshot(appId);
   await db().transaction(async (tx) => {
     await tx.update(apps).set(changes).where(eq(apps.id, appId));
     await setAppCategories(tx, appId, categoryIds);
   });
+  await notifyAppEdit(admin.id, appId, before);
   return {};
 }
 
@@ -360,15 +363,20 @@ export async function adminUploadRelease(
   appId: AppId,
   upload: Upload,
 ): Promise<{ error: Problem } | { serial: number }> {
-  await requireAdmin();
-  return addRelease(appId, null, upload);
+  const admin = await requireAdmin();
+  const result = await addRelease(appId, null, upload);
+  if (!("error" in result)) {
+    notifyRelease(admin.id, appId, result.serial, upload);
+  }
+  return result;
 }
 
 export async function adminDeleteApp(appId: AppId): Promise<void> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const app = await adminGetApp(appId);
   if (app && !app.deletedAt) {
     await deleteApp(appBinStore(ownerName(appId, app.owner)), appId);
+    notify({ kind: "appDeleted", actorId: admin.id, appId });
   }
 }
 
@@ -425,20 +433,23 @@ export async function adminPutScreenshot(
   slot: number,
   shot: ScreenshotUpload,
 ): Promise<{ error?: Problem }> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const app = await adminGetApp(appId);
   if (!app || app.deletedAt) {
     return { error: { code: "app.notFound" } };
   }
-  await putScreenshot(ownerName(appId, app.owner), appId, slot, shot);
+  const action = await putScreenshot(ownerName(appId, app.owner), appId, slot, shot);
+  notify({ kind: "screenshot", actorId: admin.id, appId, slot, action });
   return {};
 }
 
 export async function adminClearScreenshot(appId: AppId, slot: number): Promise<void> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const app = await adminGetApp(appId);
   if (app && !app.deletedAt) {
-    await clearScreenshot(ownerName(appId, app.owner), appId, slot);
+    if (await clearScreenshot(ownerName(appId, app.owner), appId, slot)) {
+      notify({ kind: "screenshot", actorId: admin.id, appId, slot, action: "removed" });
+    }
   }
 }
 
@@ -447,10 +458,11 @@ export async function adminUpdateRelease(
   serial: number,
   changes: { version: string; releaseDate: string; changelog: string | null },
 ): Promise<{ error?: Problem }> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   if (!(await adminGetRelease(appId, serial))) {
     return { error: { code: "app.notFound" } };
   }
+  const before = await releaseSnapshot(appId, serial);
   const others = await db()
     .select({ version: releases.version })
     .from(releases)
@@ -470,12 +482,13 @@ export async function adminUpdateRelease(
     }
     throw err;
   }
+  await notifyReleaseEdit(admin.id, appId, serial, before);
   return {};
 }
 
 // While the app is deleted, its zips stay in the bin; the app restore brings them back.
 export async function adminDeleteRelease(appId: AppId, serial: number): Promise<void> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const app = await adminGetApp(appId);
   const release = await adminGetRelease(appId, serial);
   if (!app || !release || release.deletedAt) {
@@ -488,6 +501,7 @@ export async function adminDeleteRelease(appId: AppId, serial: number): Promise<
   if (!app.deletedAt) {
     await binRelease(ownerName(appId, app.owner), appId, serial);
   }
+  notify({ kind: "releaseDeleted", actorId: admin.id, appId, serial, version: release.version });
 }
 
 export async function adminRestoreRelease(appId: AppId, serial: number): Promise<void> {

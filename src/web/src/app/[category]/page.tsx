@@ -1,15 +1,18 @@
-import { parsePage, parseQuery } from "@/lib/rules";
-import { requireRegistration } from "@/lib/session";
-import { Catalogue } from "../Catalogue";
+import { notFound, permanentRedirect } from "next/navigation";
+import { liveCategory } from "@/lib/categories";
+import { searchOf } from "@/lib/rules";
 
-export default async function CategoryPage({
+// Category pages were at /<slug> before the catalogue moved.
+export default async function OldCategoryPage({
   params,
   searchParams,
 }: {
   params: Promise<{ category: string }>;
-  searchParams: Promise<{ page?: string | string[]; q?: string | string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireRegistration();
-  const { page, q } = await searchParams;
-  return <Catalogue slug={(await params).category} page={parsePage(page)} query={parseQuery(q)} />;
+  const category = await liveCategory((await params).category);
+  if (!category) {
+    notFound();
+  }
+  permanentRedirect(`/catalogue/${category.slug}${searchOf(await searchParams)}`);
 }

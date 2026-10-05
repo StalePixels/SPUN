@@ -3,8 +3,8 @@ import { parseSlot } from "@/lib/rules";
 import { readScreenshotPng } from "@/lib/storage";
 
 // The stored PNG as is. The URL carries ?v=<updated_at>, so it can be cached for good.
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string; slot: string }> }) {
-  const { id: rawId, slot: rawSlot } = await params;
+export async function GET(_request: Request, { params }: { params: Promise<{ slug: string; slot: string }> }) {
+  const { slug: rawId, slot: rawSlot } = await params;
   const id = parseAppId(rawId);
   const slot = parseSlot(rawSlot);
   const data = id && slot ? await readScreenshotPng(id, slot) : null;

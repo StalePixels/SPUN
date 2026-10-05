@@ -3,6 +3,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { screenshots } from "@/db/schema";
 import { ownedApp, type AppId } from "./apps";
 import { db } from "./db";
+import { notify } from "./notify";
 import { checkNxi, convertImage, oneAtATime, previewPng, type NxiWidth } from "./nxi";
 import type { Problem } from "./problems";
 import { makeThumbnail } from "./thumbs";
@@ -58,20 +59,30 @@ export async function mainScreenshots(appIds: AppId[]): Promise<Map<AppId, Scree
 }
 
 // Files first, so a row never points at a missing file.
-export async function putScreenshot(username: string, appId: AppId, slot: number, shot: ScreenshotUpload) {
+export async function putScreenshot(
+  username: string,
+  appId: AppId,
+  slot: number,
+  shot: ScreenshotUpload,
+): Promise<"added" | "replaced"> {
+  const action = (await slots(appId)).includes(slot) ? "replaced" : "added";
   await writeScreenshot(username, appId, slot, { ...shot, thumb: makeThumbnail(shot.nxi, slot)! });
   const updatedAt = new Date();
   await db()
     .insert(screenshots)
     .values({ appId, slot, width: shot.width, updatedAt })
     .onDuplicateKeyUpdate({ set: { width: shot.width, updatedAt } });
+  return action;
 }
 
-export async function clearScreenshot(username: string, appId: AppId, slot: number) {
+// True if the slot had a screenshot.
+export async function clearScreenshot(username: string, appId: AppId, slot: number): Promise<boolean> {
+  const had = (await slots(appId)).includes(slot);
   await db()
     .delete(screenshots)
     .where(and(eq(screenshots.appId, appId), eq(screenshots.slot, slot)));
   await removeScreenshot(username, appId, slot);
+  return had;
 }
 
 // The form comes through a callback so an upload to someone else's app is never read.
@@ -92,7 +103,8 @@ export async function uploadOwnScreenshot(
   if (!checked.ok) {
     return { error: checked.error };
   }
-  await putScreenshot(user.username, appId, slot, checked.shot);
+  const action = await putScreenshot(user.username, appId, slot, checked.shot);
+  notify({ kind: "screenshot", actorId: user.id, appId, slot, action });
   return { width: checked.shot.width };
 }
 
@@ -108,6 +120,7 @@ export async function clearOwnScreenshot(
     return { error: { code: "screenshot.notFound" } };
   }
   await clearScreenshot(user.username, appId, slot);
+  notify({ kind: "screenshot", actorId: user.id, appId, slot, action: "removed" });
   return {};
 }
 

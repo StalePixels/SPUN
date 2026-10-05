@@ -21,7 +21,7 @@ test("a logged-in user with no username is sent to /username from every page", a
         url: settings.baseUrl,
       },
     ]);
-    for (const path of ["/", "/?page=2", `/apps/${appId}`, "/publish"]) {
+    for (const path of ["/", "/?page=2", "/catalogue", `/catalogue/${appId}`, "/publish"]) {
       await page.goto(path);
       expect(pathname(page), path).toBe("/username");
     }

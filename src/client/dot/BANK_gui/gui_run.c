@@ -1,6 +1,5 @@
 #include "../common/spun.h"
 #include "../gui/gui.h"
-#include "../BANK_screen/screen.h"
 #include "run.h"
 
 // The quit key is let go before NextZXOS gets the keyboard back, so that it does not see it
@@ -8,7 +7,6 @@ void gui_run(void) {
     unsigned char event;
     uint8_t action = ACTION_NONE;
 
-    _far(BANK_SCREEN, (void *(*)(void))splash);
     gui_draw();
     *searchText = 0;
     page = 1;

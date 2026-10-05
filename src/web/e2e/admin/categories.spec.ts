@@ -48,7 +48,7 @@ const test = base.extend<{ made: Made }>({
   ],
 });
 
-test("an admin adds, edits, deletes and restores a category; a reserved slug is refused", async ({ page, made }) => {
+test("an admin adds, edits, deletes and restores a category; a reserved slug and an app id form are refused", async ({ page, made }) => {
   const slug = made.slug();
   await page.goto("/admin/categories");
   const add = page.getByTestId("category-add");
@@ -57,6 +57,11 @@ test("an admin adds, edits, deletes and restores a category; a reserved slug is 
   await clickHydrated(add.getByTestId("category-submit"));
   await expect(add.getByTestId("form-error")).toHaveAttribute("data-error", "category.reserved");
   expect(await categoryBySlug("publish")).toBeUndefined();
+
+  await add.getByTestId("category-slug").fill("abc123");
+  await clickHydrated(add.getByTestId("category-submit"));
+  await expect(add.getByTestId("form-error")).toHaveAttribute("data-error", "category.appIdForm");
+  expect(await categoryBySlug("abc123")).toBeUndefined();
 
   await add.getByTestId("category-slug").fill(slug);
   await add.getByTestId("category-name").fill("E2E Added");
@@ -73,8 +78,8 @@ test("an admin adds, edits, deletes and restores a category; a reserved slug is 
   await expect(card.getByTestId("form-saved")).toBeVisible();
   expect(await categoryBySlug(slug)).toBeUndefined();
   expect(await categoryBySlug(edited)).toMatchObject({ id: added!.id, name: "E2E Edited" });
-  expect((await page.goto(`/${edited}`))?.status()).toBe(200);
-  expect((await page.goto(`/${slug}`))?.status()).toBe(404);
+  expect((await page.goto(`/catalogue/${edited}`))?.status()).toBe(200);
+  expect((await page.goto(`/catalogue/${slug}`))?.status()).toBe(404);
 
   await page.goto("/admin/categories");
   await card.getByTestId("category-delete").click();
@@ -95,17 +100,17 @@ test("after a category delete, its URL gives not found and the app page does not
   await linkCategory(appId, kept.id);
   await linkCategory(appId, gone.id);
 
-  await page.goto(`/apps/${appId}`);
+  await page.goto(`/catalogue/${appId}`);
   await expect(page.getByTestId(`public-app-category-${gone.slug}`)).toBeVisible();
-  expect((await page.goto(`/${gone.slug}`))?.status()).toBe(200);
+  expect((await page.goto(`/catalogue/${gone.slug}`))?.status()).toBe(200);
 
   await page.goto("/admin/categories");
   const card = page.getByTestId(`admin-category-${gone.id}`);
   await card.getByTestId("category-delete").click();
   await expect(card.getByTestId("category-deleted")).toBeVisible();
 
-  expect((await page.goto(`/${gone.slug}`))?.status()).toBe(404);
-  await page.goto(`/apps/${appId}`);
+  expect((await page.goto(`/catalogue/${gone.slug}`))?.status()).toBe(404);
+  await page.goto(`/catalogue/${appId}`);
   await expect(page.getByTestId(`public-app-category-${kept.slug}`)).toBeVisible();
   await expect(page.getByTestId(`public-app-category-${gone.slug}`)).toHaveCount(0);
 });

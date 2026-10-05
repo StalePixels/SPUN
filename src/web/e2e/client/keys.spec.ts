@@ -10,7 +10,7 @@ async function expectRefusal(response: APIResponse, status: number, code: string
   expect(await response.json()).toEqual(expect.objectContaining({ error: expect.objectContaining({ code }) }));
 }
 
-test("a user makes an API key from /me and /keys, signs requests with it, and deletes it", async ({ page }) => {
+test("a user makes an API key from the API keys tab of /me, signs requests with it, and deletes it", async ({ page }) => {
   const client = await userByUsername(accounts.client.username);
   const otherUser = await insertUser(`e2ekey${Date.now().toString(36)}`.slice(0, 16));
   try {
@@ -21,8 +21,8 @@ test("a user makes an API key from /me and /keys, signs requests with it, and de
     await expect(page).toHaveURL((url) => url.pathname === "/me");
     await expect(page.getByTestId("me-username")).toHaveText(accounts.client.username);
     await expect(page.getByTestId("me-email")).toHaveText(accounts.client.email);
-    await page.getByTestId("me-keys").click();
-    await expect(page).toHaveURL((url) => url.pathname === "/keys");
+    await page.getByTestId("me-menu-keys").click();
+    await expect(page).toHaveURL((url) => url.pathname === "/me/keys");
 
     const name = `E2E key ${Date.now().toString(36)}`;
     await page.getByTestId("key-name-field").fill(name);

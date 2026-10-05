@@ -62,7 +62,7 @@ export const test = base.extend<{ publisher: Publisher }>({
 // Walks the catalogue pages until it finds the app's row. Null if no page has it.
 export async function catalogueRow(page: Page, appId: string): Promise<Locator | null> {
   for (let n = 1; ; n++) {
-    await page.goto(n === 1 ? "/" : `/?page=${n}`);
+    await page.goto(n === 1 ? "/catalogue" : `/catalogue?page=${n}`);
     const row = page.getByTestId(`catalogue-app-${appId}`);
     if ((await row.count()) === 1) {
       return row;

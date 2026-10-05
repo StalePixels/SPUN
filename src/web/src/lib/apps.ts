@@ -5,9 +5,12 @@ import { aliases, apps, releases } from "@/db/schema";
 import { appCategoryList, liveCategories, setAppCategories } from "./categories";
 import { db } from "./db";
 import { appCount, appLimit } from "./limits";
+import { fieldChanges } from "./notices";
+import { appSnapshot, notify } from "./notify";
 import type { Problem } from "./problems";
 import { appBinStore } from "./releases";
 import {
+  APP_ID_RE,
   canCreateApp,
   checkCategoryChoice,
   checkDescription,
@@ -22,7 +25,6 @@ export const APP_ID_LENGTH = 6;
 // Always lowercase: an AppId only comes from parseAppId or the generator.
 export type AppId = string & { readonly __brand: "AppId" };
 
-const APP_ID_RE = /^[0-9a-z]{6}$/;
 const generateId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", APP_ID_LENGTH);
 
 export function parseAppId(value: string): AppId | null {
@@ -195,6 +197,7 @@ export async function addApp(userId: string, fields: AppFields): Promise<{ error
       .values({ id, userId, title: fields.title, description: fields.description, installDir: choice.installDir });
     await setAppCategories(tx, id, choice.categoryIds);
   });
+  notify({ kind: "appCreated", actorId: userId, appId: id, fields: await appSnapshot(id) });
   return { id };
 }
 
@@ -211,6 +214,7 @@ export async function editApp(
   if (!choice.ok) {
     return { error: choice.error };
   }
+  const before = await appSnapshot(appId);
   await db().transaction(async (tx) => {
     await tx
       .update(apps)
@@ -218,7 +222,15 @@ export async function editApp(
       .where(eq(apps.id, appId));
     await setAppCategories(tx, appId, choice.categoryIds);
   });
+  await notifyAppEdit(userId, appId, before);
   return {};
+}
+
+export async function notifyAppEdit(actorId: string, appId: AppId, before: Record<string, string>): Promise<void> {
+  const changes = fieldChanges(before, await appSnapshot(appId));
+  if (changes.length > 0) {
+    notify({ kind: "appEdited", actorId, appId, changes });
+  }
 }
 
 export async function deleteOwnApp(user: { id: string; username: string }, appId: AppId): Promise<{ error?: Problem }> {
@@ -226,6 +238,7 @@ export async function deleteOwnApp(user: { id: string; username: string }, appId
     return { error: { code: "app.notFound" } };
   }
   await deleteApp(appBinStore(user.username), appId);
+  notify({ kind: "appDeleted", actorId: user.id, appId });
   return {};
 }
 

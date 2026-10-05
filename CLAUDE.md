@@ -14,6 +14,8 @@ the `.spun` dot command will live in `src/server` and `src/client`.
 - One e2e spec, on the e2e data as it is (no reset): `make e2e-up`, then
   `pnpm exec playwright test e2e/client/uploads.spec.ts`, then `make e2e-down`
 - Dev server: `pnpm dev`; container: `docker compose up --build`
+- Production: `docker/compose.yml` runs the CMS, SPUNServer, MariaDB and
+  Redis as one project. Settings: `docker/.env.example`.
 
 The e2e suite has its own database, storage directory, CMS and SPUNServer;
 it never uses the development ones. `make e2e` resets the database and

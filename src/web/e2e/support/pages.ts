@@ -61,7 +61,7 @@ export async function createApp(
   description = "",
   categories: string[] = [],
 ): Promise<string> {
-  await page.goto("/publish");
+  await page.goto("/publish/new");
   await waitForHydration(page.getByTestId("app-submit"));
   await page.getByTestId("app-title").fill(title);
   await page.getByTestId("app-description").fill(description);

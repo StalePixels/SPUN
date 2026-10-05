@@ -20,7 +20,9 @@ VERSION := $(shell cat ../VERSION)
 
 # The release zip: the dot command as spun.dot, then these files, all at the zip's root
 ZIP := $(BUILD_DIR)/$(NAME)-$(VERSION).zip
-ZIP_FILES := ../zip/README.txt
+BAS := $(BUILD_DIR)/spun.bas
+ZIP_FILES := ../zip/README.txt ../zip/spun.gde $(BAS)
+TXT2BAS ?= txt2bas
 
 CRT := 30
 
@@ -121,7 +123,10 @@ dotn: banks $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin
 
 binaries: dirs dotn
 
-zip: binaries
+$(BAS): ../zip/spun.txt | dirs
+	$(TXT2BAS) -i $< -o $@
+
+zip: binaries $(BAS)
 	$(RM) $(BUILD_DIR)/zip $(ZIP)
 	$(MKDIR) $(BUILD_DIR)/zip
 	cp $(BUILD_DIR)/$(NAME) $(BUILD_DIR)/zip/spun.dot

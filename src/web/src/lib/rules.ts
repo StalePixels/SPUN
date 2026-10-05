@@ -185,8 +185,25 @@ export const CATEGORY_NAME_MAX = 32;
 const CATEGORY_SLUG_CHAR = /[a-z0-9-]/;
 
 // Every top-level path of the site except apps, which is also a category, plus
-// index, whose .md copy is /index.md. A category slug is a top-level URL too.
-export const RESERVED_PATHS = ["admin", "api", "index", "keys", "llms.txt", "md", "me", "my", "publish", "username"];
+// index, whose .md copy is /index.md. Old category URLs, /<slug>, still redirect.
+export const RESERVED_PATHS = [
+  "admin",
+  "api",
+  "catalog",
+  "catalogue",
+  "get",
+  "index",
+  "keys",
+  "llms.txt",
+  "md",
+  "me",
+  "my",
+  "publish",
+  "username",
+];
+
+// The form of an app id. A category slug may not have it: /catalogue/<x> is either.
+export const APP_ID_RE = /^[0-9a-z]{6}$/;
 
 export function checkCategorySlug(value: string): Problem | null {
   if (RESERVED_PATHS.includes(value)) {
@@ -198,6 +215,9 @@ export function checkCategorySlug(value: string): Problem | null {
   }
   if (value.length < 1 || value.length > CATEGORY_SLUG_MAX) {
     return { code: "category.length", min: 1, max: CATEGORY_SLUG_MAX };
+  }
+  if (APP_ID_RE.test(value)) {
+    return { code: "category.appIdForm" };
   }
   return null;
 }
@@ -243,7 +263,7 @@ export function parseSlot(value: string): number | null {
 }
 
 export function screenshotUrl(appId: string, slot: number, updatedAt: Date): string {
-  return `/apps/${appId}/screenshots/${slot}?v=${updatedAt.getTime()}`;
+  return `/catalogue/${appId}/screenshots/${slot}?v=${updatedAt.getTime()}`;
 }
 
 export const CATALOGUE_PAGE_SIZE = 20;
@@ -255,6 +275,18 @@ export function parsePage(value: string | string[] | undefined): number {
 
 export function parseQuery(value: string | string[] | undefined): string {
   return typeof value === "string" ? value : "";
+}
+
+// The query string of a page's searchParams, with its "?" when there is one.
+export function searchOf(params: Record<string, string | string[] | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [name, value] of Object.entries(params)) {
+    for (const one of [value ?? []].flat()) {
+      search.append(name, one);
+    }
+  }
+  const text = search.toString();
+  return text === "" ? "" : `?${text}`;
 }
 
 export function catalogueHref(base: string, query: string, page: number): string {

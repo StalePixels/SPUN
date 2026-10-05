@@ -49,9 +49,9 @@ export async function signedFetch(
   return request.fetch(path, { method, headers, data: options.data, multipart: options.multipart });
 }
 
-// Makes a key on /keys as the page's logged-in user.
+// Makes a key on /me/keys as the page's logged-in user.
 export async function makeApiKey(page: Page): Promise<ApiKey> {
-  await page.goto("/keys");
+  await page.goto("/me/keys");
   await page.getByTestId("key-name-field").fill(`E2E key ${Date.now().toString(36)}`);
   await clickHydrated(page.getByTestId("key-submit"));
   return splitKey(((await page.getByTestId("key-secret").textContent()) ?? "").trim());

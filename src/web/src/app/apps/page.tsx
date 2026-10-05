@@ -1,14 +1,15 @@
-import { parsePage, parseQuery } from "@/lib/rules";
-import { requireRegistration } from "@/lib/session";
-import { Catalogue } from "../Catalogue";
+import { notFound, permanentRedirect } from "next/navigation";
+import { liveCategory } from "@/lib/categories";
+import { searchOf } from "@/lib/rules";
 
-// The apps category has its own page because the app pages share its folder.
-export default async function AppsCategory({
+// The apps category was at /apps before the catalogue moved; the app pages share this folder.
+export default async function OldAppsCategory({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string | string[]; q?: string | string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireRegistration();
-  const { page, q } = await searchParams;
-  return <Catalogue slug="apps" page={parsePage(page)} query={parseQuery(q)} />;
+  if (!(await liveCategory("apps"))) {
+    notFound();
+  }
+  permanentRedirect(`/catalogue/apps${searchOf(await searchParams)}`);
 }

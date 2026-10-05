@@ -63,12 +63,12 @@ test("a banned install directory and a drive letter are refused and change nothi
 });
 
 test("a title with an emoji is refused", async ({ page }) => {
-  await page.goto("/publish");
+  await page.goto("/publish/new");
   const title = `${uniqueTitle("Emoji")} 🚀`;
   await page.getByTestId("app-title").fill(title);
   await clickHydrated(page.getByTestId("app-submit"));
   await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "title.invalidCharacters");
-  expect(pathname(page)).toBe("/publish");
+  expect(pathname(page)).toBe("/publish/new");
 });
 
 test("delete an app: files go, the database row stays marked deleted", async ({ page, apps }) => {

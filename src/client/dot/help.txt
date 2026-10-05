@@ -11,6 +11,7 @@ commands:
 options:
  -s xxxx Alternative Server
  -p xxxx Alternative Port
+ -q      Quiet
 
 Put TEXT with spaces in quotes:
  .spun find "two words" 2

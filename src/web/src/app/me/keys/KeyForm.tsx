@@ -5,8 +5,8 @@ import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import { KEY_NAME_MAX } from "@/lib/rules";
-import { Field, FieldRow } from "../Field";
-import { FormError } from "../FormError";
+import { Field, FieldRow } from "../../Field";
+import { FormError } from "../../FormError";
 import { makeKey, type KeyFormState } from "./actions";
 
 export function KeyForm() {

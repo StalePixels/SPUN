@@ -3,8 +3,8 @@ import { liveReleases, publicApp } from "@/lib/catalogue";
 import { releaseFileName } from "@/lib/rules";
 import { readRelease, releasePath } from "@/lib/storage";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const id = parseAppId((await params).id);
+export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const id = parseAppId((await params).slug);
   const app = id ? await publicApp(id) : null;
   const latest = id && app ? (await liveReleases(id))[0] : undefined;
   if (!id || !app?.username || !latest) {

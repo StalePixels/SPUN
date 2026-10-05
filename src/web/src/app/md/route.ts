@@ -1,5 +1,5 @@
-import { catalogueResponse } from "@/lib/markdown";
+import { movedResponse } from "@/lib/markdown";
 
 export async function GET(request: Request) {
-  return catalogueResponse(null, request);
+  return movedResponse("/catalogue.md", request);
 }

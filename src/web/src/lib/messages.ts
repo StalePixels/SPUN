@@ -92,6 +92,8 @@ export function problemMessage(problem: Problem): string {
       return `A category slug or name must be ${min} to ${max} characters.`;
     case "category.reserved":
       return "That slug is a page of the site. Choose another.";
+    case "category.appIdForm":
+      return "A slug cannot be 6 letters and digits: that is the form of an app id. Use another length, or add a hyphen.";
     case "category.taken":
       return "Another category has that slug, or had it before it was deleted.";
     case "category.missing":
@@ -114,6 +116,10 @@ export function problemMessage(problem: Problem): string {
       return `These entries in the zip carry a second, Unicode name that differs from their own. The Next uses only their own name: ${(problem.names ?? []).join(", ")}`;
     case "file.unpackedTooLarge":
       return `The files in the zip add up to more than ${MAX_UNPACKED_TEXT} unpacked.`;
+    case "file.macFiles":
+      return `The zip has macOS files that the Next does not need (__MACOSX/, .DS_Store, ._ files). Make the zip again without them: ${(problem.names ?? []).join(", ")}`;
+    case "file.oneDirectory":
+      return `All files in the zip are in one directory, ${(problem.names ?? []).join("")}. Put the files at the root of the zip, not in a directory.`;
     case "file.dotCommandTaken":
       return `The zip has dot commands at its root whose names are reserved for the Next or for SPUN: ${(problem.names ?? []).join(", ")}`;
     case "file.dotNameEnd":

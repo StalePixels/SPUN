@@ -72,7 +72,7 @@ test("upload, replace and clear screenshots, and the public page shows them", as
     { slot: 2, width: 320 },
   ]);
 
-  await page.goto(`/apps/${id}`);
+  await page.goto(`/catalogue/${id}`);
   expect(await naturalWidth(page, "public-screenshot-1")).toBe(256);
   expect(await naturalWidth(page, "public-screenshot-2")).toBe(320);
   const src = await page.getByTestId("public-screenshot-1").getAttribute("src");
@@ -104,7 +104,7 @@ test("upload, replace and clear screenshots, and the public page shows them", as
   expect((await screenshotRows(id)).map((row) => row.slot)).toEqual([1]);
   expect(binFiles(id)).toEqual([]);
 
-  await page.goto(`/apps/${id}`);
+  await page.goto(`/catalogue/${id}`);
   expect(await naturalWidth(page, "public-screenshot-1")).toBe(320);
   await expect(page.getByTestId("public-screenshot-2")).toHaveCount(0);
 });

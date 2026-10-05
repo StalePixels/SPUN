@@ -24,7 +24,7 @@ Follow `/api.md` where it differs from this skill.
 You cannot make a key. Ask the user for one:
 
 1. The user logs in on the site and clicks their username in the navbar. This opens `/me`, their account page.
-2. From `/me`, the user goes to `/keys` and makes a key. They need a username before they can make one.
+2. On `/me`, the user opens the API keys tab, `/me/keys`, and makes a key. They need a username before they can make one.
 3. The site shows the key once. It is one string, `nbnspun-<key id>-<secret>`. The user copies it and gives it to you, for example in the environment variable `SPUN_KEY`.
 
 The key lets anyone who has it act as the user. Do not write it into files, commits or logs.
@@ -93,6 +93,10 @@ The Next unzips each release itself, with its own unzipper. The CMS refuses a zi
 The CMS also refuses a zip with a name that is not printable ASCII (space to `}`), that has any of `" * < > ? | ~`, or that has a part ending with a dot or a space, such as `GAME./A.TXT` (`file.badNames`). The error lists those names in `names`.
 
 The Next reads only the name stored in each entry. Some zip tools add a second, Unicode name (the Info-ZIP Unicode Path field). The CMS refuses an entry whose second name differs from its own (`file.twoNames`), and lists those entries in `names`. Plain ASCII names never need one.
+
+The files go at the root of the zip. The CMS refuses a zip whose entries are all inside one top-level directory, such as `mygame/` (`file.oneDirectory`), and gives that directory in `names`. Zip the contents of the directory, not the directory itself.
+
+The CMS refuses a zip with macOS files: anything in a `__MACOSX` directory, a `.DS_Store` file, or a file whose name starts with `._`, at any depth (`file.macFiles`). The error lists them in `names`, with a `__MACOSX` directory once. On macOS, run this inside the directory to leave them out: `zip -r -X ../mygame.zip . -x '*.DS_Store' '*__MACOSX*' '._*' '*/._*'`.
 
 ### Dot commands
 

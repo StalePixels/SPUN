@@ -1,0 +1,24 @@
+#program spun
+#autostart 10
+10 REG 127,0
+20 ON ERROR GO TO 40
+30 OPEN #4,"spun.dot": CLOSE #4: ON ERROR : .mv -f spun.dot "c:/dot/spun"
+40 ON ERROR
+50 DIM d$(261): OPEN #4,"v>d$": PWD #4: RETURN #4 TO l: CLOSE #4
+60 LET p$=d$( TO l): IF p$(l)=CHR$ 13 THEN LET p$=p$( TO l-1)
+100 CLS : .SPUI MENU -t "SPUN" -c 21 -x 4 "Browse the catalogue" "Update installed apps" "Install an app" "Read the guide"
+110 LET %m=% REG 127
+120 IF %m=0 THEN GO TO 9000
+130 GO TO %m*100+100
+200 .spun
+210 GO TO 100
+300 CLS : .spun update
+310 GO SUB 800: GO TO 100
+400 CLS : INPUT "App id or alias: ";a$
+410 IF a$="" THEN GO TO 100
+420 LET c$="get "+a$: .$ spun c$
+430 CD p$: GO SUB 800: GO TO 100
+500 .guide spun.gde
+510 GO TO 100
+800 PRINT #0;"Press any key": PAUSE 0: RETURN
+9000 CLS

@@ -5,6 +5,7 @@ import { catalogueHref, formatDay } from "@/lib/rules";
 import { savedIds } from "@/lib/saved";
 import { currentUser } from "@/lib/session";
 import { SaveButton } from "./SaveButton";
+import { SectionMenu } from "./SectionMenu";
 import { Screenshot } from "./Screenshot";
 
 // The same page for / (slug null) and for each category URL.
@@ -14,8 +15,8 @@ export async function Catalogue({ slug, page, query }: { slug: string | null; pa
     notFound();
   }
   const { category, categories, rows, more } = view;
-  const base = category ? `/${category.slug}` : "/";
-  const markdown = catalogueHref(category ? `/${category.slug}.md` : "/index.md", query, page);
+  const base = category ? `/catalogue/${category.slug}` : "/catalogue";
+  const markdown = catalogueHref(`${base}.md`, query, page);
   return (
     <>
       <link rel="alternate" type="text/markdown" href={markdown} />
@@ -36,19 +37,17 @@ export async function Catalogue({ slug, page, query }: { slug: string | null; pa
         </button>
       </form>
       {categories.length > 0 && (
-        <nav className="nav nav-pills mb-3" aria-label="Categories" data-testid="category-links">
-          {categories.map((item) => (
-            <Link
-              key={item.id}
-              href={`/${item.slug}`}
-              data-testid={`category-link-${item.slug}`}
-              className={`nav-link${item.id === category?.id ? " active" : ""}`}
-              aria-current={item.id === category?.id ? "page" : undefined}
-            >
-              {item.name}
-            </Link>
-          ))}
-        </nav>
+        <SectionMenu
+          id="category-links"
+          item="category-link"
+          label="Categories"
+          className="mb-3"
+          sections={[
+            { href: "/catalogue", key: "", label: "All", testId: "category-all" },
+            ...categories.map((item) => ({ href: `/catalogue/${item.slug}`, key: item.slug, label: item.name })),
+          ]}
+          active={category?.slug ?? ""}
+        />
       )}
       {rows.length === 0 ? (
         <p className="text-body-secondary mb-4" data-testid="catalogue-empty">
@@ -93,7 +92,7 @@ export async function CatalogueRows({ rows }: { rows: CatalogueRow[] }) {
         <div key={app.id} className="list-group-item list-group-item-action d-flex align-items-center gap-3">
           <Link
             data-testid={`catalogue-app-${app.id}`}
-            href={`/apps/${app.id}`}
+            href={`/catalogue/${app.id}`}
             className="d-flex flex-grow-1 align-items-center gap-3 text-reset text-decoration-none"
           >
             <span className="flex-shrink-0" style={{ width: 64 }}>
