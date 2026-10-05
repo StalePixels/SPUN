@@ -1,4 +1,12 @@
-import type { AppId, Catalogue, FoundApp, Release, Screenshot, Slice } from "../src/catalogue.js";
+import {
+  FEATURED,
+  type AppId,
+  type Catalogue,
+  type FoundApp,
+  type Release,
+  type Screenshot,
+  type Slice,
+} from "../src/catalogue.js";
 
 // In-memory copy of the CMS tables, with the same rules as the SQL in
 // src/mysqlCatalogue.ts. Rows are shaped like the database rows; an app's
@@ -34,11 +42,20 @@ export interface AliasRow {
   appId: string;
 }
 
+export interface FeatureRow {
+  id: number;
+  appId: string;
+  published: boolean;
+  publishAt: Date | null;
+  deleted?: boolean;
+}
+
 export interface Tables {
   users: UserRow[];
   apps: AppRow[];
   releases: ReleaseRow[];
   aliases?: AliasRow[];
+  features?: FeatureRow[];
 }
 
 const slice = <T>(rows: T[], offset: number, limit: number): Slice<T> => ({
@@ -61,6 +78,18 @@ export function fakeCatalogue(tables: Tables): Catalogue {
   const publicApps = (): AppRow[] =>
     tables.apps.filter((app) => !app.deleted && liveReleases(app.id).length > 0);
 
+  const liveFeature = (): FeatureRow | undefined =>
+    (tables.features ?? [])
+      .filter(
+        (feature) =>
+          feature.published &&
+          !feature.deleted &&
+          feature.publishAt !== null &&
+          feature.publishAt.getTime() <= Date.now() &&
+          publicApps().some((app) => app.id === feature.appId),
+      )
+      .sort((a, b) => (b.publishAt?.getTime() ?? 0) - (a.publishAt?.getTime() ?? 0) || b.id - a.id)[0];
+
   const byTitle = (a: AppRow, b: AppRow): number => a.title.localeCompare(b.title) || a.id.localeCompare(b.id);
 
   const found = (app: AppRow): FoundApp => {
@@ -76,6 +105,10 @@ export function fakeCatalogue(tables: Tables): Catalogue {
 
   return {
     async resolve(name) {
+      if (name === FEATURED) {
+        const feature = liveFeature();
+        return feature ? (feature.appId as AppId) : null;
+      }
       const id = tables.apps.find((app) => app.id === name)?.id ??
         tables.aliases?.find((row) => row.alias === name)?.appId;
       return id === undefined ? null : (id as AppId);

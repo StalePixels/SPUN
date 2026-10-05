@@ -6,7 +6,7 @@ import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, test } from "node:test";
 import type { AppId, Catalogue } from "../src/catalogue.js";
 import { checksum, decodeChangelog, decodeFind, decodeInfo } from "../src/codec.js";
-import { fakeCatalogue, type AppRow, type ReleaseRow, type Tables } from "./fakeCatalogue.js";
+import { fakeCatalogue, type AppRow, type FeatureRow, type ReleaseRow, type Tables } from "./fakeCatalogue.js";
 import { SpoofClient, startSpunServer } from "./harness.js";
 import { ascii, counts, field, le, reply } from "./golden.js";
 import { settings } from "./settings.js";
@@ -110,6 +110,19 @@ const tables: Tables = {
     { alias: "gonealias", appId: "gone01" },
     { alias: "emptyalias", appId: "allgn1" },
     { alias: "promoted", appId: "tst001" },
+  ],
+  // tst001's is live; tst002's is the one before it. Each of the others is
+  // newer than tst001's and does not count.
+  features: [
+    { id: 1, appId: "tst002", published: true, publishAt: new Date("2026-01-01T00:00:00Z") },
+    { id: 2, appId: "tst001", published: true, publishAt: new Date("2026-02-01T00:00:00Z") },
+    { id: 3, appId: "abc123", published: true, publishAt: new Date(Date.now() + 365 * 24 * 3600 * 1000) },
+    { id: 4, appId: "desc01", published: false, publishAt: new Date("2026-03-01T00:00:00Z") },
+    { id: 5, appId: "desc01", published: true, publishAt: new Date("2026-03-02T00:00:00Z"), deleted: true },
+    { id: 6, appId: "allgn1", published: true, publishAt: new Date("2026-03-03T00:00:00Z") },
+    { id: 7, appId: "gone01", published: true, publishAt: new Date("2026-03-04T00:00:00Z") },
+    { id: 8, appId: "empty1", published: true, publishAt: new Date("2026-03-05T00:00:00Z") },
+    { id: 9, appId: "desc01", published: false, publishAt: null },
   ],
 };
 
@@ -635,6 +648,68 @@ describe("aliases", () => {
   test("a GET by an unknown alias gives NoFile_ERROR", async () => {
     await expectError(`GET ${user}/nosuchalias-0001.zip\n`, "NoFile_ERROR");
     await expectOpen();
+  });
+});
+
+describe("featured", () => {
+  beforeEach(connect);
+  afterEach(() => client.close());
+
+  const feature = (id: number): FeatureRow => {
+    const row = tables.features?.find((f) => f.id === id);
+    assert.ok(row);
+    return row;
+  };
+
+  test("SPINFO and SPCLOG of featured, in any case, name the live feature's app", async () => {
+    client.send("SPINFO featured\n");
+    assert.equal((await client.reply(decodeInfo)).app.id, "tst001");
+    client.send("SPINFO FEATURED\n");
+    assert.equal((await client.reply(decodeInfo)).app.id, "tst001");
+    client.send("SPCLOG featured 1\n");
+    assert.equal((await client.reply(decodeChangelog)).version, "test-upload-01");
+  });
+
+  test("a zip GET by featured sends the live feature's zip", async () => {
+    await expectFile("featured-0001.zip", fileBytes, "tst001-0001.zip");
+    await client.drain();
+    await expectOpen();
+  });
+
+  test("when the newest feature is not live, the previous one resolves", async () => {
+    const live = feature(2);
+    live.published = false;
+    try {
+      client.send("SPINFO featured\n");
+      assert.equal((await client.reply(decodeInfo)).app.id, "tst002");
+    } finally {
+      live.published = true;
+    }
+  });
+
+  test("a later id wins between two features with the same publish time", async () => {
+    const earlier = feature(1);
+    const time = earlier.publishAt;
+    earlier.publishAt = feature(2).publishAt;
+    try {
+      client.send("SPINFO featured\n");
+      assert.equal((await client.reply(decodeInfo)).app.id, "tst001");
+    } finally {
+      earlier.publishAt = time;
+    }
+  });
+
+  test("future, unpublished, deleted and non-public features do not resolve", async () => {
+    const rows = [feature(1), feature(2)];
+    for (const row of rows) row.published = false;
+    try {
+      await expectError("SPINFO featured\n", "NoApp_ERROR");
+      await expectError("SPCLOG featured 1\n", "NoApp_ERROR");
+      await expectError(`GET ${user}/featured-0001.zip\n`, "NoFile_ERROR");
+      await expectOpen();
+    } finally {
+      for (const row of rows) row.published = true;
+    }
   });
 });
 
