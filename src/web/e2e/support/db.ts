@@ -80,19 +80,27 @@ export async function insertUser(username: string | null): Promise<string> {
   return id;
 }
 
+// The CMS needs an install directory to save an app, so a test app has one.
 export async function insertApp(userId: string, title: string, description = ""): Promise<string> {
   const alphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
   const id = Array.from(randomBytes(6), (byte) => alphabet[byte % alphabet.length]).join("");
-  return insertAppWithId(id, userId, title, description);
+  return insertAppWithId(id, userId, title, description, "/e2e/app");
 }
 
 // For the test app of the setup, whose id is fixed in .env.e2e.
-export async function insertAppWithId(id: string, userId: string, title: string, description = ""): Promise<string> {
-  await query("insert into apps (id, user_id, title, description) values (?, ?, ?, ?)", [
+export async function insertAppWithId(
+  id: string,
+  userId: string,
+  title: string,
+  description = "",
+  installDir: string | null = null,
+): Promise<string> {
+  await query("insert into apps (id, user_id, title, description, install_dir) values (?, ?, ?, ?, ?)", [
     id,
     userId,
     title,
     description,
+    installDir,
   ]);
   return id;
 }
@@ -302,10 +310,20 @@ export async function insertRelease(appId: string, serial: number, version: stri
   ]);
 }
 
-export type CategoryRow = { id: number; slug: string; name: string; deleted_at: Date | null };
+export type CategoryRow = {
+  id: number;
+  slug: string;
+  name: string;
+  install_dir: string;
+  specificity: number;
+  deleted_at: Date | null;
+};
 
 export async function categoryBySlug(slug: string): Promise<CategoryRow | undefined> {
-  const [row] = await query<CategoryRow>("select id, slug, name, deleted_at from categories where slug = ?", [slug]);
+  const [row] = await query<CategoryRow>(
+    "select id, slug, name, install_dir, specificity, deleted_at from categories where slug = ?",
+    [slug],
+  );
   return row;
 }
 
@@ -315,13 +333,18 @@ export async function firstLiveCategoryId(): Promise<number> {
   return row.id;
 }
 
-export async function insertCategory(slug: string, name: string): Promise<number> {
+export async function insertCategory(
+  slug: string,
+  name: string,
+  installDir = `/e2e/${slug}`,
+  specificity = 0,
+): Promise<number> {
   const connection = await mysql.createConnection(settings.databaseUrl);
   try {
-    const [result] = await connection.query<ResultSetHeader>("insert into categories (slug, name) values (?, ?)", [
-      slug,
-      name,
-    ]);
+    const [result] = await connection.query<ResultSetHeader>(
+      "insert into categories (slug, name, install_dir, specificity) values (?, ?, ?, ?)",
+      [slug, name, installDir, specificity],
+    );
     return result.insertId;
   } finally {
     await connection.end();

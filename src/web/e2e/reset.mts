@@ -38,13 +38,13 @@ if (
 
 // The category list of the development database, in the same order.
 const categories = [
-  { slug: "apps", name: "Apps" },
-  { slug: "games", name: "Games" },
-  { slug: "demos", name: "Demos" },
-  { slug: "music", name: "Music" },
-  { slug: "basic", name: "BASIC" },
-  { slug: "systool", name: "System tools" },
-  { slug: "other", name: "Other" },
+  { slug: "apps", name: "Apps", installDir: "/apps", specificity: 1 },
+  { slug: "games", name: "Games", installDir: "/games/next", specificity: 2 },
+  { slug: "demos", name: "Demos", installDir: "/demos", specificity: 2 },
+  { slug: "music", name: "Music", installDir: "/apps/audio", specificity: 7 },
+  { slug: "basic", name: "BASIC", installDir: "/demos/NextBASIC", specificity: 2 },
+  { slug: "systool", name: "System tools", installDir: "/apps/tools", specificity: 1 },
+  { slug: "other", name: "Other", installDir: "/home", specificity: 10 },
 ];
 
 const settings = [
@@ -75,8 +75,13 @@ try {
     stdio: "inherit",
   });
 
-  for (const { slug, name } of categories) {
-    await connection.query("insert into categories (slug, name) values (?, ?)", [slug, name]);
+  for (const { slug, name, installDir, specificity } of categories) {
+    await connection.query("insert into categories (slug, name, install_dir, specificity) values (?, ?, ?, ?)", [
+      slug,
+      name,
+      installDir,
+      specificity,
+    ]);
   }
   for (const { slug, description, value } of settings) {
     await connection.query("insert into settings (slug, description, value) values (?, ?, ?)", [

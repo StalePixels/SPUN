@@ -52,37 +52,54 @@ test("an admin adds, edits, deletes and restores a category; reserved slugs and 
   const slug = made.slug();
   await page.goto("/admin/categories");
   const add = page.getByTestId("category-add");
-  await add.getByTestId("category-slug").fill("publish");
-  await add.getByTestId("category-name").fill("E2E Reserved");
-  await clickHydrated(add.getByTestId("category-submit"));
+  // A form action clears the fields after each submit, so each one fills them all.
+  const fillAdd = async (slugValue: string, installDir = "/e2e/added", specificity = "3") => {
+    await add.getByTestId("category-slug").fill(slugValue);
+    await add.getByTestId("category-name").fill("E2E Added");
+    await add.getByTestId("category-install-dir").fill(installDir);
+    await add.getByTestId("category-specificity").fill(specificity);
+    await clickHydrated(add.getByTestId("category-submit"));
+  };
+  await fillAdd("publish");
   await expect(add.getByTestId("form-error")).toHaveAttribute("data-error", "category.reserved");
   expect(await categoryBySlug("publish")).toBeUndefined();
 
-  await add.getByTestId("category-slug").fill("abc123");
-  await clickHydrated(add.getByTestId("category-submit"));
+  await fillAdd("abc123");
   await expect(add.getByTestId("form-error")).toHaveAttribute("data-error", "category.appIdForm");
   expect(await categoryBySlug("abc123")).toBeUndefined();
 
-  await add.getByTestId("category-slug").fill("featured");
-  await clickHydrated(add.getByTestId("category-submit"));
+  await fillAdd("featured");
   await expect(add.getByTestId("form-error")).toHaveAttribute("data-error", "category.reserved");
   expect(await categoryBySlug("featured")).toBeUndefined();
 
-  await add.getByTestId("category-slug").fill(slug);
-  await add.getByTestId("category-name").fill("E2E Added");
-  await clickHydrated(add.getByTestId("category-submit"));
+  await fillAdd(slug, "/e2e/added", "-1");
+  await expect(add.getByTestId("form-error")).toHaveAttribute("data-error", "category.specificity");
+  expect(await categoryBySlug(slug)).toBeUndefined();
+
+  await fillAdd(slug, "/sys/e2e");
+  await expect(add.getByTestId("form-error")).toHaveAttribute("data-error", "installDir.banned");
+  expect(await categoryBySlug(slug)).toBeUndefined();
+
+  await fillAdd(slug, "e2e\\added\\");
   await expect(add.getByTestId("form-saved")).toBeVisible();
   const added = await categoryBySlug(slug);
-  expect(added).toMatchObject({ name: "E2E Added", deleted_at: null });
+  expect(added).toMatchObject({ name: "E2E Added", install_dir: "/e2e/added", specificity: 3, deleted_at: null });
 
   const edited = made.slug();
   const card = page.getByTestId(`admin-category-${added!.id}`);
   await card.getByTestId("category-slug").fill(edited);
   await card.getByTestId("category-name").fill("E2E Edited");
+  await card.getByTestId("category-install-dir").fill("/e2e/edited");
+  await card.getByTestId("category-specificity").fill("0");
   await clickHydrated(card.getByTestId("category-submit"));
   await expect(card.getByTestId("form-saved")).toBeVisible();
   expect(await categoryBySlug(slug)).toBeUndefined();
-  expect(await categoryBySlug(edited)).toMatchObject({ id: added!.id, name: "E2E Edited" });
+  expect(await categoryBySlug(edited)).toMatchObject({
+    id: added!.id,
+    name: "E2E Edited",
+    install_dir: "/e2e/edited",
+    specificity: 0,
+  });
   expect((await page.goto(`/catalogue/${edited}`))?.status()).toBe(200);
   expect((await page.goto(`/catalogue/${slug}`))?.status()).toBe(404);
 

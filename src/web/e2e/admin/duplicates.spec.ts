@@ -18,7 +18,7 @@ test("a real duplicate key from Drizzle and MariaDB reads as a duplicate entry",
   try {
     const error = await drizzle(connection, { mode: "default" })
       .insert(categories)
-      .values({ slug: slug.toUpperCase(), name: "E2E duplicate again" })
+      .values({ slug: slug.toUpperCase(), name: "E2E duplicate again", installDir: "/e2e/duplicate" })
       .then(
         () => null,
         (err: unknown) => err,

@@ -6,6 +6,7 @@ import {
   createApp,
   expect,
   pathname,
+  skipAppFormChecks,
   uniqueTitle,
   uploadRelease,
 } from "../support/pages";
@@ -26,7 +27,7 @@ const test = base.extend<{ made: Fixture }>({
       await provide({
         async category() {
           const slug = uniqueSlug();
-          const id = await insertCategory(slug, `E2E ${slug}`);
+          const id = await insertCategory(slug, `E2E ${slug}`, `/e2e/${slug}`, 1);
           categories.push(id);
           return { id, slug };
         },
@@ -52,6 +53,7 @@ test("an app needs a category; with two, it shows on both category pages and not
   const third = await made.category();
 
   await page.goto("/publish/new");
+  await skipAppFormChecks(page);
   await page.getByTestId("app-title").fill(uniqueTitle("NoCategory"));
   await clickHydrated(page.getByTestId("app-submit"));
   await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "category.missing");

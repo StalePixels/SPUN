@@ -1,4 +1,4 @@
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 import {
@@ -8,6 +8,7 @@ import {
   appRow,
   firstLiveCategoryId,
   insertApp,
+  insertDotOverride,
   linkCategory,
   insertSession,
   markAppDeleted,
@@ -15,6 +16,7 @@ import {
   releaseRow,
   removeTestUser,
   sessionCount,
+  setReleaseDeleted,
   userRow,
 } from "../support/db";
 import {
@@ -255,6 +257,56 @@ test("dot command overrides: add in any case, refuse others and repeats, let upl
   await uploadRelease(page, { version: "2.0", file: spunZip() });
   await expect(page.getByTestId("form-error").first()).toHaveAttribute("data-error", "file.dotCommandTaken");
   expect(await releaseRow(id, 2)).toBeUndefined();
+});
+
+test("revalidate reruns the upload and app checks on the stored app and zips, and skips deleted releases", async ({
+  page,
+  people,
+}) => {
+  const owner = await people.user();
+  const id = await people.app(owner, "Revalidate");
+  const result = page.getByTestId("revalidate-result");
+  const release = (serial: number) => page.getByTestId(`revalidate-release-${serial}`);
+
+  await insertDotOverride(id, "spun");
+  await adminUpload(page, id, "1.0", 1);
+  await page.goto(`/admin/apps/${id}`);
+  await uploadRelease(page, {
+    version: "2.0",
+    file: files.write("spun.zip", makeZip([...sampleEntries(), { name: "spun.dot", data: Buffer.from("a") }])),
+  });
+  await expect(page).toHaveURL(new RegExp(`/admin/apps/${id}/releases/2$`));
+  await adminUpload(page, id, "3.0", 3);
+  await adminUpload(page, id, "4.0", 4);
+
+  await page.goto(`/admin/apps/${id}`);
+  await clickHydrated(page.getByTestId("revalidate-submit"));
+  await expect(result).toHaveAttribute("data-ok", "true");
+  await expect(page.getByTestId("revalidate-app")).toHaveAttribute("data-error", "");
+  for (const serial of [1, 2, 3, 4]) {
+    await expect(release(serial), `release ${serial}`).toHaveAttribute("data-error", "");
+  }
+
+  await clickHydrated(page.getByTestId("dot-override-spun").getByTestId("dot-override-remove"));
+  await expect(page.getByTestId("dot-override-spun")).toHaveCount(0);
+  rmSync(releaseFile(owner.username, id, 1));
+  writeFileSync(releaseFile(owner.username, id, 3), "not a zip");
+  await setReleaseDeleted(id, 4, true);
+
+  await page.reload();
+  await clickHydrated(page.getByTestId("revalidate-submit"));
+  await expect(result).toHaveAttribute("data-ok", "false");
+  await expect(page.getByTestId("revalidate-app")).toHaveAttribute("data-error", "");
+  await expect(release(1)).toHaveAttribute("data-error", "file.missing");
+  await expect(release(2)).toHaveAttribute("data-error", "file.dotCommandTaken");
+  await expect(release(3)).toHaveAttribute("data-error", "file.notZip");
+  await expect(release(4), "a deleted release is not checked").toHaveCount(0);
+
+  const bare = await insertApp(owner.id, uniqueTitle("No category"));
+  await page.goto(`/admin/apps/${bare}`);
+  await clickHydrated(page.getByTestId("revalidate-submit"));
+  await expect(page.getByTestId("revalidate-app")).toHaveAttribute("data-error", "category.missing");
+  await expect(result).toHaveAttribute("data-ok", "false");
 });
 
 test("a move puts the zips under the new owner and changes the owner row", async ({ page, people }) => {

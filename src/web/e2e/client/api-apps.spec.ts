@@ -4,15 +4,18 @@ import {
   appCategoryIds,
   appRow,
   insertApp,
+  insertCategory,
   insertRelease,
   insertUser,
   isSaved,
   liveAppIdsOf,
   removeApps,
+  removeCategories,
   removeTestUser,
   setUserAppLimit,
   userByUsername,
 } from "../support/db";
+import { uniqueSlug } from "../support/categories";
 import { expect, test, uniqueTitle } from "../support/pages";
 import { accounts } from "../support/settings";
 
@@ -67,7 +70,7 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
       categories: [second, first],
     });
     expect(put).toEqual({ status: 200, body: {} });
-    expect(await appRow(id)).toMatchObject({ title: edited, install_dir: null });
+    expect(await appRow(id)).toMatchObject({ title: edited });
     expect(await appCategoryIds(id)).toEqual([first, second].sort((a, b) => a - b));
 
     const refused = await signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
@@ -104,6 +107,38 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
     expect(again).toEqual({ status: 404, body: { error: { code: "app.notFound" } } });
   } finally {
     await removeApps(created);
+  }
+});
+
+test("the API stores the directory of the categories when installDir is missing or empty", async ({ page }) => {
+  const key = await makeApiKey(page);
+  const [low, high] = [uniqueSlug(), uniqueSlug()];
+  const categories = {
+    low: await insertCategory(low, `E2E ${low}`, "/e2e/low/longest", 1),
+    high: await insertCategory(high, `E2E ${high}`, "/e2e/high", 2),
+  };
+  const created: string[] = [];
+  try {
+    const made = await signedJson(page.request, key, "POST", "/api/apps", {
+      title: uniqueTitle("API dir"),
+      description: "",
+      categories: [categories.low, categories.high],
+    });
+    expect(made.status).toBe(201);
+    const id = made.body.id as string;
+    created.push(id);
+    expect((await appRow(id)).install_dir).toBe("/e2e/high");
+
+    const put = (body: Record<string, unknown>) =>
+      signedJson(page.request, key, "PUT", `/api/apps/${id}`, { title: uniqueTitle("API dir"), description: "", ...body });
+    expect(await put({ installDir: "  ", categories: [categories.low] })).toEqual({ status: 200, body: {} });
+    expect((await appRow(id)).install_dir).toBe("/e2e/low/longest");
+
+    expect(await put({ installDir: "/e2e/mine", categories: [categories.low] })).toEqual({ status: 200, body: {} });
+    expect((await appRow(id)).install_dir).toBe("/e2e/mine");
+  } finally {
+    await removeApps(created);
+    await removeCategories(Object.values(categories));
   }
 });
 

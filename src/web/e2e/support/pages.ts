@@ -129,6 +129,13 @@ export async function skipBrowserChecks(page: Page): Promise<void> {
   await uploadForm(page).evaluate((form) => form.setAttribute("novalidate", ""));
 }
 
+// Turns off the browser's checks on the app form, for a test of the server's own.
+export async function skipAppFormChecks(page: Page): Promise<void> {
+  const form = page.locator("form").filter({ has: page.getByTestId("app-submit") });
+  await waitForHydration(form);
+  await form.evaluate((element) => element.setAttribute("novalidate", ""));
+}
+
 // Submits the upload form even when its Upload button is disabled.
 export async function forceUploadSubmit(page: Page): Promise<void> {
   await waitForHydration(uploadForm(page));
