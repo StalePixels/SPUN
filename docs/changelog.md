@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.1 (not released)
+## 0.7.1 - 20261006
 
 ### The SPUN package
 
@@ -17,6 +17,8 @@
   `Name`/`Size`, `Installing to`, `Installed` and `No updates`. Questions,
   the results of `find` and `info`, the help text and errors still print.
   In the GUI, `-q` also skips the splash screen.
+- `featured` names the app of the current feature on the front page, and
+  works wherever an alias does.
 
 ### CMS
 
@@ -52,6 +54,27 @@
   Each mail names the user who acted and links to the public and admin
   pages. The SMTP settings and the address are in `.env.example`; with no
   `SMTP_HOST` or `ADMIN_NOTIFY_EMAIL`, no mail is sent.
+- The front page shows the featured app: its main screenshot, its title, an
+  article in Markdown and a link to the app. `/catalogue/featured` redirects
+  to the app, and `/index.md` has the feature too. `featured` is a reserved
+  alias and category slug.
+- Admins write features at `/admin/featured`. A feature can be saved as a
+  draft, published now or at a later time, unpublished and deleted. The
+  latest live feature is the one shown. The only live feature cannot be
+  unpublished or deleted: `feature.lastLive`.
+- An app with no screenshot shows a placeholder image in the catalogue and
+  on its page.
+- Each category has an install directory and a specificity. On the app
+  form, the install directory follows the chosen categories until the
+  publisher types in it: the directory of the highest specificity, and on a
+  tie the longest one. The categories now come before the install
+  directory on the form.
+- An app's install directory is compulsory: `installDir.missing`. In the
+  API, a missing or empty `installDir` gets the directory of the chosen
+  categories.
+- An admin app page has a revalidate button. It runs the app checks again,
+  and the upload checks on the stored zip of each release that is not
+  deleted, and shows the result.
 
 ## 0.7.0 - 20261004
 
