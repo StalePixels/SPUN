@@ -29,6 +29,7 @@ import {
 import { Aliases } from "./Aliases";
 import { DotOverrides } from "./DotOverrides";
 import { MoveApp } from "./MoveApp";
+import { Revalidate } from "./Revalidate";
 
 export default async function AdminAppPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
@@ -103,6 +104,18 @@ export default async function AdminAppPage({ params }: { params: Promise<{ id: s
               </span>
             </Link>
           ))}
+        </div>
+      )}
+
+      {!app.deletedAt && (
+        <div className="card mb-4" data-testid="revalidate">
+          <div className="card-header">
+            <i className="bi bi-check2-all me-1" />
+            Revalidate
+          </div>
+          <div className="card-body">
+            <Revalidate appId={app.id} />
+          </div>
         </div>
       )}
 

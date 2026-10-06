@@ -2,13 +2,22 @@ import "server-only";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { appCategories, categories } from "@/db/schema";
 import type { AppId } from "./apps";
+import type { PathCategory } from "./rules";
 import { db } from "./db";
 
 export type Category = { id: number; slug: string; name: string };
 
-export async function liveCategories(): Promise<Category[]> {
+export type LiveCategory = Category & PathCategory;
+
+export async function liveCategories(): Promise<LiveCategory[]> {
   return db()
-    .select({ id: categories.id, slug: categories.slug, name: categories.name })
+    .select({
+      id: categories.id,
+      slug: categories.slug,
+      name: categories.name,
+      installDir: categories.installDir,
+      specificity: categories.specificity,
+    })
     .from(categories)
     .where(isNull(categories.deletedAt))
     .orderBy(asc(categories.name), asc(categories.id));

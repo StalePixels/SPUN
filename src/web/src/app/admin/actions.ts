@@ -28,6 +28,7 @@ import {
   adminRestoreApp,
   adminRestoreCategory,
   adminRestoreRelease,
+  adminRevalidateApp,
   adminSetAppLimit,
   adminUnpublishFeature,
   adminUpdateApp,
@@ -37,6 +38,7 @@ import {
   adminUpdateUser,
   adminUploadRelease,
   requireAdmin,
+  type CategoryFields,
   type FeatureFields,
 } from "@/lib/admin";
 import { parseAppId } from "@/lib/apps";
@@ -50,7 +52,7 @@ import {
   checkCategorySlug,
   checkChangelog,
   checkDescription,
-  checkInstallDir,
+  checkRequiredInstallDir,
   checkPublishAt,
   checkReleaseDate,
   checkTitle,
@@ -59,9 +61,11 @@ import {
   parseLimit,
   parseSerial,
   parseSlot,
+  parseSpecificity,
 } from "@/lib/rules";
 import { DEFAULT_APP_LIMIT } from "@/lib/settings";
 import type { Problem } from "@/lib/problems";
+import type { AppRevalidation } from "@/lib/revalidate";
 import type { FormState, UploadState } from "../actions";
 
 export async function saveSettings(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -124,7 +128,7 @@ export async function saveAdminApp(rawId: string, _prev: FormState, formData: Fo
   if (error) {
     return { error };
   }
-  const dir = checkInstallDir(text(formData, "installDir"));
+  const dir = checkRequiredInstallDir(text(formData, "installDir"));
   if (!dir.ok) {
     return { error: dir.error };
   }
@@ -307,6 +311,15 @@ export async function removeAdminDotOverride(rawId: string, name: string): Promi
   }
 }
 
+export type RevalidateState = { error?: Problem; result?: AppRevalidation };
+
+export async function revalidateAdminApp(rawId: string): Promise<RevalidateState> {
+  await requireAdmin();
+  const appId = parseAppId(rawId);
+  const result = appId ? await adminRevalidateApp(appId) : null;
+  return result ? { result } : { error: { code: "app.notFound" } };
+}
+
 export async function saveAdminRelease(
   rawId: string,
   rawSerial: number,
@@ -415,19 +428,32 @@ export async function deleteAdminUser(userId: string): Promise<FormState> {
   return {};
 }
 
-function categoryInput(formData: FormData): { slug: string; name: string; error: Problem | null } {
+function categoryInput(formData: FormData): { fields: CategoryFields; error: Problem | null } {
   const slug = text(formData, "slug");
   const name = text(formData, "name");
-  return { slug, name, error: checkCategorySlug(slug) ?? checkCategoryName(name) };
+  const dir = checkRequiredInstallDir(text(formData, "installDir"));
+  const specificity = parseSpecificity(text(formData, "specificity"));
+  const fields = {
+    slug,
+    name,
+    installDir: dir.ok ? dir.installDir : "",
+    specificity: specificity.ok ? specificity.specificity : 0,
+  };
+  const error =
+    checkCategorySlug(slug) ??
+    checkCategoryName(name) ??
+    (dir.ok ? null : dir.error) ??
+    (specificity.ok ? null : specificity.error);
+  return { fields, error };
 }
 
 export async function addAdminCategory(_prev: FormState, formData: FormData): Promise<FormState> {
   await requireAdmin();
-  const { slug, name, error } = categoryInput(formData);
+  const { fields, error } = categoryInput(formData);
   if (error) {
     return { error };
   }
-  const result = await adminAddCategory(slug, name);
+  const result = await adminAddCategory(fields);
   if (result.error) {
     return { error: result.error };
   }
@@ -437,11 +463,11 @@ export async function addAdminCategory(_prev: FormState, formData: FormData): Pr
 
 export async function saveAdminCategory(id: number, _prev: FormState, formData: FormData): Promise<FormState> {
   await requireAdmin();
-  const { slug, name, error } = categoryInput(formData);
+  const { fields, error } = categoryInput(formData);
   if (error) {
     return { error };
   }
-  const result = await adminUpdateCategory(id, slug, name);
+  const result = await adminUpdateCategory(id, fields);
   if (result.error) {
     return { error: result.error };
   }

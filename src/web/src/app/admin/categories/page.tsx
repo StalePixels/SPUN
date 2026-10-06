@@ -36,7 +36,15 @@ export default async function AdminCategoriesPage() {
             )}
           </div>
           <div className="card-body">
-            <CategoryForm category={{ id: category.id, slug: category.slug, name: category.name }} />
+            <CategoryForm
+              category={{
+                id: category.id,
+                slug: category.slug,
+                name: category.name,
+                installDir: category.installDir,
+                specificity: category.specificity,
+              }}
+            />
             {category.deletedAt ? (
               <form action={restoreAdminCategory.bind(null, category.id)}>
                 <Button data-testid="category-restore" type="submit" variant="outline-primary">

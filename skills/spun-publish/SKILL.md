@@ -48,14 +48,14 @@ Each run makes a new timestamp and nonce, so you can run the same command again.
 ## The order of the work
 
 1. **Categories.** Get the categories and choose the ids that fit the software. An app needs at least one.
-2. **Create the app.** Give it a title, a description and its categories, and a suggested install directory if the software needs one (`installDir`, see below). Keep the app id the answer gives you. If the app already exists, list the user's apps and use its id. A change to an existing app sends all its fields again: a field left out is made empty.
+2. **Create the app.** Give it a title, a description and its categories, and a suggested install directory (`installDir`, see below). Keep the app id the answer gives you. If the app already exists, list the user's apps and use its id. A change to an existing app sends all its fields again: a field left out is made empty.
 3. **Upload a release.** Upload the zip with its version, and a changelog if there is one. The app becomes public when it has a release.
 4. **Add screenshots.** Slot 1 is the main screenshot. Add more in the other slots if the user has them. An image may have at most 4 megapixels, width times height (`screenshot.tooManyPixels`); the Next shows 320×256 at most, so scale a larger image down first.
 5. **Save apps.** If the user asks, save apps to their list, or remove them from it.
 
 ## The suggested install directory
 
-`installDir` is optional. It is the directory where SPUN on the Next installs the app the first time. The user can change it, and SPUN does not use it after the first install. Leave it empty for no suggestion.
+`installDir` is the directory where SPUN on the Next installs the app the first time. The user can change it, and SPUN does not use it after the first install. Leave it out, or empty, to use the install directory of the chosen categories.
 
 The CMS stores it in one form: `\` becomes `/`, it starts with `/`, repeated slashes become one, and a slash at the end goes. `apps\wifi\spun` and `/apps/wifi/spun/` are both stored as `/apps/wifi/spun`. It refuses a directory that breaks any of these rules:
 

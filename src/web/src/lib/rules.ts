@@ -161,6 +161,19 @@ export function checkInstallDir(input: string): InstallDirCheck {
   return { ok: true, installDir };
 }
 
+export type RequiredInstallDirCheck = { ok: true; installDir: string } | { ok: false; error: Problem };
+
+export function checkRequiredInstallDir(input: string): RequiredInstallDirCheck {
+  const dir = checkInstallDir(input);
+  if (!dir.ok) {
+    return dir;
+  }
+  if (dir.installDir === null) {
+    return { ok: false, error: { code: "installDir.missing" } };
+  }
+  return { ok: true, installDir: dir.installDir };
+}
+
 export const ALIAS_MAX = 16;
 
 const ALIAS_CHAR = /[a-z0-9_-]/;
@@ -239,6 +252,38 @@ export function checkCategoryName(value: string): Problem | null {
     return { code: "category.invalidCharacters", chars: bad };
   }
   return null;
+}
+
+export const CATEGORY_SPECIFICITY_MAX = 65535;
+
+export type SpecificityInput = { ok: true; specificity: number } | { ok: false; error: Problem };
+
+export function parseSpecificity(input: string): SpecificityInput {
+  const value = input.trim();
+  if (value === "") {
+    return { ok: true, specificity: 0 };
+  }
+  if (!/^\d+$/.test(value) || Number(value) > CATEGORY_SPECIFICITY_MAX) {
+    return { ok: false, error: { code: "category.specificity", max: CATEGORY_SPECIFICITY_MAX } };
+  }
+  return { ok: true, specificity: Number(value) };
+}
+
+export type PathCategory = { installDir: string; specificity: number };
+
+// The highest specificity wins; on a tie, the longest path.
+export function suggestInstallDir(chosen: PathCategory[]): string | null {
+  let best: PathCategory | null = null;
+  for (const category of chosen) {
+    if (
+      best === null ||
+      category.specificity > best.specificity ||
+      (category.specificity === best.specificity && category.installDir.length > best.installDir.length)
+    ) {
+      best = category;
+    }
+  }
+  return best?.installDir ?? null;
 }
 
 export type CategoryChoice = { ok: true; ids: number[] } | { ok: false; error: Problem };

@@ -148,6 +148,8 @@ export const categories = mysqlTable("categories", {
   id: int("id", { unsigned: true }).autoincrement().primaryKey(),
   slug: varchar("slug", { length: 16 }).notNull().unique(),
   name: varchar("name", { length: 32 }).notNull(),
+  installDir: varchar("install_dir", { length: 64 }).notNull(),
+  specificity: smallint("specificity", { unsigned: true }).notNull().default(0),
   // A deleted category keeps its app links; the web ignores it.
   deletedAt: timestamp("deleted_at"),
 });

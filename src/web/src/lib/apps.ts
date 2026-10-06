@@ -14,9 +14,10 @@ import {
   canCreateApp,
   checkCategoryChoice,
   checkDescription,
-  checkInstallDir,
+  checkRequiredInstallDir,
   checkTitle,
   isoDay,
+  suggestInstallDir,
 } from "./rules";
 import { appScreenshots, type Screenshot } from "./screenshots";
 
@@ -166,19 +167,28 @@ export async function ownedApp(userId: string, appId: AppId) {
   return rows[0];
 }
 
-type AppFieldsCheck = { ok: true; installDir: string | null; categoryIds: number[] } | { ok: false; error: Problem };
+// The API's automatic directory; the GUI fills its field as categories are chosen.
+export async function withCategoryInstallDir(fields: AppFields): Promise<AppFields> {
+  if (fields.installDir.trim() !== "") {
+    return fields;
+  }
+  const chosen = (await liveCategories()).filter((category) => fields.categories.includes(category.id));
+  return { ...fields, installDir: suggestInstallDir(chosen) ?? "" };
+}
 
-async function checkAppFields(fields: AppFields): Promise<AppFieldsCheck> {
+type AppFieldsCheck = { ok: true; installDir: string; categoryIds: number[] } | { ok: false; error: Problem };
+
+export async function checkAppFields(fields: AppFields): Promise<AppFieldsCheck> {
   const error = checkTitle(fields.title) ?? checkDescription(fields.description);
   if (error) {
     return { ok: false, error };
   }
-  const dir = checkInstallDir(fields.installDir);
-  if (!dir.ok) {
-    return dir;
-  }
   const choice = checkCategoryChoice(fields.categories, (await liveCategories()).map((category) => category.id));
-  return choice.ok ? { ok: true, installDir: dir.installDir, categoryIds: choice.ids } : choice;
+  if (!choice.ok) {
+    return choice;
+  }
+  const dir = checkRequiredInstallDir(fields.installDir);
+  return dir.ok ? { ok: true, installDir: dir.installDir, categoryIds: choice.ids } : dir;
 }
 
 export async function addApp(userId: string, fields: AppFields): Promise<{ error: Problem } | { id: AppId }> {

@@ -76,6 +76,8 @@ export function problemMessage(problem: Problem): string {
       return `The install directory cannot be / or be in ${INSTALL_DIR_BANNED.slice(1).join(", ")}.`;
     case "installDir.length":
       return `The install directory must be ${max} characters or fewer.`;
+    case "installDir.missing":
+      return "Enter an install directory.";
     case "alias.invalidCharacters":
       return `An alias cannot use: ${characters(problem.chars)}`;
     case "alias.length":
@@ -100,6 +102,8 @@ export function problemMessage(problem: Problem): string {
       return "Another category has that slug, or had it before it was deleted.";
     case "category.missing":
       return "Choose at least one category.";
+    case "category.specificity":
+      return `The specificity must be a whole number from 0 to ${max}.`;
     case "releaseDate.invalid":
       return "The release date is not a real date.";
     case "releaseDate.future":

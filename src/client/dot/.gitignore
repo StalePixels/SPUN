@@ -8,3 +8,8 @@ BUILD-test-posix
 TMP-test
 BUILD-test-s
 BUILD-dev
+spunjane.map
+spunjane_*.bin
+TMP-spunjane
+BUILD-spunjane
+.env

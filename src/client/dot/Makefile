@@ -9,6 +9,10 @@ PROD_PORT := 48128
 SERVER ?= $(PROD_SERVER)
 PORT ?= $(PROD_PORT)
 
+# .spunjane: .spun for the development server, beside the release .spun. Its server is in .env (gitignored)
+-include .env
+SPUNJANE_PORT ?= $(PROD_PORT)
+
 # A build for any other server goes to BUILD-dev, so it never overwrites the release build
 ifeq ($(SERVER):$(PORT),$(PROD_SERVER):$(PROD_PORT))
 BUILD_DIR ?= ./BUILD-$(NAME)
@@ -27,7 +31,7 @@ TXT2BAS ?= txt2bas
 CRT := 30
 
 CC=zcc
-CCFLAGS=+zxn -vn -O3 -startup=$(CRT) -clib=new -pragma-include:zpragma.inc '-DSPUN_VERSION=\"$(VERSION)\"'
+CCFLAGS=+zxn -vn -O3 -startup=$(CRT) -clib=new -pragma-include:zpragma.inc '-DSPUN_VERSION=\"$(VERSION)\"' '-DSPUN_NAME=\"$(NAME)\"'
 LDFLAGS=-m -lm
 # Main ends below the stack, which starts at $BFD8 (zpragma.inc) with 1K reserved;
 # above it are the mouse variables and the IM2 table (gui/isr.asm).
@@ -42,7 +46,7 @@ MV := mv
 POSIX_DIR ?= ./BUILD-posix
 POSIX_CC ?= cc
 POSIX_CFLAGS ?= -O2 -Wall -Wno-pointer-sign
-POSIX_DEFINES='-DSPUN_SERVER="$(SERVER)"' '-DSPUN_PORT="$(PORT)"' '-DSPUN_VERSION="$(VERSION)"'
+POSIX_DEFINES='-DSPUN_SERVER="$(SERVER)"' '-DSPUN_PORT="$(PORT)"' '-DSPUN_VERSION="$(VERSION)"' '-DSPUN_NAME="$(NAME)"'
 POSIX_SRC := spun.c common/file.c $(filter-out BANK_net/gui_%.c,$(wildcard BANK_net/*.c)) BANK_packages/catalogue.c BANK_packages/install.c BANK_packages/usage.c \
 	unzip_posix.c $(COMMON)/nbn.c $(COMMON)/nbn_pages.c $(COMMON)/net_posix.c $(COMMON)/posix.c
 POSIX_LIBZIP := $(shell pkg-config --cflags --libs libzip)
@@ -123,16 +127,22 @@ dotn: banks $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin
 
 binaries: dirs dotn
 
+# The menu runs the dot command it was zipped with
 $(BAS): ../zip/spun.txt | dirs
-	$(TXT2BAS) -i $< -o $@
+	sed -e 's/spun\.dot/$(NAME).dot/g' -e 's|c:/dot/spun"|c:/dot/$(NAME)"|' -e 's/\.spun/.$(NAME)/g' -e 's/\.\$$ spun /.$$ $(NAME) /' $< > $(TMP_DIR)/spun.txt
+	$(TXT2BAS) -i $(TMP_DIR)/spun.txt -o $@
 
 zip: binaries $(BAS)
 	$(RM) $(BUILD_DIR)/zip $(ZIP)
 	$(MKDIR) $(BUILD_DIR)/zip
-	cp $(BUILD_DIR)/$(NAME) $(BUILD_DIR)/zip/spun.dot
+	cp $(BUILD_DIR)/$(NAME) $(BUILD_DIR)/zip/$(NAME).dot
 	cp $(ZIP_FILES) $(BUILD_DIR)/zip/
-	cd $(BUILD_DIR)/zip && zip -X -q $(abspath $(ZIP)) spun.dot $(notdir $(ZIP_FILES))
+	cd $(BUILD_DIR)/zip && zip -X -q $(abspath $(ZIP)) $(NAME).dot $(notdir $(ZIP_FILES))
 	$(RM) $(BUILD_DIR)/zip
+
+spunjane:
+	@test -n "$(SPUNJANE_SERVER)" || { echo "Set SPUNJANE_SERVER in .env" >&2; exit 1; }
+	$(MAKE) NAME=spunjane SERVER=$(SPUNJANE_SERVER) PORT=$(SPUNJANE_PORT) BUILD_DIR=./BUILD-spunjane TMP_DIR=./TMP-spunjane zip
 
 posix: $(POSIX_DIR)/$(NAME)
 
@@ -152,4 +162,4 @@ $(POSIX_DIR)/help.c: help.txt
 	$(MKDIR) $(POSIX_DIR)
 	( echo "unsigned char help[] = {"; xxd -i < help.txt; echo ", 0 };" ) > $@
 
-.PHONY: all clean dirs banks bank_47 bank_47_nbn bank_46 bank_45 bank_44 bank_43 bank_42 dotn binaries zip posix
+.PHONY: all clean dirs spunjane banks bank_47 bank_47_nbn bank_46 bank_45 bank_44 bank_43 bank_42 dotn binaries zip posix

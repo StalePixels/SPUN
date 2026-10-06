@@ -2,7 +2,7 @@
 #include "catalogue.h"
 
 // /sys and /tmp exist only on the system drive, and .spun can start on any drive
-unsigned char catalogue[] = "C:/sys/spun.cat";
+unsigned char catalogue[] = "C:/sys/" SPUN_NAME ".cat";
 unsigned char catalogueTemp[] = "C:/sys/SPUNTEMP.$$$";
 unsigned char entry[32 + 256];
 unsigned char entryApp[7];

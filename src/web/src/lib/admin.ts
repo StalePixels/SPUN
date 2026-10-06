@@ -12,6 +12,7 @@ import { isLive, liveFeature, renderArticle } from "./featured";
 import type { Problem } from "./problems";
 import { appSnapshot, notify, releaseSnapshot } from "./notify";
 import { addRelease, appBinStore, notifyRelease, notifyReleaseEdit, type Upload } from "./releases";
+import { revalidateApp, type AppRevalidation } from "./revalidate";
 import { checkAlias, checkVersionUnused } from "./rules";
 import { currentUser, isAdmin } from "./session";
 import { DEFAULT_APP_LIMIT, getSetting } from "./settings";
@@ -334,6 +335,11 @@ export async function adminListReleases(appId: AppId) {
   return db().select().from(releases).where(eq(releases.appId, appId)).orderBy(desc(releases.serial));
 }
 
+export async function adminRevalidateApp(appId: AppId): Promise<AppRevalidation | null> {
+  await requireAdmin();
+  return revalidateApp(appId);
+}
+
 export async function adminGetRelease(appId: AppId, serial: number) {
   await requireAdmin();
   const [release] = await db()
@@ -532,13 +538,15 @@ async function slugTaken(slug: string, exceptId?: number): Promise<boolean> {
   return rows.some((row) => row.id !== exceptId);
 }
 
-export async function adminAddCategory(slug: string, name: string): Promise<{ error?: Problem }> {
+export type CategoryFields = { slug: string; name: string; installDir: string; specificity: number };
+
+export async function adminAddCategory(fields: CategoryFields): Promise<{ error?: Problem }> {
   await requireAdmin();
-  if (await slugTaken(slug)) {
+  if (await slugTaken(fields.slug)) {
     return { error: { code: "category.taken" } };
   }
   try {
-    await db().insert(categories).values({ slug, name });
+    await db().insert(categories).values(fields);
   } catch (err) {
     if (isDuplicateEntry(err)) {
       return { error: { code: "category.taken" } };
@@ -548,13 +556,13 @@ export async function adminAddCategory(slug: string, name: string): Promise<{ er
   return {};
 }
 
-export async function adminUpdateCategory(id: number, slug: string, name: string): Promise<{ error?: Problem }> {
+export async function adminUpdateCategory(id: number, fields: CategoryFields): Promise<{ error?: Problem }> {
   await requireAdmin();
-  if (await slugTaken(slug, id)) {
+  if (await slugTaken(fields.slug, id)) {
     return { error: { code: "category.taken" } };
   }
   try {
-    await db().update(categories).set({ slug, name }).where(eq(categories.id, id));
+    await db().update(categories).set(fields).where(eq(categories.id, id));
   } catch (err) {
     if (isDuplicateEntry(err)) {
       return { error: { code: "category.taken" } };

@@ -15,6 +15,9 @@ import {
   checkArticle,
   checkChangelog,
   checkInstallDir,
+  checkRequiredInstallDir,
+  parseSpecificity,
+  suggestInstallDir,
   checkPublishAt,
   checkReleaseDate,
   parseLimit,
@@ -369,6 +372,56 @@ describe("checkCategoryChoice", () => {
   it("refuses a choice with no live category", () => {
     expect(checkCategoryChoice([], [1, 2])).toEqual({ ok: false, error: { code: "category.missing" } });
     expect(checkCategoryChoice([9, Number.NaN], [1, 2])).toEqual({ ok: false, error: { code: "category.missing" } });
+  });
+});
+
+describe("checkRequiredInstallDir", () => {
+  it("refuses an empty directory, and passes the rest through checkInstallDir", () => {
+    expect(checkRequiredInstallDir(" ")).toEqual({ ok: false, error: { code: "installDir.missing" } });
+    expect(checkRequiredInstallDir("apps\\x\\")).toEqual({ ok: true, installDir: "/apps/x" });
+    expect(checkRequiredInstallDir("/sys")).toEqual({ ok: false, error: { code: "installDir.banned" } });
+  });
+});
+
+describe("parseSpecificity", () => {
+  it("reads a whole number, and empty as 0", () => {
+    expect(parseSpecificity(" 3 ")).toEqual({ ok: true, specificity: 3 });
+    expect(parseSpecificity("")).toEqual({ ok: true, specificity: 0 });
+    expect(parseSpecificity("65535")).toEqual({ ok: true, specificity: 65535 });
+  });
+
+  it("refuses anything else", () => {
+    for (const input of ["-1", "1.5", "x", "65536"]) {
+      expect(parseSpecificity(input), input).toEqual({
+        ok: false,
+        error: { code: "category.specificity", max: 65535 },
+      });
+    }
+  });
+});
+
+describe("suggestInstallDir", () => {
+  it("picks the path of the highest specificity", () => {
+    expect(
+      suggestInstallDir([
+        { installDir: "/apps/longer/path", specificity: 1 },
+        { installDir: "/games", specificity: 2 },
+      ]),
+    ).toBe("/games");
+  });
+
+  it("picks the longest path on a tie, whatever the order", () => {
+    const tied = [
+      { installDir: "/games", specificity: 2 },
+      { installDir: "/apps/system", specificity: 2 },
+      { installDir: "/demos", specificity: 2 },
+    ];
+    expect(suggestInstallDir(tied)).toBe("/apps/system");
+    expect(suggestInstallDir([...tied].reverse())).toBe("/apps/system");
+  });
+
+  it("has no suggestion with no category", () => {
+    expect(suggestInstallDir([])).toBeNull();
   });
 });
 

@@ -1,5 +1,5 @@
 import { apiAppFields, apiBody, apiJson, apiProblem, apiRoute } from "@/lib/api";
-import { deleteOwnApp, editApp, ownAppView, parseAppId } from "@/lib/apps";
+import { deleteOwnApp, editApp, ownAppView, parseAppId, withCategoryInstallDir } from "@/lib/apps";
 
 const notFound = () => apiProblem({ code: "app.notFound" });
 
@@ -14,7 +14,9 @@ export const PUT = apiRoute<{ id: string }>({ body: "json" }, async ({ request, 
   if (!appId) {
     return notFound();
   }
-  const { error } = await editApp(user.id, appId, async () => apiAppFields(await apiBody(request)));
+  const { error } = await editApp(user.id, appId, async () =>
+    withCategoryInstallDir(apiAppFields(await apiBody(request))),
+  );
   return error ? apiProblem(error) : apiJson(200, {});
 });
 
