@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.2 - 20261007
+
+### `.spun`
+
+- `.spun` reports its version, so we can see how popular each version is.
+
+### CMS
+
+- Clearer catalogue list: the app title and the publisher no longer run
+  together.
+
 ## 0.7.1 - 20261006
 
 ### The SPUN package
