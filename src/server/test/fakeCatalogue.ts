@@ -2,6 +2,7 @@ import {
   FEATURED,
   type AppId,
   type Catalogue,
+  type ClientLog,
   type FoundApp,
   type Release,
   type Screenshot,
@@ -56,6 +57,7 @@ export interface Tables {
   releases: ReleaseRow[];
   aliases?: AliasRow[];
   features?: FeatureRow[];
+  clientLog?: ClientLog[];
 }
 
 const slice = <T>(rows: T[], offset: number, limit: number): Slice<T> => ({
@@ -176,6 +178,10 @@ export function fakeCatalogue(tables: Tables): Catalogue {
       if (app) {
         app.downloads = (app.downloads ?? 0) + 1;
       }
+    },
+
+    async clientLog(entry) {
+      (tables.clientLog ??= []).push(entry);
     },
   };
 }

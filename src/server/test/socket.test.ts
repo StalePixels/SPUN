@@ -727,6 +727,7 @@ describe("a database failure", () => {
       releases: () => Promise.reject(new Error("database down")),
       changelog: () => Promise.reject(new Error("database down")),
       countDownload: () => Promise.reject(new Error("database down")),
+      clientLog: () => Promise.reject(new Error("database down")),
     };
     ({ server: failing, port: failingPort } = await startSpunServer(broken, dataDir));
   });
@@ -774,6 +775,7 @@ describe("lines sent together", () => {
       releases: (...args) => later(fast.releases(...args)),
       changelog: (...args) => later(fast.changelog(...args)),
       countDownload: (...args) => later(fast.countDownload(...args)),
+      clientLog: (...args) => later(fast.clientLog(...args)),
     };
     ({ server: slow, port: slowPort } = await startSpunServer(delayed, dataDir));
   });
