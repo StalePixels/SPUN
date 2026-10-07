@@ -154,5 +154,12 @@ export function mysqlCatalogue(uri: string): Catalogue {
     async countDownload(id) {
       await pool.query("UPDATE apps SET downloads = downloads + 1 WHERE id = ?", [id]);
     },
+
+    async clientLog(entry) {
+      await pool.query(
+        "INSERT INTO client_log (connection_id, address, name, value) VALUES (?, ?, ?, ?)",
+        [entry.connectionId, entry.address, entry.name, entry.value],
+      );
+    },
   };
 }

@@ -5,7 +5,8 @@ import { db } from "./db";
 import { isDuplicateEntry } from "./dberrors";
 import { notify } from "./notify";
 import type { Problem } from "./problems";
-import { checkUsernameInput, usernameKey } from "./rules";
+import { checkUsernameInput, mustAcceptTerms, usernameKey } from "./rules";
+import { currentTermsId } from "./terms";
 
 // exceptUserId lets a user keep their own name in another case.
 export async function usernameTaken(username: string, exceptUserId?: string): Promise<boolean> {
@@ -22,8 +23,13 @@ export async function usernameTaken(username: string, exceptUserId?: string): Pr
   return rows.length > 0;
 }
 
-// The end of registration: a user without a username chooses one.
-export async function chooseUsername(user: { id: string; username: string | null }, username: string): Promise<Problem | null> {
+// The end of registration: a user without a username chooses one, and accepts
+// the current T&C version, the one the join page showed, when there is one.
+export async function chooseUsername(
+  user: { id: string; username: string | null },
+  username: string,
+  acceptedTermsId: number | null,
+): Promise<Problem | null> {
   if (user.username) {
     return { code: "username.fixed" };
   }
@@ -34,10 +40,14 @@ export async function chooseUsername(user: { id: string; username: string | null
   if (await usernameTaken(username)) {
     return { code: "username.taken" };
   }
+  const termsId = await currentTermsId();
+  if (mustAcceptTerms(acceptedTermsId, termsId)) {
+    return { code: acceptedTermsId === null ? "terms.notAccepted" : "terms.notCurrent" };
+  }
   try {
     await db()
       .update(users)
-      .set({ username })
+      .set({ username, acceptedTermsId: termsId })
       .where(and(eq(users.id, user.id), isNull(users.username)));
   } catch (err) {
     if (isDuplicateEntry(err)) {

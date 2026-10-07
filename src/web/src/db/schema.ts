@@ -3,7 +3,9 @@ import {
   boolean,
   char,
   date,
+  index,
   int,
+  mediumtext,
   mysqlTable,
   primaryKey,
   smallint,
@@ -34,6 +36,8 @@ export const users = mysqlTable("users", {
   appLimit: int("app_limit", { unsigned: true }),
   // Set means the user is disabled: no login, but their apps stay public.
   disabledAt: timestamp("disabled_at"),
+  // The T&C version the user accepted last. Null: none yet.
+  acceptedTermsId: int("accepted_terms_id", { unsigned: true }).references(() => terms.id),
 });
 
 export const settings = mysqlTable("settings", {
@@ -102,6 +106,20 @@ export const features = mysqlTable("features", {
     .references(() => apps.id),
   article: varchar("article", { length: 1024 }).notNull(),
   articleHtml: text("article_html").notNull(),
+  published: boolean("published").notNull().default(false),
+  // Null only for a draft that never had a publish time.
+  publishAt: timestamp("publish_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at"),
+});
+
+// A version that is live (published, its time passed) is never changed: an
+// acceptance means the text the user saw.
+export const terms = mysqlTable("terms", {
+  id: int("id", { unsigned: true }).autoincrement().primaryKey(),
+  text: text("text").notNull(),
+  textHtml: mediumtext("text_html").notNull(),
   published: boolean("published").notNull().default(false),
   // Null only for a draft that never had a publish time.
   publishAt: timestamp("publish_at"),
@@ -210,4 +228,20 @@ export const screenshots = mysqlTable(
     updatedAt: timestamp("updated_at", { mode: "date", fsp: 3 }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.appId, t.slot] })],
+);
+
+// Written by SPUNServer's LOG command: one row per accepted LOG.
+export const clientLog = mysqlTable(
+  "client_log",
+  {
+    id: int("id", { unsigned: true }).autoincrement().primaryKey(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    // One random UUID for each client connection.
+    connectionId: char("connection_id", { length: 36 }).notNull(),
+    address: varchar("address", { length: 45 }),
+    name: varchar("name", { length: 32 }).notNull(),
+    value: varchar("value", { length: 255 }).notNull(),
+  },
+  // For counts of one key over time, such as client versions per week.
+  (t) => [index("client_log_name_created_at_idx").on(t.name, t.createdAt)],
 );

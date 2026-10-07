@@ -8,11 +8,12 @@ import { createUser } from "@/lib/session";
 
 declare module "next-auth" {
   interface Session {
-    user: { id: string; username: string | null } & DefaultSession["user"];
+    user: { id: string; username: string | null; acceptedTermsId: number | null } & DefaultSession["user"];
   }
   interface User {
     username?: string | null;
     disabledAt?: Date | null;
+    acceptedTermsId?: number | null;
   }
 }
 
@@ -70,7 +71,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
       session({ session, user }) {
         return {
           ...session,
-          user: { ...session.user, id: user.id, username: user.username ?? null },
+          user: {
+            ...session.user,
+            id: user.id,
+            username: user.username ?? null,
+            acceptedTermsId: user.acceptedTermsId ?? null,
+          },
         };
       },
     },

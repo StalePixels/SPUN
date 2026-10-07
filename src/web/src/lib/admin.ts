@@ -1,10 +1,11 @@
 import "server-only";
-import { and, asc, count, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { aliases, apps, categories, dotOverrides, features, releases, sessions, settings, users } from "@/db/schema";
+import { aliases, apps, categories, clientLog, dotOverrides, features, releases, sessions, settings, terms, users } from "@/db/schema";
 import { appIdStore, checkAliasFree, deleteApp, moveApp, notifyAppEdit, parseAppId, restoreApp, type AppId } from "./apps";
 import { isPublic, matches } from "./catalogue";
 import { setAppCategories } from "./categories";
+import { shapeStats, statsDays, type StatsMeasure } from "./clientstats";
 import { checkDotOverride } from "./dotcommands";
 import { db } from "./db";
 import { isDuplicateEntry } from "./dberrors";
@@ -13,9 +14,10 @@ import type { Problem } from "./problems";
 import { appSnapshot, notify, releaseSnapshot } from "./notify";
 import { addRelease, appBinStore, notifyRelease, notifyReleaseEdit, type Upload } from "./releases";
 import { revalidateApp, type AppRevalidation } from "./revalidate";
-import { checkAlias, checkVersionUnused } from "./rules";
-import { currentUser, isAdmin } from "./session";
+import { canChangeTerms, checkAlias, checkVersionUnused, currentTermsOf } from "./rules";
+import { currentUser, isAdmin, requireTerms } from "./session";
 import { DEFAULT_APP_LIMIT, getSetting } from "./settings";
+import { databaseNow } from "./terms";
 import { clearScreenshot, putScreenshot, type ScreenshotUpload } from "./screenshots";
 import { binRelease, moveRelease, moveScreenshots, renameUserDir, unbinRelease, userDirExists } from "./storage";
 import { usernameTaken } from "./usernames";
@@ -29,6 +31,7 @@ export async function requireAdmin(): Promise<{ id: string; username: string }> 
   if (!user?.username || !(await isAdmin(user.id))) {
     notFound();
   }
+  await requireTerms(user);
   return { id: user.id, username: user.username };
 }
 
@@ -733,4 +736,127 @@ export async function adminDeleteFeature(id: number): Promise<{ error?: Problem 
   }
   await db().update(features).set({ deletedAt: new Date() }).where(eq(features.id, id));
   return {};
+}
+
+const termsColumns = {
+  id: terms.id,
+  text: terms.text,
+  textHtml: terms.textHtml,
+  published: terms.published,
+  publishAt: terms.publishAt,
+};
+
+export async function adminListTerms() {
+  await requireAdmin();
+  const rows = await db()
+    .select(termsColumns)
+    .from(terms)
+    .where(isNull(terms.deletedAt))
+    .orderBy(desc(terms.publishAt), desc(terms.id));
+  const now = await databaseNow();
+  return { rows, now, currentId: currentTermsOf(rows, now)?.id ?? null };
+}
+
+export async function adminGetTerms(id: number) {
+  await requireAdmin();
+  const [version] = await db()
+    .select(termsColumns)
+    .from(terms)
+    .where(and(eq(terms.id, id), isNull(terms.deletedAt)));
+  return version;
+}
+
+export type TermsFields = { text: string; published: boolean; publishAt: Date | "now" | null };
+
+export async function adminCreateTerms(fields: TermsFields): Promise<void> {
+  await requireAdmin();
+  await db()
+    .insert(terms)
+    .values({
+      text: fields.text,
+      textHtml: renderArticle(fields.text),
+      published: fields.published,
+      publishAt: publishAtValue(fields.publishAt),
+    });
+}
+
+// The where clause also guards the moment a scheduled version goes live.
+function changeable(id: number) {
+  return and(
+    eq(terms.id, id),
+    isNull(terms.deletedAt),
+    sql`not (${terms.published} and ${terms.publishAt} is not null and ${terms.publishAt} <= now())`,
+  );
+}
+
+async function termsChangeProblem(id: number): Promise<Problem | null> {
+  const version = await adminGetTerms(id);
+  if (!version) {
+    return { code: "terms.notFound" };
+  }
+  return canChangeTerms(version, await databaseNow()) ? null : { code: "terms.live" };
+}
+
+export async function adminUpdateTerms(id: number, fields: TermsFields): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  const error = await termsChangeProblem(id);
+  if (error) {
+    return { error };
+  }
+  await db()
+    .update(terms)
+    .set({
+      text: fields.text,
+      textHtml: renderArticle(fields.text),
+      published: fields.published,
+      publishAt: publishAtValue(fields.publishAt),
+      updatedAt: sql`now()`,
+    })
+    .where(changeable(id));
+  return {};
+}
+
+export async function adminUnpublishTerms(id: number): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  const error = await termsChangeProblem(id);
+  if (error) {
+    return { error };
+  }
+  await db().update(terms).set({ published: false }).where(changeable(id));
+  return {};
+}
+
+export async function adminDeleteTerms(id: number): Promise<{ error?: Problem }> {
+  await requireAdmin();
+  const error = await termsChangeProblem(id);
+  if (error) {
+    return { error };
+  }
+  await db().update(terms).set({ deletedAt: new Date() }).where(changeable(id));
+  return {};
+}
+
+export async function adminClientLogKeys(): Promise<string[]> {
+  await requireAdmin();
+  const rows = await db().selectDistinct({ name: clientLog.name }).from(clientLog).orderBy(asc(clientLog.name));
+  return rows.map((row) => row.name);
+}
+
+// created_at is a TIMESTAMP, read in the session's time zone: convert_tz makes the days UTC.
+export async function adminClientStats(key: string, measure: StatsMeasure, range: number) {
+  await requireAdmin();
+  const days = statsDays(range, new Date());
+  const day = sql<string>`date_format(convert_tz(${clientLog.createdAt}, @@session.time_zone, '+00:00'), '%Y-%m-%d')`;
+  const counted = measure === "addresses" ? clientLog.address : clientLog.connectionId;
+  const rows = await db()
+    .select({ day, value: clientLog.value, n: sql<number>`count(distinct ${counted})`.mapWith(Number) })
+    .from(clientLog)
+    .where(
+      and(
+        eq(clientLog.name, key),
+        gte(clientLog.createdAt, sql`convert_tz(${`${days[0]} 00:00:00`}, '+00:00', @@session.time_zone)`),
+      ),
+    )
+    .groupBy(day, clientLog.value);
+  return shapeStats(rows, days);
 }

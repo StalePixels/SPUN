@@ -4,18 +4,31 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { users } from "@/db/schema";
 import { db } from "./db";
+import { mustAcceptTerms } from "./rules";
+import { currentTermsId } from "./terms";
 
-export async function currentUser(): Promise<{ id: string; username: string | null } | null> {
+export type SessionUser = { id: string; username: string | null; acceptedTermsId: number | null };
+
+export async function currentUser(): Promise<SessionUser | null> {
   const session = await auth();
-  return session?.user ? { id: session.user.id, username: session.user.username } : null;
+  return session?.user
+    ? { id: session.user.id, username: session.user.username, acceptedTermsId: session.user.acceptedTermsId }
+    : null;
 }
 
-export async function requireUser(): Promise<{ id: string; username: string | null }> {
+export async function requireUser(): Promise<SessionUser> {
   const user = await currentUser();
   if (!user) {
     redirect("/");
   }
   return user;
+}
+
+// Database sessions last long, so a newer version reaches users who logged in before it.
+export async function requireTerms(user: SessionUser): Promise<void> {
+  if (mustAcceptTerms(user.acceptedTermsId, await currentTermsId())) {
+    redirect("/terms");
+  }
 }
 
 // A logged-in user with no username has not finished registering.
@@ -24,6 +37,9 @@ export async function requireRegistration(): Promise<void> {
   if (user && !user.username) {
     redirect("/username");
   }
+  if (user) {
+    await requireTerms(user);
+  }
 }
 
 export async function requirePublisher(): Promise<{ id: string; username: string }> {
@@ -31,6 +47,7 @@ export async function requirePublisher(): Promise<{ id: string; username: string
   if (!user.username) {
     redirect("/username");
   }
+  await requireTerms(user);
   return { id: user.id, username: user.username };
 }
 

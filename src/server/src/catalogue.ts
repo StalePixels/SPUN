@@ -5,6 +5,11 @@ export const LIST_PAGE_SIZE = 20;
 export const INFO_PAGE_SIZE = 64;
 export const INFO_CATEGORIES_MAX = 16;
 
+// The column sizes of client_log, and the rows one connection may add to it.
+export const LOG_NAME_MAX = 32;
+export const LOG_VALUE_MAX = 255;
+export const LOG_ROWS_MAX = 16;
+
 // Always lowercase: an AppId only comes from parseAppId.
 export type AppId = string & { readonly __brand: "AppId" };
 
@@ -47,6 +52,13 @@ export interface Changelog extends Release {
   changelog: string | null;
 }
 
+export interface ClientLog {
+  connectionId: string;
+  address: string | null;
+  name: string;
+  value: string;
+}
+
 export interface Slice<T> {
   total: number;
   items: T[];
@@ -66,6 +78,7 @@ export interface Catalogue {
   releases(id: AppId, offset: number, limit: number): Promise<Slice<Release>>;
   changelog(id: AppId, serial: number): Promise<Changelog | null>;
   countDownload(id: AppId): Promise<void>;
+  clientLog(entry: ClientLog): Promise<void>;
 }
 
 const APP_ID_RE = /^[0-9a-z]{6}$/;
@@ -110,6 +123,16 @@ const ZIP_PATH_RE = /^[^/]+\/([0-9a-z]{6})-[0-9a-f]{4}\.zip$/i;
 export function zipAppId(relativePath: string): AppId | null {
   const match = ZIP_PATH_RE.exec(relativePath);
   return match ? parseAppId(match[1]) : null;
+}
+
+const LOG_NAME_RE = new RegExp(`^[0-9a-z_.-]{1,${LOG_NAME_MAX}}$`);
+
+// "key=value" from a LOG command, split at the first "=". The key is stored lowercase.
+export function parseLog(text: string): { name: string; value: string } | null {
+  const at = text.indexOf("=");
+  const name = text.slice(0, at).toLowerCase();
+  const value = text.slice(at + 1);
+  return at !== -1 && LOG_NAME_RE.test(name) && value.length <= LOG_VALUE_MAX ? { name, value } : null;
 }
 
 export function parsePage(value: string | undefined): number | null {

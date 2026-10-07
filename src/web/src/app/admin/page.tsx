@@ -8,6 +8,8 @@ const SECTIONS = [
   { href: "/admin/apps", icon: "bi-box-seam", label: "Apps" },
   { href: "/admin/categories", icon: "bi-tags", label: "Categories" },
   { href: "/admin/featured", icon: "bi-star", label: "Featured" },
+  { href: "/admin/terms", icon: "bi-file-earmark-text", label: "Terms and conditions" },
+  { href: "/admin/clients", icon: "bi-graph-up", label: "Client statistics" },
 ];
 
 export default async function AdminPage() {

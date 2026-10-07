@@ -17,6 +17,7 @@ import {
   API_RELEASE_BODY_MAX,
   API_REQUEST_WINDOW_SECONDS,
   API_SCREENSHOT_BODY_MAX,
+  mustAcceptTerms,
   UPLOADS_PER_HOUR,
 } from "./rules";
 
@@ -42,11 +43,14 @@ export type ApiCall = {
 
 export type ApiUser = { id: string; username: string };
 
+export type ApiKeyUser = ApiUser & { acceptedTermsId: number | null };
+
 export type ApiDeps = {
   nowMs(): number;
   serverKey(): string;
   limits: ApiLimits;
-  findKeyUser(keyId: string): Promise<ApiUser | null>;
+  findKeyUser(keyId: string): Promise<ApiKeyUser | null>;
+  currentTermsId(): Promise<number | null>;
   claimOnce(name: string, ttlSeconds: number): Promise<boolean>;
   count(name: string, ttlSeconds: number): Promise<number>;
 };
@@ -54,6 +58,8 @@ export type ApiDeps = {
 export type ApiRefusal = { status: number; error: Problem; retryAfter?: number };
 
 export type GateResult = { ok: true; user: ApiUser } | ({ ok: false } & ApiRefusal);
+
+type SignedResult = { ok: true; user: ApiKeyUser } | ({ ok: false } & ApiRefusal);
 
 function limitFrom(env: Record<string, string | undefined>, name: string, fallback: number): number {
   const value = env[name];
@@ -81,7 +87,7 @@ function bodyLimit(limits: ApiLimits, kind: BodyKind): number {
   return { json: limits.jsonBody, release: limits.releaseBody, screenshot: limits.screenshotBody }[kind];
 }
 
-function refuse(status: number, error: Problem, retryAfter?: number): GateResult {
+function refuse(status: number, error: Problem, retryAfter?: number): { ok: false } & ApiRefusal {
   return retryAfter === undefined ? { ok: false, status, error } : { ok: false, status, error, retryAfter };
 }
 
@@ -113,7 +119,7 @@ function checkSize(call: ApiCall, options: ApiOptions, limits: ApiLimits): GateR
 }
 
 // A nonce is held until its timestamp leaves the window; after that the request is refused anyway.
-async function checkSignature(call: ApiCall, deps: ApiDeps): Promise<GateResult> {
+async function checkSignature(call: ApiCall, deps: ApiDeps): Promise<SignedResult> {
   const keyId = call.header("x-spun-key");
   const timestampText = call.header("x-spun-timestamp");
   const nonce = call.header("x-spun-nonce");
@@ -167,5 +173,8 @@ export async function checkApiCall(call: ApiCall, options: ApiOptions, deps: Api
   if (keyWait !== null) {
     return refuse(429, { code: "api.tooManyRequests" }, keyWait);
   }
-  return signed;
+  if (mustAcceptTerms(signed.user.acceptedTermsId, await deps.currentTermsId())) {
+    return refuse(403, { code: "api.termsNotAccepted" });
+  }
+  return { ok: true, user: { id: signed.user.id, username: signed.user.username } };
 }

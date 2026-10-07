@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import type * as fs from "node:fs";
 import * as path from "node:path";
 import {
   Server,
+  log,
   type Answer,
   type ServerClass,
   type Session,
@@ -11,9 +13,11 @@ import {
   INFO_CATEGORIES_MAX,
   INFO_PAGE_SIZE,
   LIST_PAGE_SIZE,
+  LOG_ROWS_MAX,
   namedFile,
   pageCount,
   parseAppName,
+  parseLog,
   parsePage,
   parseSerial,
   zipAppId,
@@ -25,6 +29,8 @@ import { encodeChangelog, encodeError, encodeFind, encodeInfo } from "./codec.js
 export class SPUNServer extends Server {
   private readonly catalogue: Catalogue;
   private download: AppId | null = null;
+  private readonly connectionId = randomUUID();
+  private logRows = 0;
 
   constructor(session: Session, catalogue: Catalogue) {
     super(session);
@@ -41,6 +47,9 @@ export class SPUNServer extends Server {
         return { bytes: await this.info(params) };
       case "SPCLOG":
         return { bytes: await this.changelog(params) };
+      case "LOG":
+        await this.clientLog(params);
+        return { bytes: new Uint8Array() };
       default:
         return super.command(cmd, params);
     }
@@ -74,6 +83,24 @@ export class SPUNServer extends Server {
       await this.catalogue.countDownload(id);
     }
     return super.acknowledge();
+  }
+
+  // LOG never answers, so the client never waits; a failed write only goes to the server's log.
+  private async clientLog(params: readonly string[]): Promise<void> {
+    const entry = parseLog(params.join(" "));
+    if (entry === null || this.logRows >= LOG_ROWS_MAX) {
+      return;
+    }
+    this.logRows++;
+    try {
+      await this.catalogue.clientLog({
+        connectionId: this.connectionId,
+        address: this.session.socket.remoteAddress ?? null,
+        ...entry,
+      });
+    } catch (err) {
+      log(err);
+    }
   }
 
   private async find(params: readonly string[]): Promise<Uint8Array> {

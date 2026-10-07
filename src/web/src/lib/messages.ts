@@ -118,6 +118,16 @@ export function problemMessage(problem: Problem): string {
       return "The publish time cannot be in the past. Leave it empty to publish now.";
     case "feature.lastLive":
       return "This is the only live feature. Publish another feature first.";
+    case "terms.notFound":
+      return "There is no such T&C version.";
+    case "terms.textLength":
+      return `The text must be ${min} to ${max} characters.`;
+    case "terms.live":
+      return "This version is live, so it cannot change. Write a new version instead.";
+    case "terms.notAccepted":
+      return "You must accept the terms and conditions.";
+    case "terms.notCurrent":
+      return "A newer version of the terms and conditions is live. Read it, then accept it.";
     case "file.missing":
       return "Choose a zip file to upload.";
     case "file.tooLarge":
@@ -192,5 +202,7 @@ export function problemMessage(problem: Problem): string {
       return "The request has a body but no Content-Length header.";
     case "api.tooManyRequests":
       return "Too many requests. Wait for the time in the Retry-After header.";
+    case "api.termsNotAccepted":
+      return "The key's user has not accepted the current terms and conditions. Accept them on the web, at /terms.";
   }
 }

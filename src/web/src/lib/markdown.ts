@@ -259,6 +259,7 @@ function apiText(): string {
     "  - `api.badKey`: the key is unknown or deleted, or its user is disabled or has no username.",
     "  - `api.badSignature`: the signature does not match the request.",
     "  - `api.nonceUsed`: the key already used this nonce.",
+    "- `403`, `api.termsNotAccepted`: the key's user has not accepted the current terms and conditions. Every call is refused until the user accepts them on the web, at `/terms`.",
     "- `404`: not found.",
     "- `411`, `api.lengthRequired`: a `POST` or `PUT` request, or a request with a chunked body, has no `Content-Length` header.",
     "- `413`, `api.bodyTooLarge`: the body is larger than the call permits. `max` is the limit in bytes.",

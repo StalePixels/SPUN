@@ -1,6 +1,9 @@
 #include "../common/spun.h"
 #include "net.h"
 
+// LOG has no reply, so nothing is read after it
+static char logVersion[] = "LOG version=" SPUN_VERSION "\x0A";
+
 #ifdef __ZXNEXT
 static unsigned int prescalar;
 
@@ -53,4 +56,6 @@ void net_open(void) {
         }
     }
 #endif
+
+    NET_Send(logVersion, sizeof(logVersion) - 1);
 }

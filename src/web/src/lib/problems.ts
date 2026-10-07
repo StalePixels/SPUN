@@ -43,6 +43,11 @@ export type ProblemCode =
   | "feature.publishInvalid"
   | "feature.publishPast"
   | "feature.lastLive"
+  | "terms.notFound"
+  | "terms.textLength"
+  | "terms.live"
+  | "terms.notAccepted"
+  | "terms.notCurrent"
   | "file.missing"
   | "file.tooLarge"
   | "file.notZip"
@@ -78,7 +83,8 @@ export type ProblemCode =
   | "api.missingHeader"
   | "api.bodyTooLarge"
   | "api.lengthRequired"
-  | "api.tooManyRequests";
+  | "api.tooManyRequests"
+  | "api.termsNotAccepted";
 
 export type Problem = {
   code: ProblemCode;

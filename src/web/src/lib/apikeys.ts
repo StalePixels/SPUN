@@ -1,7 +1,7 @@
 import "server-only";
 import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import { apiKeys, users } from "@/db/schema";
-import type { ApiUser } from "./apigate";
+import type { ApiKeyUser } from "./apigate";
 import { db } from "./db";
 import { requireEnv } from "./env";
 import { keySecret, keyString, newKeyId } from "./keys";
@@ -44,9 +44,9 @@ export async function deleteApiKey(userId: string, keyId: string): Promise<void>
     .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId), isNull(apiKeys.deletedAt)));
 }
 
-export async function apiKeyUser(keyId: string): Promise<ApiUser | null> {
+export async function apiKeyUser(keyId: string): Promise<ApiKeyUser | null> {
   const [row] = await db()
-    .select({ id: users.id, username: users.username })
+    .select({ id: users.id, username: users.username, acceptedTermsId: users.acceptedTermsId })
     .from(apiKeys)
     .innerJoin(users, eq(users.id, apiKeys.userId))
     .where(
@@ -57,5 +57,5 @@ export async function apiKeyUser(keyId: string): Promise<ApiUser | null> {
         isNotNull(users.username),
       ),
     );
-  return row?.username ? { id: row.id, username: row.username } : null;
+  return row?.username ? { id: row.id, username: row.username, acceptedTermsId: row.acceptedTermsId } : null;
 }

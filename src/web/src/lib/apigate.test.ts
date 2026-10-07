@@ -20,6 +20,8 @@ const START_MS = Date.UTC(2026, 9, 2, 10, 0, 0);
 // Redis as a map, with expiry by the fake clock.
 function fakeDeps(liveKeys: string[] = [KEY_ID, OTHER_KEY_ID]) {
   let now = START_MS;
+  // No T&C version is live unless a test sets one.
+  const terms = { current: null as number | null, accepted: null as number | null };
   const store = new Map<string, { value: number; expires: number }>();
   const live = (name: string) => {
     const entry = store.get(name);
@@ -29,7 +31,8 @@ function fakeDeps(liveKeys: string[] = [KEY_ID, OTHER_KEY_ID]) {
     nowMs: () => now,
     serverKey: () => SERVER_KEY,
     limits: apiLimits({}),
-    findKeyUser: async (keyId) => (liveKeys.includes(keyId) ? USER : null),
+    findKeyUser: async (keyId) => (liveKeys.includes(keyId) ? { ...USER, acceptedTermsId: terms.accepted } : null),
+    currentTermsId: async () => terms.current,
     claimOnce: async (name, ttl) => {
       if (live(name)) return false;
       store.set(name, { value: 1, expires: now + ttl * 1000 });
@@ -44,6 +47,7 @@ function fakeDeps(liveKeys: string[] = [KEY_ID, OTHER_KEY_ID]) {
   };
   return {
     deps,
+    terms,
     advance(seconds: number) {
       now += seconds * 1000;
     },
@@ -303,6 +307,40 @@ describe("checkApiCall: rate limits", () => {
     expect((await checkApiCall(otherKey, JSON_CALL, clock.deps)).ok).toBe(true);
     clock.advance(15);
     expect((await checkApiCall(signedCall(clock, { ip: "198.51.100.1" }), JSON_CALL, clock.deps)).ok).toBe(true);
+  });
+});
+
+describe("checkApiCall: terms and conditions", () => {
+  let clock: ReturnType<typeof fakeDeps>;
+  beforeEach(() => {
+    clock = fakeDeps();
+  });
+
+  it("lets a user through when no version is live, accepted or not", async () => {
+    expect(await checkApiCall(signedCall(clock), JSON_CALL, clock.deps)).toEqual({ ok: true, user: USER });
+    clock.terms.accepted = 3;
+    expect(await checkApiCall(signedCall(clock), JSON_CALL, clock.deps)).toEqual({ ok: true, user: USER });
+  });
+
+  it("gives 403 api.termsNotAccepted until the user accepts the current version", async () => {
+    clock.terms.current = 4;
+    const refused = { ok: false, status: 403, error: { code: "api.termsNotAccepted" } };
+    expect(await checkApiCall(signedCall(clock), JSON_CALL, clock.deps)).toEqual(refused);
+    clock.terms.accepted = 3;
+    expect(await checkApiCall(signedCall(clock), JSON_CALL, clock.deps)).toEqual(refused);
+    clock.terms.accepted = 4;
+    expect(await checkApiCall(signedCall(clock), JSON_CALL, clock.deps)).toEqual({ ok: true, user: USER });
+    clock.terms.current = 5;
+    expect(await checkApiCall(signedCall(clock), JSON_CALL, clock.deps)).toEqual(refused);
+  });
+
+  it("checks the signature and the rate limits first", async () => {
+    clock.terms.current = 4;
+    const unsigned = signedCall(clock, { headers: { "x-spun-signature": null } });
+    expect(await checkApiCall(unsigned, JSON_CALL, clock.deps)).toMatchObject({ status: 401 });
+    clock.deps.limits = apiLimits({ API_KEY_PER_MINUTE: "1" });
+    expect(await checkApiCall(signedCall(clock), JSON_CALL, clock.deps)).toMatchObject({ status: 403 });
+    expect(await checkApiCall(signedCall(clock), JSON_CALL, clock.deps)).toMatchObject({ status: 429 });
   });
 });
 

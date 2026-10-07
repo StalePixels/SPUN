@@ -41,5 +41,14 @@ export default defineConfig({
       dependencies: ["setup"],
       use: { storageState: accounts.admin.storageState },
     },
+    // A newer live T&C version sends every user to /terms. The specs remove the
+    // versions they add and put every acceptance back after each test, and one
+    // worker means no other test runs meanwhile. Each test opens its own admin
+    // and client contexts.
+    {
+      name: "terms",
+      testMatch: /terms\/.*\.spec\.ts/,
+      dependencies: ["setup"],
+    },
   ],
 });

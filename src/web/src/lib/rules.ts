@@ -220,6 +220,7 @@ export const RESERVED_PATHS = [
   "me",
   "my",
   "publish",
+  "terms",
   "username",
 ];
 
@@ -391,6 +392,55 @@ export function checkArticle(input: string): ArticleCheck {
   return { ok: true, article };
 }
 
+// A text column holds 65,535 bytes: 16,000 characters of 4 bytes each.
+export const TERMS_MAX = 16000;
+
+export type TermsTextCheck = { ok: true; text: string } | { ok: false; error: Problem };
+
+export function checkTermsText(input: string): TermsTextCheck {
+  const text = input.replace(/\r\n/g, "\n");
+  if (text.length < 1 || text.length > TERMS_MAX) {
+    return { ok: false, error: { code: "terms.textLength", min: 1, max: TERMS_MAX } };
+  }
+  return { ok: true, text };
+}
+
+export type TermsTimes = { id: number; published: boolean; publishAt: Date | null; deletedAt?: Date | null };
+
+export type TermsState = "draft" | "scheduled" | "current" | "past";
+
+export function isLiveTerms(version: TermsTimes, now: Date): boolean {
+  return version.published && !version.deletedAt && version.publishAt !== null && version.publishAt <= now;
+}
+
+// Of the live versions, the one published last; the higher id on a tie.
+export function currentTermsOf<T extends TermsTimes>(versions: T[], now: Date): T | null {
+  let current: T | null = null;
+  for (const version of versions) {
+    if (!isLiveTerms(version, now)) continue;
+    const time = version.publishAt?.getTime() ?? 0;
+    const best = current?.publishAt?.getTime() ?? 0;
+    if (!current || time > best || (time === best && version.id > current.id)) {
+      current = version;
+    }
+  }
+  return current;
+}
+
+export function mustAcceptTerms(acceptedId: number | null, currentId: number | null): boolean {
+  return currentId !== null && acceptedId !== currentId;
+}
+
+export function canChangeTerms(version: TermsTimes, now: Date): boolean {
+  return !isLiveTerms(version, now);
+}
+
+export function termsState(version: TermsTimes, currentId: number | null, now: Date): TermsState {
+  if (!version.published) return "draft";
+  if (!isLiveTerms(version, now)) return "scheduled";
+  return version.id === currentId ? "current" : "past";
+}
+
 export type PublishAtCheck = { ok: true; publishAt: Date | null } | { ok: false; error: Problem };
 
 // The input is UTC, as the browser's toISOString() writes it. The form sends
@@ -414,6 +464,10 @@ export function checkPublishAt(input: string, stored: Date | null, now: Date): P
 // Accepts only the plain decimal form, so each feature has one URL.
 export function parseFeatureId(value: string): number | null {
   return /^[1-9][0-9]{0,8}$/.test(value) ? Number(value) : null;
+}
+
+export function parseTermsId(value: string): number | null {
+  return parseFeatureId(value);
 }
 
 const dayFormat = new Intl.DateTimeFormat("en", {

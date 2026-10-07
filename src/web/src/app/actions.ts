@@ -4,11 +4,12 @@ import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 import { addApp, deleteOwnApp, editApp, parseAppId, type AppFields } from "@/lib/apps";
-import { parseSerial, parseSlot } from "@/lib/rules";
+import { parseSerial, parseSlot, parseTermsId } from "@/lib/rules";
 import { deleteOwnRelease, editChangelog, uploadOwnRelease } from "@/lib/releases";
 import { saveApp, unsaveApp } from "@/lib/saved";
 import { clearOwnScreenshot, uploadOwnScreenshot } from "@/lib/screenshots";
 import { requirePublisher, requireUser } from "@/lib/session";
+import { acceptTerms } from "@/lib/terms";
 import { chooseUsername as chooseOwnUsername } from "@/lib/usernames";
 import type { Problem } from "@/lib/problems";
 
@@ -41,10 +42,32 @@ export async function logOut(): Promise<void> {
   await signOut({ redirectTo: "/" });
 }
 
+function acceptedTerms(formData: FormData): number | null {
+  return formData.get("acceptTerms") === "on" ? parseTermsId(text(formData, "termsId")) : null;
+}
+
 export async function chooseUsername(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
-  const error = await chooseOwnUsername(user, text(formData, "username"));
+  const error = await chooseOwnUsername(user, text(formData, "username"), acceptedTerms(formData));
   if (error) {
+    if (error.code === "terms.notCurrent") {
+      refresh();
+    }
+    return { error };
+  }
+  revalidatePath("/", "layout");
+  redirect("/");
+}
+
+// Not requirePublisher(): it sends a user who has not accepted back to /terms.
+export async function acceptCurrentTerms(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  if (!user.username) {
+    redirect("/username");
+  }
+  const error = await acceptTerms(user.id, parseTermsId(text(formData, "termsId")) ?? 0);
+  if (error) {
+    refresh();
     return { error };
   }
   revalidatePath("/", "layout");

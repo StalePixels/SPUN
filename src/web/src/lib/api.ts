@@ -6,6 +6,7 @@ import { parseAppId, type AppFields, type AppId } from "./apps";
 import type { Problem } from "./problems";
 import { claimOnce, countHit } from "./redis";
 import { parseSerial, parseSlot } from "./rules";
+import { currentTermsId } from "./terms";
 
 export type ApiContext<P> = { request: NextRequest; user: ApiUser; params: P };
 
@@ -15,6 +16,7 @@ function deps(): ApiDeps {
     serverKey,
     limits: apiLimits(),
     findKeyUser: apiKeyUser,
+    currentTermsId,
     claimOnce,
     count: countHit,
   };

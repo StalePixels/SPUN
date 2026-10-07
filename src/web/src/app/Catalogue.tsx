@@ -110,7 +110,8 @@ export async function CatalogueRows({ rows }: { rows: CatalogueRow[] }) {
             </span>
             <span className="flex-grow-1">
               <span className="fw-medium" data-testid="catalogue-title">{app.title}</span>
-              <span className="text-body-secondary ms-2" data-testid="catalogue-publisher">{app.username}</span>
+              <i className="bi bi-dot" aria-hidden="true" />
+              <span className="text-body-secondary" data-testid="catalogue-publisher">{app.username}</span>
               {app.categories.map((item) => (
                 <span
                   key={item.id}

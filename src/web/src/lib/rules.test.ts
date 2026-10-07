@@ -13,7 +13,14 @@ import {
   checkCategorySlug,
   checkAlias,
   checkArticle,
+  canChangeTerms,
   checkChangelog,
+  checkTermsText,
+  currentTermsOf,
+  isLiveTerms,
+  mustAcceptTerms,
+  termsState,
+  TERMS_MAX,
   checkInstallDir,
   checkRequiredInstallDir,
   parseSpecificity,
@@ -599,5 +606,79 @@ describe("parseFeatureId", () => {
     for (const value of ["", "0", "01", "-1", "1.5", "new", "1e3"]) {
       expect(parseFeatureId(value), value).toBeNull();
     }
+  });
+});
+
+describe("checkTermsText", () => {
+  it(`needs 1 to ${TERMS_MAX} characters, and stores CR LF as LF`, () => {
+    const error = { ok: false, error: { code: "terms.textLength", min: 1, max: TERMS_MAX } };
+    expect(checkTermsText("")).toEqual(error);
+    expect(checkTermsText("a".repeat(TERMS_MAX + 1))).toEqual(error);
+    expect(checkTermsText("a".repeat(TERMS_MAX))).toEqual({ ok: true, text: "a".repeat(TERMS_MAX) });
+    expect(checkTermsText("one\r\ntwo")).toEqual({ ok: true, text: "one\ntwo" });
+  });
+});
+
+describe("T&C versions", () => {
+  const now = new Date("2026-10-07T12:00:00.000Z");
+  const earlier = new Date("2026-10-01T00:00:00.000Z");
+  const later = new Date("2026-10-08T00:00:00.000Z");
+  const version = (id: number, published: boolean, publishAt: Date | null, deletedAt: Date | null = null) => ({
+    id,
+    published,
+    publishAt,
+    deletedAt,
+  });
+
+  it("is live when published and its time has passed, and not deleted", () => {
+    expect(isLiveTerms(version(1, true, earlier), now)).toBe(true);
+    expect(isLiveTerms(version(1, true, now), now)).toBe(true);
+    expect(isLiveTerms(version(1, true, later), now)).toBe(false);
+    expect(isLiveTerms(version(1, false, earlier), now)).toBe(false);
+    expect(isLiveTerms(version(1, false, null), now)).toBe(false);
+    expect(isLiveTerms(version(1, true, earlier, now), now)).toBe(false);
+  });
+
+  it("makes the live version published last the current one", () => {
+    expect(currentTermsOf([], now)).toBeNull();
+    const old = version(1, true, earlier);
+    const recent = version(2, true, new Date("2026-10-05T00:00:00.000Z"));
+    expect(currentTermsOf([recent, old], now)).toBe(recent);
+    expect(currentTermsOf([old, recent], now)).toBe(recent);
+    expect(currentTermsOf([old, recent, version(3, true, later)], now)).toBe(recent);
+    expect(currentTermsOf([old, recent, version(4, false, now)], now)).toBe(recent);
+    expect(currentTermsOf([old, version(5, true, now, now)], now)).toBe(old);
+    expect(currentTermsOf([version(6, true, later), version(7, false, null)], now)).toBeNull();
+  });
+
+  it("takes the higher id of two versions published at the same time", () => {
+    const first = version(8, true, earlier);
+    const second = version(9, true, earlier);
+    expect(currentTermsOf([second, first], now)).toBe(second);
+    expect(currentTermsOf([first, second], now)).toBe(second);
+  });
+
+  it("asks a user to accept only when a version is current and the user accepted another or none", () => {
+    expect(mustAcceptTerms(null, null)).toBe(false);
+    expect(mustAcceptTerms(3, null)).toBe(false);
+    expect(mustAcceptTerms(3, 3)).toBe(false);
+    expect(mustAcceptTerms(null, 3)).toBe(true);
+    expect(mustAcceptTerms(2, 3)).toBe(true);
+  });
+
+  it("lets a draft or a scheduled version change, and never a live one", () => {
+    expect(canChangeTerms(version(1, false, null), now)).toBe(true);
+    expect(canChangeTerms(version(1, false, earlier), now)).toBe(true);
+    expect(canChangeTerms(version(1, true, later), now)).toBe(true);
+    expect(canChangeTerms(version(1, true, earlier), now)).toBe(false);
+    expect(canChangeTerms(version(1, true, now), now)).toBe(false);
+  });
+
+  it("names the state of each version", () => {
+    expect(termsState(version(1, false, null), 2, now)).toBe("draft");
+    expect(termsState(version(1, false, earlier), 2, now)).toBe("draft");
+    expect(termsState(version(1, true, later), 2, now)).toBe("scheduled");
+    expect(termsState(version(2, true, now), 2, now)).toBe("current");
+    expect(termsState(version(1, true, earlier), 2, now)).toBe("past");
   });
 });

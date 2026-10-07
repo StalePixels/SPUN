@@ -10,14 +10,17 @@ import {
   adminAddDotOverride,
   adminClearScreenshot,
   adminCreateFeature,
+  adminCreateTerms,
   adminDeleteApp,
   adminDeleteCategory,
   adminDeleteFeature,
+  adminDeleteTerms,
   adminDeleteRelease,
   adminDeleteUser,
   adminDisableUser,
   adminEnableUser,
   adminGetFeature,
+  adminGetTerms,
   adminGetUser,
   adminMoveAlias,
   adminMoveApp,
@@ -31,15 +34,18 @@ import {
   adminRevalidateApp,
   adminSetAppLimit,
   adminUnpublishFeature,
+  adminUnpublishTerms,
   adminUpdateApp,
   adminUpdateCategory,
   adminUpdateFeature,
+  adminUpdateTerms,
   adminUpdateRelease,
   adminUpdateUser,
   adminUploadRelease,
   requireAdmin,
   type CategoryFields,
   type FeatureFields,
+  type TermsFields,
 } from "@/lib/admin";
 import { parseAppId } from "@/lib/apps";
 import { liveCategories } from "@/lib/categories";
@@ -55,6 +61,7 @@ import {
   checkRequiredInstallDir,
   checkPublishAt,
   checkReleaseDate,
+  checkTermsText,
   checkTitle,
   checkUsernameInput,
   checkVersion,
@@ -560,4 +567,72 @@ export async function deleteAdminFeature(id: number): Promise<FormState> {
   }
   revalidatePath(FEATURED_PATH);
   redirect(FEATURED_PATH);
+}
+
+const TERMS_PATH = "/admin/terms";
+
+// As featureFields: a scheduled version stays published on save.
+function termsFields(
+  formData: FormData,
+  stored: { published: boolean; publishAt: Date | null } | null,
+): { error: Problem } | TermsFields {
+  const checked = checkTermsText(text(formData, "text"));
+  if (!checked.ok) {
+    return { error: checked.error };
+  }
+  const time = checkPublishAt(text(formData, "publishAt"), stored?.publishAt ?? null, new Date());
+  if (!time.ok) {
+    return { error: time.error };
+  }
+  const published = stored?.published === true || text(formData, "intent") === "publish";
+  return { text: checked.text, published, publishAt: time.publishAt ?? (published ? "now" : null) };
+}
+
+export async function createAdminTerms(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const fields = termsFields(formData, null);
+  if ("error" in fields) {
+    return { error: fields.error };
+  }
+  await adminCreateTerms(fields);
+  revalidatePath(TERMS_PATH);
+  redirect(TERMS_PATH);
+}
+
+export async function saveAdminTerms(id: number, _prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const version = await adminGetTerms(id);
+  if (!version) {
+    return { error: { code: "terms.notFound" } };
+  }
+  const fields = termsFields(formData, version);
+  if ("error" in fields) {
+    return { error: fields.error };
+  }
+  const result = await adminUpdateTerms(id, fields);
+  if (result.error) {
+    return { error: result.error };
+  }
+  revalidatePath(TERMS_PATH);
+  redirect(TERMS_PATH);
+}
+
+export async function unpublishAdminTerms(id: number): Promise<FormState> {
+  await requireAdmin();
+  const result = await adminUnpublishTerms(id);
+  if (result.error) {
+    return { error: result.error };
+  }
+  revalidatePath(TERMS_PATH);
+  redirect(TERMS_PATH);
+}
+
+export async function deleteAdminTerms(id: number): Promise<FormState> {
+  await requireAdmin();
+  const result = await adminDeleteTerms(id);
+  if (result.error) {
+    return { error: result.error };
+  }
+  revalidatePath(TERMS_PATH);
+  redirect(TERMS_PATH);
 }
