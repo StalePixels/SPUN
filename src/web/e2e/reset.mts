@@ -56,6 +56,12 @@ const settings = [
   },
 ];
 
+// The terms must always have a live version, so the reset makes the first one.
+const terms = {
+  text: "The SPUN terms and conditions.",
+  textHtml: "<p>The SPUN terms and conditions.</p>\n",
+};
+
 const connection = await mysql.createConnection(databaseUrl);
 try {
   const [tables] = await connection.query<RowDataPacket[]>(
@@ -90,6 +96,10 @@ try {
       value,
     ]);
   }
+  await connection.query("insert into terms (text, text_html, published, publish_at) values (?, ?, true, now())", [
+    terms.text,
+    terms.textHtml,
+  ]);
 } finally {
   await connection.end();
 }

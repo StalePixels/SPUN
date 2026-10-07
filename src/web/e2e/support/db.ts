@@ -6,8 +6,9 @@ import { settings } from "./settings";
 
 // Direct database reads, to check what the CMS stored. The writes are the
 // restores of settings a test changed, the users and apps that the admin
-// tests make for themselves (so no real account is renamed or disabled), and
-// the app row and the feature of the setup's test app.
+// tests make for themselves (so no real account is renamed or disabled), the
+// app row and the feature of the setup's test app, the T&C versions that the
+// terms tests add and the acceptances they change, and the client_log rows of the client statistics tests.
 
 async function query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
   const connection = await mysql.createConnection(settings.databaseUrl);
@@ -74,9 +75,17 @@ export async function userRow(userId: string) {
   return row;
 }
 
+const CURRENT_TERMS_SQL =
+  "select id from terms where published and deleted_at is null and publish_at <= now() order by publish_at desc, id desc limit 1";
+
+// A user with a username has finished registering, so has accepted the current
+// T&C version, as on the join page. A user without one has accepted none.
 export async function insertUser(username: string | null): Promise<string> {
   const id = randomUUID();
-  await query("insert into users (id, name, username) values (?, ?, ?)", [id, "E2E test user", username]);
+  await query(
+    `insert into users (id, name, username, accepted_terms_id) values (?, ?, ?, ${username === null ? "null" : `(${CURRENT_TERMS_SQL})`})`,
+    [id, "E2E test user", username],
+  );
   return id;
 }
 
@@ -416,4 +425,108 @@ export async function liveAppIdsOf(userId: string): Promise<string[]> {
     [userId],
   );
   return rows.map((row) => row.id);
+}
+
+export type TermsRow = {
+  id: number;
+  text: string;
+  text_html: string;
+  published: number;
+  publish_at: Date | null;
+  deleted_at: Date | null;
+};
+
+// Deleted ones too, newest first.
+export async function termsRows(): Promise<TermsRow[]> {
+  return query<TermsRow>("select id, text, text_html, published, publish_at, deleted_at from terms order by id desc");
+}
+
+// Published now, as an admin's Publish with no time does.
+export async function insertLiveTerms(text: string, textHtml: string): Promise<number> {
+  const connection = await mysql.createConnection(settings.databaseUrl);
+  try {
+    const [result] = await connection.query<ResultSetHeader>(
+      "insert into terms (text, text_html, published, publish_at) values (?, ?, true, now())",
+      [text, textHtml],
+    );
+    return result.insertId;
+  } finally {
+    await connection.end();
+  }
+}
+
+// No browser can enter a time in the past.
+export async function setTermsPublishAt(id: number, secondsFromNow: number): Promise<void> {
+  await query("update terms set publish_at = now() + interval ? second where id = ?", [secondsFromNow, id]);
+}
+
+export async function acceptedTermsOf(userId: string): Promise<number | null> {
+  const [row] = await query<{ accepted_terms_id: number | null }>("select accepted_terms_id from users where id = ?", [
+    userId,
+  ]);
+  return row?.accepted_terms_id ?? null;
+}
+
+export async function currentTermsId(): Promise<number | null> {
+  const [row] = await query<{ id: number }>(CURRENT_TERMS_SQL);
+  return row?.id ?? null;
+}
+
+export type TermsSnapshot = { lastId: number; accepted: { id: string; accepted_terms_id: number | null }[] };
+
+export async function termsSnapshot(): Promise<TermsSnapshot> {
+  const [row] = await query<{ lastId: number | null }>("select max(id) as lastId from terms");
+  const accepted = await query<{ id: string; accepted_terms_id: number | null }>("select id, accepted_terms_id from users");
+  return { lastId: row?.lastId ?? 0, accepted };
+}
+
+// The versions made since the snapshot go, and each user's acceptance is put
+// back, so the seed version is live and accepted as before.
+export async function restoreTerms(snapshot: TermsSnapshot): Promise<void> {
+  await query("update users set accepted_terms_id = null where accepted_terms_id > ?", [snapshot.lastId]);
+  for (const { id, accepted_terms_id } of snapshot.accepted) {
+    await query("update users set accepted_terms_id = ? where id = ?", [accepted_terms_id, id]);
+  }
+  await query("delete from terms where id > ?", [snapshot.lastId]);
+}
+
+export type ClientLogRow = { daysAgo: number; connectionId: string; address: string | null; name: string; value: string };
+
+// At noon UTC on the day daysAgo days before today (UTC).
+export async function insertClientLog(rows: ClientLogRow[]): Promise<void> {
+  if (rows.length === 0) return;
+  const connection = await mysql.createConnection(settings.databaseUrl);
+  try {
+    await connection.query("set time_zone = '+00:00'");
+    await connection.query(
+      "insert into client_log (created_at, connection_id, address, name, value) values ?",
+      [
+        rows.map((row) => [
+          utcNoon(row.daysAgo),
+          row.connectionId,
+          row.address,
+          row.name,
+          row.value,
+        ]),
+      ],
+    );
+  } finally {
+    await connection.end();
+  }
+}
+
+// A string, not a Date: mysql2 would write a Date in this machine's time zone.
+function utcNoon(daysAgo: number): string {
+  const day = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return `${day} 12:00:00`;
+}
+
+export async function clientLogNames(): Promise<string[]> {
+  const rows = await query<{ name: string }>("select distinct name from client_log order by name");
+  return rows.map((row) => row.name);
+}
+
+export async function removeClientLog(names: string[]): Promise<void> {
+  if (names.length === 0) return;
+  await query("delete from client_log where name in (?)", [names]);
 }

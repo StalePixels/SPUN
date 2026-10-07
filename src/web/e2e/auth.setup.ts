@@ -14,7 +14,8 @@ import { makeZip, sampleEntries, tempFiles } from "./support/zips";
 //
 // After a reset (e2e/reset.mts) the database has no users. The first user to
 // log in becomes the admin, so the admin account logs in before the client,
-// and each account chooses its username on /username.
+// and each account chooses its username on /username and accepts the seed's
+// T&C version there.
 
 async function savedStateIsValid(browser: Browser, account: Account): Promise<boolean> {
   if (!existsSync(account.storageState)) return false;
@@ -59,6 +60,7 @@ for (const account of [accounts.admin, accounts.client]) {
     if (pathname(page) === "/username") {
       await waitForHydration(page.getByTestId("username-submit"));
       await page.getByTestId("username-field").fill(account.username);
+      await page.getByTestId("username-accept-terms").check();
       await clickHydrated(page.getByTestId("username-submit"));
       await page.waitForURL((url) => url.pathname === "/");
     }
