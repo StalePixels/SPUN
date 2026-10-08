@@ -16,7 +16,5 @@ options:
 
 Put TEXT with spaces in quotes:
  .spun find "two words" 2
-DEFLATE code from gunzip by
-Laurens Holst (Grauw), modified
-by Wouter Vermaelen.
-Simplified BSD Licence.
+DEFLATE: Laurens Holst (Grauw),
+Wouter Vermaelen. 2-clause BSD.
