@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.3 - 20261008
+
+### `.spun`
+
+- `.spun -v` prints the version of `.spun`, and does nothing else.
+
+### SPUNServer
+
+- The server records only the client details it knows, at the moment only
+  the `.spun` version. It ignores other names.
+
 ## 0.7.2 - 20261007
 
 ### `.spun`

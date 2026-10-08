@@ -12,10 +12,10 @@ options:
  -s xxxx Alternative Server
  -p xxxx Alternative Port
  -q      Quiet
+ -v      Version
 
 Put TEXT with spaces in quotes:
  .spun find "two words" 2
-
 DEFLATE code from gunzip by
 Laurens Holst (Grauw), modified
 by Wouter Vermaelen.

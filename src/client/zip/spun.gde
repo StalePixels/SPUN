@@ -72,3 +72,4 @@ With no command, .spun opens the SPUN browser.
 @{b}-p xxxx@{ub}    Use another port
 @{b}-q@{ub}         Quiet: print no progress lines, and show no splash screen
             when the browser opens
+@{b}-v@{ub}         Show the version of .spun, and do nothing else

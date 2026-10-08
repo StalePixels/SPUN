@@ -166,6 +166,11 @@ static void own_file_close(void) {
 int main(int argc, char** argv) {
     unsigned char *error;
 
+    if(argc == 2 && stricmp(argv[1], "-v") == 0) {
+        printf(".spun " SPUN_VERSION "\n");
+        exit(0);
+    }
+
 #ifdef __ZXNEXT
     own_file_close();
     startMmu2 = ZXN_READ_REG(REG_MMU0 + 2);
