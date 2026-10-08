@@ -4,7 +4,7 @@
 
 ### `.spun`
 
-- `.spun -v` prints the version of `.spun`, and does nothing else.
+- `.spun -v` shows the version.
 
 ### SPUNServer
 
