@@ -3,6 +3,7 @@
 
 usage: gui-test.py rows HOST PORT < SCENARIO.in > SCENARIO
        gui-test.py pointers SCENARIO RUNDIR
+       gui-test.py ula SCENARIO RUNDIR
        gui-test.py layer2 SCENARIO RUNDIR HOST PORT DATADIR
        gui-test.py proxy LISTEN HOST PORT SLOW LOG
        gui-test.py drop LISTEN HOST PORT STAGE LOG
@@ -20,13 +21,22 @@ rows   copies the scenario and expands each line "@ROWS T COMMAND": it sends
        "@HIDDEN T" become a snapshot at T, and a dump named after the line.
        A line "@TEXT T ROW COL ATTR TEXT" checks only the cells of TEXT at
        ROW and COL, with attribute ATTR (a number), for example a line of a
-       modal box (gui/modal_ask.c).
+       modal box (BANK_ui/modal_run.c). A line "@MODAL T LINES TITLE
+       LABEL:KEY:INK..." becomes a "dump" at T of $4000-$5FFF: the ULA screen
+       and the font. INK is the Spectrum colour number of the shortcut letter. A line "@NOULA T" becomes a "dump" at T of the ULA screen.
 
 pointers  checks the pointer lines of the expanded SCENARIO against its run
        folder RUNDIR: the position in each @POINTER dump, and whether the
        snapshot of each @SHOWN or @HIDDEN line has pixels of a colour that
        only the pointer has. It prints a line for each, and exits with 1 if
        one is missing or wrong.
+
+ula    checks the ULA lines of the expanded SCENARIO against its run folder
+       RUNDIR. An @MODAL dump must hold exactly the box that BANK_ui draws
+       for LINES lines of text, TITLE and the buttons, drawn with the font
+       from the same dump, and nothing else. An @NOULA dump must be all 0, so
+       the ULA shows nothing. It prints a line for each and exits with 1 if
+       one is wrong or missing. With no ULA lines it prints nothing.
 
 layer2 checks each "@LAYER2" dump of the expanded SCENARIO in RUNDIR. A page
        dump must hold each thumbnail file of DATADIR/<user>/thumb/<app>/<slot>
@@ -418,6 +428,14 @@ def expand(host, port):
             hexes = ' '.join(f'{ord(c):02x} {int(attr, 0):02x}' for c in value)
             print(f'# {value}')
             print(f'expect {t} {MARKER} {offset} {hexes}')
+        elif line.startswith('@MODAL '):
+            _, t, *what = line.split()
+            print(f'dump {t} 0x4000 8192 modal-{t}')
+            print(f'#ula modal-{t} {" ".join(what)}')
+        elif line.startswith('@NOULA '):
+            _, t = line.split()
+            print(f'dump {t} 0x4000 6912 noula-{t}')
+            print(f'#ula noula-{t}')
         elif line.startswith(('@SHOWN ', '@HIDDEN ')):
             word, t = line.split()
             print(f'snap {t}')
@@ -599,7 +617,7 @@ def layer2_check(name, what, rundir, host, port, datadir):
                 f'(NR 0x70={regs["70"]}, NR 0x69={regs["69"]}, NR 0x6B={regs["6b"]})',
                 regs['70'] == mode and int(regs['69'], 16) & 0x80 and not int(regs['6b'], 16) & 0x80)
     verdict(f'transparent and fallback black (NR 0x14={regs["14"]}, NR 0x4A={regs["4a"]})',
-            regs['14'] == '00' and regs['4a'] == '00')
+            regs['14'] == 'e3' and regs['4a'] == '00')
     return out
 
 
@@ -612,6 +630,88 @@ def layer2(scenario, rundir, host, port, datadir):
     for name, what in checks:
         lines += layer2_check(name, what.split(), rundir, host, port, datadir)
     print('\n'.join(lines))
+    return 0 if all(line.endswith(' MATCH') for line in lines) else 1
+
+
+# The box of BANK_ui (ui.h): ULA cells 1-30, the title bar, a blank row, the
+# lines, a blank row, the buttons and the bottom row
+BOX_LEFT, BOX_RIGHT = 1, 30
+ULA_BAR, ULA_BRIGHT, ULA_FRAME = 0x47, 0x40, 0x78
+STRIPES = (0x42, 0x56, 0x74, 0x65, 0x68)
+
+
+def modal_screen(lines, title, buttons, font):
+    screen = bytearray(6912)
+    rows = lines + 5
+    top = (24 - rows) // 2
+    bottom = top + rows - 1
+
+    def pixels(x, y, rows8, attr):
+        for line, value in enumerate(rows8):
+            screen[((y & 0x18) << 8) | (line << 8) | ((y & 7) << 5) | x] = value
+        if attr is not None:
+            screen[6144 + y * 32 + x] = attr
+
+    def text(x, y, value):
+        for i, ch in enumerate(value):
+            pixels(x + i, y, font[ord(ch) * 8:ord(ch) * 8 + 8], None)
+
+    for x in range(BOX_LEFT, BOX_RIGHT + 1):
+        screen[6144 + top * 32 + x] = ULA_BAR
+    text(BOX_LEFT + 1, top, title)
+    for i, attr in enumerate(STRIPES):
+        pixels(BOX_RIGHT - 5 + i, top, [((2 << line) - 1) & 0xFF for line in range(8)], attr)
+    for y in range(top + 1, bottom + 1):
+        pixels(BOX_LEFT, y, [0x80] * 8, ULA_FRAME)
+        pixels(BOX_RIGHT, y, [0x01] * 8, ULA_FRAME)
+    for x in range(BOX_LEFT, BOX_RIGHT + 1):
+        screen[((bottom & 0x18) << 8) | (7 << 8) | ((bottom & 7) << 5) | x] = 0xFF
+        screen[6144 + bottom * 32 + x] = ULA_FRAME
+    x = BOX_LEFT + 1
+    for label, key, ink in buttons:
+        for i in range(len(label) + 2):
+            screen[6144 + (bottom - 1) * 32 + x + i] = ULA_BAR
+        text(x + 1, bottom - 1, label)
+        at = label.lower().find(key)
+        if at >= 0:
+            screen[6144 + (bottom - 1) * 32 + x + 1 + at] = ULA_BRIGHT | int(ink)
+        x += len(label) + 3
+    return bytes(screen)
+
+
+def ula_rows(got, want):
+    """The character rows where two ULA screens differ."""
+    rows = set()
+    for i in range(6912):
+        if got[i] != want[i]:
+            rows.add((i - 6144) // 32 if i >= 6144 else (i >> 11) * 8 + ((i >> 5) & 7))
+    return sorted(rows)
+
+
+def ula(scenario, rundir):
+    checks = re.findall(r'^#ula (\S+)(.*)$', open(scenario).read(), re.MULTILINE)
+    lines = []
+    for name, what in checks:
+        path = os.path.join(rundir, f'dump-{name}.bin')
+        if not os.path.exists(path):
+            lines.append(f'ula       {name} MISSING')
+            continue
+        data = open(path, 'rb').read()
+        if not what.split():
+            want = bytes(6912)
+            label = 'the ULA screen all 0'
+        else:
+            count, title, *buttons = what.split()
+            font = data[0x1C00:0x2000]
+            want = modal_screen(int(count), title, [tuple(b.split(':')) for b in buttons], font)
+            label = f'the box "{title}" with {count} lines and {" ".join(buttons)}, and nothing else'
+            if not any(font[ord(ch) * 8:ord(ch) * 8 + 8] != bytes(8) for ch in title):
+                label += ' (the font is empty)'
+                want = None
+        rows = ula_rows(data, want) if want else ['all']
+        lines.append(f'ula       {name} {label} {"MATCH" if not rows else "DIFFERENT in rows " + str(rows)}')
+    if lines:
+        print('\n'.join(lines))
     return 0 if all(line.endswith(' MATCH') for line in lines) else 1
 
 
@@ -762,6 +862,8 @@ if __name__ == '__main__':
         expand(sys.argv[2], sys.argv[3])
     elif len(sys.argv) == 4 and sys.argv[1] == 'pointers':
         sys.exit(pointers(sys.argv[2], sys.argv[3]))
+    elif len(sys.argv) == 4 and sys.argv[1] == 'ula':
+        sys.exit(ula(sys.argv[2], sys.argv[3]))
     elif len(sys.argv) == 7 and sys.argv[1] == 'layer2':
         sys.exit(layer2(sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5]), sys.argv[6]))
     elif len(sys.argv) == 7 and sys.argv[1] == 'drop':

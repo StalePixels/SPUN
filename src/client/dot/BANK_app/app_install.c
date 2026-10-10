@@ -4,15 +4,9 @@
 #include "../BANK_packages/install.h"
 #include "app.h"
 
-static const struct gui_button confirmButtons[] = {
-    { MODAL_COL + 2, MODAL_BUTTON_ROW, 'i', "Install" },
-    { MODAL_COL + 13, MODAL_BUTTON_ROW, 'c', "Cancel" },
-};
+static const struct modal_button confirmButtons[] = { { 'i', "Install", INK_GREEN }, { 'c', "Cancel", INK_RED } };
 
-static const struct gui_button suggestButtons[] = {
-    { MODAL_COL + 2, MODAL_BUTTON_ROW, 'y', "Yes" },
-    { MODAL_COL + 9, MODAL_BUTTON_ROW, 'n', "No" },
-};
+static const struct modal_button suggestButtons[] = { { 'y', "Yes", INK_GREEN }, { 'n', "No", INK_RED } };
 
 // The NextZXOS browser cannot tell SPACE from BREAK, so the choice is confirmed. It draws its
 // own screen and leaves the tilemap empty, so the title and the page are drawn again
@@ -31,7 +25,7 @@ void app_install(void) {
     lines[2] = (unsigned char *)"";
     if(!error && installCase == INSTALL_NEW && *suggestDir) {
         sprintf(installDir, "C:%s", suggestDir);
-        suggested = modal_ask(lines, 3, suggestButtons, 2) == 0;
+        suggested = modal_ask((unsigned char *)"Install", lines, 3, suggestButtons, 2) == 0;
     }
     if(!error && installCase == INSTALL_NEW && !suggested) {
         while(in_test_key()) intrinsic_halt();
@@ -53,7 +47,7 @@ void app_install(void) {
             sprintf(head, "%s %s is installed in:", title, latestVersion);
             lines[2] = (unsigned char *)"Install it again?";
         }
-        if(modal_ask(lines, 3, confirmButtons, 2) != 0) {
+        if(modal_ask((unsigned char *)"Install", lines, 3, confirmButtons, 2) != 0) {
             app_show(false);
             return;
         }

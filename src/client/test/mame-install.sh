@@ -13,7 +13,8 @@
 # after. The GUI reaches the server through gui-test.py's proxy, whose log of
 # commands must match. After each run it reads /sys/spun.cat and the installed files from the SD
 # image with hdfmonkey, and checks that BASIC's screen holds only what BASIC
-# printed (ula-check.py). With SPUN_SNAPSHOTS=DIR it copies the snapshots for
+# printed (ula-check.py), and the ULA during and after each box (gui-test.py
+# ula). With SPUN_SNAPSHOTS=DIR it copies the snapshots for
 # the report to DIR as p78-*.png.
 # Exits with 1 if a run fails.
 set -euo pipefail
@@ -143,6 +144,7 @@ scenario() {
     run=$(sed -n 's/^run dir *//p' "$work/run.out")
     echo "$run" >> "$work/runs.list"
     python3 "$here/gui-test.py" pointers "$work/$name.scn" "$run" || status=1
+    python3 "$here/gui-test.py" ula "$work/$name.scn" "$run" || status=1
     got=$(sed -En 's/^[0-9.]* (SP.*|GET .*)/\1/p' "$work/commands.log")
     "$HDFMONKEY" get "$run/sd.img" /sys/spun.cat "$work/spun.cat" > /dev/null 2>&1 || : > "$work/spun.cat"
     echo "spun.cat after the run:"

@@ -5,13 +5,15 @@
 
 struct l2_target;
 
-#define SCREEN_REGS 15
+#define SCREEN_REGS 17
 #define SAVED_15    0
 #define SAVED_68    2
 
 extern const uint8_t screenRegs[SCREEN_REGS];
 extern uint8_t screenSaved[SCREEN_REGS];
 extern uint8_t clipSaved[4];
+extern uint8_t ulaClipSaved[4];
+extern uint8_t ulaPaletteSaved[64];
 extern uint8_t paletteSaved[512];
 extern uint8_t clip320[];
 

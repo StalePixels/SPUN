@@ -2,6 +2,14 @@
 
 ## 0.8.0 (not released)
 
+### `.spun`
+
+- The GUI's question boxes (install, overwrite, updates) have a new look,
+  in the SPUI style: a black title bar with the rainbow stripe, a white
+  box with a black frame, and black buttons in the large Spectrum font. The
+  shortcut letter of each button has a colour: green to go on, red to
+  cancel, yellow for a warning.
+
 ### CMS
 
 - The suggested install directory now has a folder for the app, named from

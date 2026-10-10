@@ -8,7 +8,7 @@
 # overwrites that and all the rest with no more boxes. A third install
 # answers O at each of the six files that exist, the last SUB/KEEP.DOT. After
 # A and after the last O the box is gone at once: during the unzip and after
-# it, its cells show the app page again (gui/modal_ask.c), the picture's
+# it, its cells show the app page again (BANK_ui/modal_keep.c) and the ULA shows nothing, the picture's
 # cells and the description. mame-dir.sh checks the files, C:/dot and
 # spun.cat after the run.
 put @SPUN@ /dot/SPUN
@@ -23,56 +23,48 @@ key 17 {ENTER}
 key 21 i
 
 # The suggested directory, over the app page
-@TEXT 23.5 12 12 2 Install Dir Test 1.0 to:
-@TEXT 23.5 13 12 0 C:/apps/spundir/deep
-@TEXT 23.5 17 12 4  
-@TEXT 23.5 17 13 6 Y
-@TEXT 23.5 17 14 4 es 
-@TEXT 23.5 17 19 4  
-@TEXT 23.5 17 20 6 N
-@TEXT 23.5 17 21 4 o 
+@TEXT 23.5 14 12 11 Install Dir Test 1.0 to:
+@TEXT 23.5 15 12 11 C:/apps/spundir/deep
+@MODAL 23.5 3 Install Yes:y:4 No:n:2
 key 24.5 y
 @TEXT 31 25 1 0 Installed to C:/apps/spundir/deep
 
 # Install again: the confirm box, then the Overwrite boxes
 key 32 i
-@TEXT 34.5 12 12 2 Dir Test 1.0 is installed in:
+@TEXT 34.5 14 12 11 Dir Test 1.0 is installed in:
+@MODAL 34.5 3 Install Install:i:4 Cancel:c:2
 key 35 i
-@TEXT 39 12 12 2 Overwrite?
-@TEXT 39 13 12 0 C:/apps/spundir/deep/DATA/ONE.BIN
-@TEXT 39 17 13 6 O
-@TEXT 39 17 14 4 nce 
-@TEXT 39 17 21 6 A
-@TEXT 39 17 22 4 ll 
-@TEXT 39 17 28 6 C
-@TEXT 39 17 29 4 ancel 
+@TEXT 39 15 12 11 C:/apps/spundir/deep/DATA/ONE.BIN
+@MODAL 39 1 Overwrite Once:o:4 All:a:6 Cancel:c:2
 key 40 o
-@TEXT 42 13 12 0 C:/apps/spundir/deep/DATA/TWO.BIN
+@TEXT 42 15 12 11 C:/apps/spundir/deep/DATA/TWO.BIN
 key 43 a
 @TEXT 43.5 25 1 0 Unzipping file 
-@TEXT 43.5 12 12 8           
+@TEXT 43.5 13 12 8           
 @TEXT 43.5 18 10 0 r the install directory test of .spun.
+@NOULA 43.5
 @TEXT 47 25 1 0 Installed to C:/apps/spundir/deep
-@TEXT 47 12 12 8           
+@TEXT 47 13 12 8           
 @TEXT 47 18 10 0 r the install directory test of .spun.
 
 # Install again, with Once at each box
 key 48 i
-@TEXT 50.5 12 12 2 Dir Test 1.0 is installed in:
+@TEXT 50.5 14 12 11 Dir Test 1.0 is installed in:
 key 51 i
-@TEXT 55.5 13 12 0 C:/apps/spundir/deep/DATA/ONE.BIN
+@TEXT 55.5 15 12 11 C:/apps/spundir/deep/DATA/ONE.BIN
 key 56 o
 key 57 o
 key 58 o
 key 59 o
 key 60 o
-@TEXT 60.5 13 12 0 C:/apps/spundir/deep/SUB/KEEP.DOT
+@TEXT 60.5 15 12 11 C:/apps/spundir/deep/SUB/KEEP.DOT
 key 61 o
 @TEXT 61.4 25 1 0 Unzipping file 
-@TEXT 61.4 12 12 8           
+@TEXT 61.4 13 12 8           
 @TEXT 61.4 18 10 0 r the install directory test of .spun.
+@NOULA 61.4
 @TEXT 65 25 1 0 Installed to C:/apps/spundir/deep
-@TEXT 65 12 12 8           
+@TEXT 65 13 12 8           
 @TEXT 65 18 10 0 r the install directory test of .spun.
 
 key 67 q

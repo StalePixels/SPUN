@@ -16,7 +16,8 @@
 # removes both after. The zip has two .dot files at its root, which must end
 # in C:/dot without their extension and not in the app's directory, and one in
 # a subdirectory, which stays. After each run it reads the files and
-# /sys/spun.cat from the SD image with hdfmonkey.
+# /sys/spun.cat from the SD image with hdfmonkey, and checks the ULA during and
+# after each GUI box (gui-test.py ula).
 # Exits with 1 if a run or a check fails.
 set -euo pipefail
 
@@ -121,6 +122,7 @@ scenario() {
     (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=1
     run=$(sed -n 's/^run dir *//p' "$work/run.out")
     echo "$run" >> "$work/runs.list"
+    python3 "$here/gui-test.py" ula "$work/$name.scn" "$run" || status=1
     "$HDFMONKEY" get "$run/sd.img" /sys/spun.cat "$work/spun.cat" > /dev/null 2>&1 || : > "$work/spun.cat"
 }
 

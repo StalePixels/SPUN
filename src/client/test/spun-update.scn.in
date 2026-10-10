@@ -16,27 +16,26 @@ seconds 65
 noreset 7.5
 mouse 2 move 128 128
 
-@TEXT 14.5 12 12 2 Updates
-@TEXT 14.5 13 12 0 2 installed apps have updates.
-@TEXT 14.5 17 13 6 U
-@TEXT 14.5 17 14 4 pdate 
-@TEXT 14.5 17 23 6 I
-@TEXT 14.5 17 24 4 gnore 
+@TEXT 14.5 15 12 11 2 installed apps have updates.
+@MODAL 14.5 1 Updates Update:u:4 Ignore:i:2
 
-# Ignore: the button at columns 22-29 of row 17
-mouse 16.5 move 68 116
-@POINTER 17 100 140
+# Ignore: the button at ULA columns 11-18 of ULA row 13, tilemap row 17
+mouse 16.5 move 116 116
+@POINTER 17 148 140
 mouse 17.2 press left
 mouse 17.3 release left
 @ROWS 19.5 SPLIST 1
+@NOULA 19.5
 key 21.5 q
 
 # The second .spun: the box again; U installs both
-@TEXT 30 13 12 0 2 installed apps have updates.
+@TEXT 30 15 12 11 2 installed apps have updates.
+@MODAL 30 1 Updates Update:u:4 Ignore:i:2
 key 32 u
 @TEXT 39 25 1 0 Downloading block 
 @TEXT 46 25 1 0 Unzipping file 
 @TEXT 51 25 1 0 @STATUS@
+@NOULA 51
 key 53 q
 dump 64 0x4000 6912 ula-end
 

@@ -10,6 +10,7 @@
 #define BANK_SCREEN     (44<<1)
 #define BANK_SPRITES    (43<<1)
 #define BANK_APP        (42<<1)
+#define BANK_UI         (41<<1)
 
 #ifdef __ZXNEXT
 extern unsigned char _z_page_table[];

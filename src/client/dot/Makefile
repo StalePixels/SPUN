@@ -109,13 +109,20 @@ bank_42: dirs
 		--datasegBANK_42 --bsssegBANK_42   \
 		@BANK_app/app.lst -o$(TMP_DIR)/BANK_app.o
 
+# BANK_UI: the modal boxes
+bank_41: dirs
+	$(CC) $(CCFLAGS) -c \
+		--codesegBANK_41 --constsegBANK_41 \
+		--datasegBANK_41 --bsssegBANK_41   \
+		@BANK_ui/ui.lst -o$(TMP_DIR)/BANK_ui.o
+
 # BANK_SPRITES: the sprite sheet, data only
 bank_43: dirs
 	$(CC) $(CCFLAGS) -c @BANK_sprites/sprites.lst -o$(TMP_DIR)/BANK_sprites.o
 
-banks: bank_47 bank_47_nbn bank_46 bank_45 bank_44 bank_43 bank_42
+banks: bank_47 bank_47_nbn bank_46 bank_45 bank_44 bank_43 bank_42 bank_41
 
-BANK_OBJS := $(addprefix $(TMP_DIR)/BANK_,net.o net_nbn.o packages.o gui.o screen.o sprites.o app.o)
+BANK_OBJS := $(addprefix $(TMP_DIR)/BANK_,net.o net_nbn.o packages.o gui.o screen.o sprites.o app.o ui.o)
 
 # Run inside $(UNZIP): INCLUDE resolves from the current directory
 $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin: $(UNZIP)/inflate.asm $(UNZIP)/inflate_job.inc
@@ -162,4 +169,4 @@ $(POSIX_DIR)/help.c: help.txt
 	$(MKDIR) $(POSIX_DIR)
 	( echo "unsigned char help[] = {"; xxd -i < help.txt; echo ", 0 };" ) > $@
 
-.PHONY: all clean dirs spunjane banks bank_47 bank_47_nbn bank_46 bank_45 bank_44 bank_43 bank_42 dotn binaries zip posix
+.PHONY: all clean dirs spunjane banks bank_47 bank_47_nbn bank_46 bank_45 bank_44 bank_43 bank_42 bank_41 dotn binaries zip posix

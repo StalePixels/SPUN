@@ -13,12 +13,15 @@
 #define BUTTON_ROW      30
 
 // Tilemap attributes: palette offsets of the 1-bit tilemap (BANK_screen/screen_on.c).
-// ATTR_BLACK is the cells over a picture in Layer 2: black, which a text-mode tilemap shows as transparent (NR 0x14)
+// ATTR_BLACK is the cells over a picture in Layer 2: NR 0x14's colour, which a text-mode tilemap shows as transparent.
+// Bit 0 puts the ULA over the cell (NR 0x6B bit 0 stays 0)
 #define ATTR_TEXT       0x00
 #define ATTR_KEY        0x02
 #define ATTR_BAR        0x04
 #define ATTR_BAR_KEY    0x06
 #define ATTR_BLACK      0x08
+#define ATTR_MODAL      0x0A
+#define ATTR_ULA_OVER   0x01
 
 #define MOUSE_LEFT      0x02
 
@@ -38,11 +41,11 @@
 // 320x256 Layer 2, 80K; 256x192 uses the first 48K of it
 #define LAYER2_PAGES    10
 
-#define MODAL_COL       10
-#define MODAL_WIDTH     60
-#define MODAL_ROW       11
+#define MODAL_TITLE     16
 #define MODAL_LINES     4
-#define MODAL_BUTTON_ROW (MODAL_ROW + MODAL_LINES + 2)
+#define MODAL_TEXT      56
+#define MODAL_BUTTONS   3
+#define MODAL_LABEL     8
 
 #define ULA_AREAS       5
 #define TILE_AREAS      2
@@ -64,6 +67,24 @@ struct gui_button {
     uint8_t row;
     unsigned char shortcut;
     char *label;
+};
+
+// ink is the Spectrum colour of the shortcut letter: INK_GREEN to go on, INK_RED to cancel,
+// INK_YELLOW for a warning, INK_CYAN for information
+struct modal_button {
+    unsigned char shortcut;
+    char *label;
+    uint8_t ink;
+};
+
+struct modal {
+    unsigned char title[MODAL_TITLE + 1];
+    unsigned char lines[MODAL_LINES][MODAL_TEXT + 1];
+    unsigned char labels[MODAL_BUTTONS][MODAL_LABEL + 1];
+    unsigned char shortcuts[MODAL_BUTTONS];
+    uint8_t inks[MODAL_BUTTONS];
+    uint8_t lineCount;
+    uint8_t count;
 };
 
 extern volatile uint16_t ptr_x;
@@ -106,7 +127,7 @@ uint8_t button_at(const struct gui_button *table, uint8_t count);
 uint8_t button_key(const struct gui_button *table, uint8_t count, unsigned char key);
 void message_show(unsigned char *message) __z88dk_fastcall;
 void title_draw(void);
-uint8_t modal_ask(unsigned char **lines, uint8_t lineCount, const struct gui_button *buttons, uint8_t count);
+uint8_t modal_ask(unsigned char *title, unsigned char **lines, uint8_t lineCount, const struct modal_button *buttons, uint8_t count);
 void tm_cut(uint8_t col, uint8_t row, unsigned char *text, uint8_t width, uint8_t attr);
 
 void os_give(void);

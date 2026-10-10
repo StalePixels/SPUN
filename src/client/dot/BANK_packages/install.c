@@ -16,10 +16,8 @@ unsigned char *unzipErrors[] = {
 };
 
 #ifdef __ZXNEXT
-static const struct gui_button overwriteButtons[] = {
-    { MODAL_COL + 2, MODAL_BUTTON_ROW, OVERWRITE_ONCE, "Once" },
-    { MODAL_COL + 10, MODAL_BUTTON_ROW, OVERWRITE_ALL, "All" },
-    { MODAL_COL + 17, MODAL_BUTTON_ROW, OVERWRITE_CANCEL, "Cancel" },
+static const struct modal_button overwriteButtons[] = {
+    { OVERWRITE_ONCE, "Once", INK_GREEN }, { OVERWRITE_ALL, "All", INK_YELLOW }, { OVERWRITE_CANCEL, "Cancel", INK_RED }
 };
 #endif
 
@@ -59,14 +57,12 @@ static unsigned char ask(const char *keys) __z88dk_fastcall {
 // unzip calls it inside the GUI's os_call, with interrupts off, and the dialog waits for them
 unsigned char overwrite_ask(const char *name) {
 #ifdef __ZXNEXT
-    unsigned char *lines[2];
+    unsigned char *line = (unsigned char *)name;
     uint8_t choice;
 
     if(guiOpen) {
-        lines[0] = (unsigned char *)"Overwrite?";
-        lines[1] = (unsigned char *)name;
         intrinsic_ei();
-        choice = modal_ask(lines, 2, overwriteButtons, 3);
+        choice = modal_ask((unsigned char *)"Overwrite", &line, 1, overwriteButtons, 3);
         intrinsic_di();
         pointer_hide();
         return overwriteButtons[choice].shortcut;

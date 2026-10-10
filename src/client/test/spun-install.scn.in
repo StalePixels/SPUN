@@ -38,15 +38,12 @@ key 26.5 6
 key 28.5 {ENTER}
 key 30.5 {SPACE}
 
-# The confirm box, over the app page
-@TEXT 32.5 12 12 2 Install @TITLE@ @VERSION@ to:
-@TEXT 32.5 13 12 0 C:/APPS/
-@TEXT 32.5 17 12 4  
-@TEXT 32.5 17 13 6 I
-@TEXT 32.5 17 14 4 nstall 
-@TEXT 32.5 17 23 4  
-@TEXT 32.5 17 24 6 C
-@TEXT 32.5 17 25 4 ancel 
+# The confirm box, over the app page: the text in the tilemap, the frame,
+# title bar and buttons on the ULA, which shows nothing before and after it
+@NOULA 20.5
+@TEXT 32.5 14 12 11 Install @TITLE@ @VERSION@ to:
+@TEXT 32.5 15 12 11 C:/APPS/
+@MODAL 32.5 3 Install Install:i:4 Cancel:c:2
 key 33.5 i
 
 # Progress on the status line, during the download and during the unzip
@@ -57,6 +54,7 @@ key 33.5 i
 @TEXT 51.5 25 1 0 Installed to C:/APPS/
 @TEXT 51.5 30 21 6 I
 @TEXT 51.5 30 22 4 nstall 
+@NOULA 51.5
 
 key 52.5 q
 dump 61.5 0x4000 6912 ula-end
