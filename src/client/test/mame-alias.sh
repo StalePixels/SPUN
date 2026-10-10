@@ -108,8 +108,9 @@ scenario() {
     local name=$1
     sed -e "s|@SPUN@|$spun|" -e "s|@CAT@|$work/als001.cat|" -e "s|@ALIAS@|$alias|g" -e "s|@PORT@|$port|" \
         "$here/$name.scn.in" > "$work/$name.scn"
-    (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=1
+    (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=1
     run=$(sed -n 's/^run dir *//p' "$work/run.out")
+    echo "$run" >> "$work/runs.list"
     "$HDFMONKEY" get "$run/sd.img" /sys/spun.cat "$work/spun.cat" > /dev/null 2>&1 || : > "$work/spun.cat"
 }
 
@@ -146,4 +147,8 @@ else
     echo "reset     no machine reset after boot MATCH"
 fi
 
+# The runs keep their images so that this script can read them; it deletes them when every check passed.
+if [ "$status" -eq 0 ] && [ -f "$work/runs.list" ]; then
+    while read -r r; do rm -f "$(readlink "$r/sd.img")" "$r/sd.img"; done < "$work/runs.list"
+fi
 exit $status

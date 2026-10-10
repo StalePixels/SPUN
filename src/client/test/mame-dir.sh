@@ -118,8 +118,9 @@ scenario() {
         -e "s|@UPDCAT@|$work/update.cat|" -e "s|@APP@|$SPUN_TEST_APP|g" \
         "$here/$name.scn.in" | python3 "$here/gui-test.py" rows "$SPUN_TEST_SERVER" "$SPUN_TEST_PORT")
     printf '%s\n' "$scn" > "$work/$name.scn"
-    (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=1
+    (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=1
     run=$(sed -n 's/^run dir *//p' "$work/run.out")
+    echo "$run" >> "$work/runs.list"
     "$HDFMONKEY" get "$run/sd.img" /sys/spun.cat "$work/spun.cat" > /dev/null 2>&1 || : > "$work/spun.cat"
 }
 
@@ -166,4 +167,8 @@ installed all
 scenario spun-dir-gui
 installed gui
 
+# The runs keep their images so that this script can read them; it deletes them when every check passed.
+if [ "$status" -eq 0 ] && [ -f "$work/runs.list" ]; then
+    while read -r r; do rm -f "$(readlink "$r/sd.img")" "$r/sd.img"; done < "$work/runs.list"
+fi
 exit $status

@@ -15,6 +15,7 @@ import {
   setUserAppLimit,
   userByUsername,
 } from "../support/db";
+import { installDirSlug } from "../../src/lib/rules";
 import { uniqueSlug } from "../support/categories";
 import { expect, test, uniqueTitle } from "../support/pages";
 import { accounts } from "../support/settings";
@@ -110,7 +111,7 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
   }
 });
 
-test("the API stores the directory of the categories when installDir is missing or empty", async ({ page }) => {
+test("the API stores the directory of the categories and the title's slug when installDir is missing or empty", async ({ page }) => {
   const key = await makeApiKey(page);
   const [low, high] = [uniqueSlug(), uniqueSlug()];
   const categories = {
@@ -119,20 +120,21 @@ test("the API stores the directory of the categories when installDir is missing 
   };
   const created: string[] = [];
   try {
+    const title = uniqueTitle("API dir");
     const made = await signedJson(page.request, key, "POST", "/api/apps", {
-      title: uniqueTitle("API dir"),
+      title,
       description: "",
       categories: [categories.low, categories.high],
     });
     expect(made.status).toBe(201);
     const id = made.body.id as string;
     created.push(id);
-    expect((await appRow(id)).install_dir).toBe("/e2e/high");
+    expect((await appRow(id)).install_dir).toBe(`/e2e/high/${installDirSlug(title)}`);
 
     const put = (body: Record<string, unknown>) =>
-      signedJson(page.request, key, "PUT", `/api/apps/${id}`, { title: uniqueTitle("API dir"), description: "", ...body });
+      signedJson(page.request, key, "PUT", `/api/apps/${id}`, { title, description: "", ...body });
     expect(await put({ installDir: "  ", categories: [categories.low] })).toEqual({ status: 200, body: {} });
-    expect((await appRow(id)).install_dir).toBe("/e2e/low/longest");
+    expect((await appRow(id)).install_dir).toBe(`/e2e/low/longest/${installDirSlug(title)}`);
 
     expect(await put({ installDir: "/e2e/mine", categories: [categories.low] })).toEqual({ status: 200, body: {} });
     expect((await appRow(id)).install_dir).toBe("/e2e/mine");

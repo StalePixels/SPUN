@@ -23,12 +23,16 @@ export function AppForm({ app, categories, selected = [], save }: Props) {
   const [installDir, setInstallDir] = useState(app?.installDir ?? "");
   const [typed, setTyped] = useState(installDir !== "");
   const [chosen, setChosen] = useState(selected);
+  const [title, setTitle] = useState(app?.title ?? "");
+  const suggest = (ids: number[], name: string) => {
+    if (!typed) {
+      setInstallDir(suggestInstallDir(categories.filter((category) => ids.includes(category.id)), name) ?? "");
+    }
+  };
   const choose = (id: number, checked: boolean) => {
     const ids = checked ? [...chosen, id] : chosen.filter((other) => other !== id);
     setChosen(ids);
-    if (!typed) {
-      setInstallDir(suggestInstallDir(categories.filter((category) => ids.includes(category.id))) ?? "");
-    }
+    suggest(ids, title);
   };
   return (
     <Form action={formAction}>
@@ -36,7 +40,17 @@ export function AppForm({ app, categories, selected = [], save }: Props) {
       {state.saved && <Alert variant="success" data-testid="form-saved">Saved.</Alert>}
       <RequiredNote />
       <Field controlId="title" label="Title" required help={`Up to ${TITLE_MAX} characters.`}>
-        <Form.Control data-testid="app-title" name="title" required maxLength={TITLE_MAX} defaultValue={app?.title} />
+        <Form.Control
+          data-testid="app-title"
+          name="title"
+          required
+          maxLength={TITLE_MAX}
+          value={title}
+          onChange={(event) => {
+            setTitle(event.target.value);
+            suggest(chosen, event.target.value);
+          }}
+        />
       </Field>
       <Field controlId="description" label="Description" help={`Up to ${DESCRIPTION_MAX} characters.`}>
         <Form.Control data-testid="app-description"
@@ -66,7 +80,7 @@ export function AppForm({ app, categories, selected = [], save }: Props) {
         controlId="installDir"
         label="Suggested install directory"
         required
-        help={`Where SPUN on the Next installs the app the first time. The user can change it. Until you type here, it follows the categories you choose. Up to ${INSTALL_DIR_MAX} characters.`}
+        help={`Where SPUN on the Next installs the app the first time. The user can change it. Until you type here, it follows the categories you choose, with a folder named after the title. Up to ${INSTALL_DIR_MAX} characters.`}
       >
         <Form.Control
           data-testid="app-install-dir"

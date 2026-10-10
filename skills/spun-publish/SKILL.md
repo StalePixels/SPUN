@@ -55,7 +55,7 @@ Each run makes a new timestamp and nonce, so you can run the same command again.
 
 ## The suggested install directory
 
-`installDir` is the directory where SPUN on the Next installs the app the first time. The user can change it, and SPUN does not use it after the first install. Leave it out, or empty, to use the install directory of the chosen categories.
+`installDir` is the directory where SPUN on the Next installs the app the first time. The user can change it, and SPUN does not use it after the first install. Leave it out, or empty, to use the install directory of the chosen categories with a folder for the app under it, named from the title: `Jet Set Willy` in a category at `/games` gives `/games/jet-set-willy`.
 
 The CMS stores it in one form: `\` becomes `/`, it starts with `/`, repeated slashes become one, and a slash at the end goes. `apps\wifi\spun` and `/apps/wifi/spun/` are both stored as `/apps/wifi/spun`. It refuses a directory that breaks any of these rules:
 

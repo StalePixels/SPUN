@@ -103,10 +103,11 @@ for stage in connect request midblock between; do
     sleep 1
     sed -e "s|@SPUN@|$spun|" -e "s|@HOST@|$SPUN_TEST_SERVER|" -e "s|@PORT@|$port|" \
         "$here/spun-drop.scn.in" > "$work/$stage.scn"
-    (cd "$MANE_HARNESS" && ./run.py "$work/$stage.scn" --mame "$(command -v "$MAME")") | tee "$work/$stage.out" || status=1
+    (cd "$MANE_HARNESS" && ./run.py "$work/$stage.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/$stage.out" || status=1
     kill "$proxy" 2>/dev/null || true
     proxy=
     run=$(sed -n 's/^run dir *//p' "$work/$stage.out")
+    echo "$run" >> "$work/runs.list"
     echo "$stage proxy log:"; sed 's/^/  /' "$work/$stage.log"
     check "$stage dropped" "1" "$(grep -c "dropped $stage" "$work/$stage.log" || true)"
     ended=$(sed -n 's/^harness: reset t=\([0-9.]*\) CPU at \$0000 with ROM paged in (BASIC line PPC 20)$/\1/p' "$run/mame.log" | head -1)
@@ -119,4 +120,8 @@ for stage in connect request midblock between; do
     holds "$dir/README.txt" none
 done
 
+# The runs keep their images so that this script can read them; it deletes them when every check passed.
+if [ "$status" -eq 0 ] && [ -f "$work/runs.list" ]; then
+    while read -r r; do rm -f "$(readlink "$r/sd.img")" "$r/sd.img"; done < "$work/runs.list"
+fi
 exit $status

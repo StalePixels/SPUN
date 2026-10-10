@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { installDirSlug } from "../../src/lib/rules";
 import { uniqueSlug } from "../support/categories";
 import { appRow, insertCategory, removeApps, removeCategories } from "../support/db";
 import {
@@ -52,7 +53,7 @@ test("the suggested install directory is stored normalised, shown when editing, 
   expect(await appRow(id)).toMatchObject({ install_dir: "/apps/wifi/spun" });
 });
 
-test("the install directory follows the chosen categories until the publisher types in it", async ({ page }) => {
+test("the install directory follows the chosen categories and the title until the publisher types in it", async ({ page }) => {
   const [low, long, high] = [uniqueSlug(), uniqueSlug(), uniqueSlug()];
   const categoryIds = [
     await insertCategory(low, `E2E ${low}`, "/e2e/low/longest", 1),
@@ -76,11 +77,19 @@ test("the install directory follows the chosen categories until the publisher ty
     await page.getByTestId(`app-category-${long}`).uncheck();
     await expect(dir).toHaveValue("/e2e/high");
 
-    await dir.fill("/e2e/mine");
+    const title = uniqueTitle("Suggested dir");
+    await page.getByTestId("app-title").fill(title);
+    await expect(dir).toHaveValue(`/e2e/high/${installDirSlug(title)}`);
+    await page.getByTestId(`app-category-${low}`).uncheck();
+    await expect(dir).toHaveValue(`/e2e/high/${installDirSlug(title)}`);
     await page.getByTestId(`app-category-${long}`).check();
+    await expect(dir).toHaveValue(`/e2e/longer/${installDirSlug(title)}`);
+
+    await dir.fill("/e2e/mine");
+    await page.getByTestId(`app-category-${low}`).check();
+    await page.getByTestId("app-title").fill(uniqueTitle("Suggested dir"));
     await expect(dir).toHaveValue("/e2e/mine");
 
-    await page.getByTestId("app-title").fill(uniqueTitle("Suggested dir"));
     await clickHydrated(page.getByTestId("app-submit"));
     await page.waitForURL(/\/publish\/apps\/[0-9a-z]{6}$/);
     const id = pathname(page).split("/").pop()!;

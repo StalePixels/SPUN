@@ -139,8 +139,9 @@ scenario() {
     scn=${scn//@CAT@/$work/old.cat}
     printf '%s\n' "$scn" > "$work/$name.scn"
 
-    (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=$?
+    (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=$?
     run=$(sed -n 's/^run dir *//p' "$work/run.out")
+    echo "$run" >> "$work/runs.list"
     python3 "$here/gui-test.py" pointers "$work/$name.scn" "$run" || status=1
     got=$(sed -En 's/^[0-9.]* (SP.*|GET .*)/\1/p' "$work/commands.log")
     "$HDFMONKEY" get "$run/sd.img" /sys/spun.cat "$work/spun.cat" > /dev/null 2>&1 || : > "$work/spun.cat"
@@ -203,5 +204,9 @@ if [ -n "${SPUN_SNAPSHOTS:-}" ]; then
     cp "$install_run/montage.png" "$SPUN_SNAPSHOTS/p78-install-montage.png"
     cp "$update_run/montage.png" "$SPUN_SNAPSHOTS/p78-update-montage.png"
     cp "$error_run/montage.png" "$SPUN_SNAPSHOTS/p78-error-montage.png"
+fi
+# The runs keep their images so that this script can read them; it deletes them when every check passed.
+if [ "$status" -eq 0 ] && [ -f "$work/runs.list" ]; then
+    while read -r r; do rm -f "$(readlink "$r/sd.img")" "$r/sd.img"; done < "$work/runs.list"
 fi
 exit $status

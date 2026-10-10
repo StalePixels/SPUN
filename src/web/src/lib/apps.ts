@@ -167,13 +167,13 @@ export async function ownedApp(userId: string, appId: AppId) {
   return rows[0];
 }
 
-// The API's automatic directory; the GUI fills its field as categories are chosen.
+// The API's automatic directory; the GUI fills its field as the title and categories change.
 export async function withCategoryInstallDir(fields: AppFields): Promise<AppFields> {
   if (fields.installDir.trim() !== "") {
     return fields;
   }
   const chosen = (await liveCategories()).filter((category) => fields.categories.includes(category.id));
-  return { ...fields, installDir: suggestInstallDir(chosen) ?? "" };
+  return { ...fields, installDir: suggestInstallDir(chosen, fields.title) ?? "" };
 }
 
 type AppFieldsCheck = { ok: true; installDir: string; categoryIds: number[] } | { ok: false; error: Problem };

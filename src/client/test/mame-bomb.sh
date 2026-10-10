@@ -88,8 +88,9 @@ check() {
 name=spun-bomb
 sed -e "s|@SPUN@|$spun|" -e "s|@HOST@|$SPUN_TEST_SERVER|" -e "s|@PORT@|$SPUN_TEST_PORT|" \
     "$here/$name.scn.in" > "$work/$name.scn"
-(cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=1
+(cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=1
 run=$(sed -n 's/^run dir *//p' "$work/run.out")
+echo "$run" >> "$work/runs.list"
 "$HDFMONKEY" get "$run/sd.img" /sys/spun.cat "$work/spun.cat" > /dev/null 2>&1 || : > "$work/spun.cat"
 
 ended=$(sed -n 's/^harness: reset t=\([0-9.]*\) CPU at \$0000 with ROM paged in (BASIC line PPC 20)$/\1/p' "$run/mame.log" | head -1)
@@ -101,4 +102,8 @@ check "file      $dir/BOMB.BIN: none" none "$got"
 if "$HDFMONKEY" get "$run/sd.img" /tmp/$app-0001.zip "$work/tmpzip" > /dev/null 2>&1; then got=present; else got=none; fi
 check "file      /tmp/$app-0001.zip: none" none "$got"
 
+# The runs keep their images so that this script can read them; it deletes them when every check passed.
+if [ "$status" -eq 0 ] && [ -f "$work/runs.list" ]; then
+    while read -r r; do rm -f "$(readlink "$r/sd.img")" "$r/sd.img"; done < "$work/runs.list"
+fi
 exit $status

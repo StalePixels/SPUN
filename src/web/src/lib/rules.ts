@@ -272,8 +272,13 @@ export function parseSpecificity(input: string): SpecificityInput {
 
 export type PathCategory = { installDir: string; specificity: number };
 
-// The highest specificity wins; on a tie, the longest path.
-export function suggestInstallDir(chosen: PathCategory[]): string | null {
+export function installDirSlug(title: string): string {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+// The category with the highest specificity wins, on a tie the longest path;
+// the title's slug goes under it, cut to fit INSTALL_DIR_MAX.
+export function suggestInstallDir(chosen: PathCategory[], title: string): string | null {
   let best: PathCategory | null = null;
   for (const category of chosen) {
     if (
@@ -284,7 +289,11 @@ export function suggestInstallDir(chosen: PathCategory[]): string | null {
       best = category;
     }
   }
-  return best?.installDir ?? null;
+  if (best === null) {
+    return null;
+  }
+  const slug = installDirSlug(title).slice(0, Math.max(0, INSTALL_DIR_MAX - best.installDir.length - 1)).replace(/-+$/, "");
+  return slug === "" ? best.installDir : `${best.installDir}/${slug}`;
 }
 
 export type CategoryChoice = { ok: true; ids: number[] } | { ok: false; error: Problem };

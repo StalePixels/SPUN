@@ -410,10 +410,13 @@ describe("parseSpecificity", () => {
 describe("suggestInstallDir", () => {
   it("picks the path of the highest specificity", () => {
     expect(
-      suggestInstallDir([
-        { installDir: "/apps/longer/path", specificity: 1 },
-        { installDir: "/games", specificity: 2 },
-      ]),
+      suggestInstallDir(
+        [
+          { installDir: "/apps/longer/path", specificity: 1 },
+          { installDir: "/games", specificity: 2 },
+        ],
+        "",
+      ),
     ).toBe("/games");
   });
 
@@ -423,12 +426,27 @@ describe("suggestInstallDir", () => {
       { installDir: "/apps/system", specificity: 2 },
       { installDir: "/demos", specificity: 2 },
     ];
-    expect(suggestInstallDir(tied)).toBe("/apps/system");
-    expect(suggestInstallDir([...tied].reverse())).toBe("/apps/system");
+    expect(suggestInstallDir(tied, "")).toBe("/apps/system");
+    expect(suggestInstallDir([...tied].reverse(), "")).toBe("/apps/system");
   });
 
   it("has no suggestion with no category", () => {
-    expect(suggestInstallDir([])).toBeNull();
+    expect(suggestInstallDir([], "My App")).toBeNull();
+  });
+
+  it("puts the title's slug under the category's path", () => {
+    const games = [{ installDir: "/games", specificity: 1 }];
+    expect(suggestInstallDir(games, "Jet Set Willy")).toBe("/games/jet-set-willy");
+    expect(suggestInstallDir(games, "  R-Type: DX!! ")).toBe("/games/r-type-dx");
+    expect(suggestInstallDir(games, "Café ~ 2")).toBe("/games/caf-2");
+    expect(suggestInstallDir(games, "!!!")).toBe("/games");
+  });
+
+  it("cuts the slug so the path fits, with no dash at the end", () => {
+    const deep = [{ installDir: `/${"d".repeat(56)}`, specificity: 1 }];
+    expect(suggestInstallDir(deep, "Manic Miner Two")).toBe(`/${"d".repeat(56)}/manic`);
+    const full = [{ installDir: `/${"d".repeat(63)}`, specificity: 1 }];
+    expect(suggestInstallDir(full, "Manic Miner")).toBe(`/${"d".repeat(63)}`);
   });
 });
 

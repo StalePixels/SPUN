@@ -26,8 +26,9 @@ scenario() {
         "$here/spun-get.scn.in" > "$work/$name.scn"
 
     local status=0
-    (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")") | tee "$work/$name.out" || status=$?
+    (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/$name.out" || status=$?
 
+    sed -n 's/^run dir *//p' "$work/$name.out" >> "$work/runs.list"
     if [ -n "${HDFMONKEY:-}" ]; then
         local run
         run=$(sed -n 's/^run dir *//p' "$work/$name.out")
@@ -40,4 +41,8 @@ scenario() {
 failed=0
 scenario spun-get BUILD-test "" || failed=1
 scenario spun-get-s BUILD-test-s "-s $SPUN_TEST_SERVER -p $SPUN_TEST_PORT " || failed=1
+# The runs keep their images so that this script can read them; it deletes them when every check passed.
+if [ "$failed" -eq 0 ] && [ -f "$work/runs.list" ]; then
+    while read -r r; do rm -f "$(readlink "$r/sd.img")" "$r/sd.img"; done < "$work/runs.list"
+fi
 exit $failed

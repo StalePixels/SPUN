@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0 (not released)
+
+### CMS
+
+- The suggested install directory now has a folder for the app, named from
+  its title, under the category's directory: `Jet Set Willy` in a category
+  at `/games` gives `/games/jet-set-willy`. This is true on the app form and
+  in the API when `installDir` is missing or empty.
+
 ## 0.7.3 - 20261008
 
 ### `.spun`

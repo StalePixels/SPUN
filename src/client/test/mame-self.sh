@@ -95,8 +95,9 @@ holds() {
 name=spun-self
 sed -e "s|@SPUN@|$spun|" -e "s|@HOST@|$SPUN_TEST_SERVER|" -e "s|@PORT@|$SPUN_TEST_PORT|" \
     -e "s|@OWNER@|$owner|" "$here/$name.scn.in" > "$work/$name.scn"
-(cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=1
+(cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=1
 run=$(sed -n 's/^run dir *//p' "$work/run.out")
+echo "$run" >> "$work/runs.list"
 "$HDFMONKEY" get "$run/sd.img" /sys/spun.cat "$work/spun.cat" > /dev/null 2>&1 || : > "$work/spun.cat"
 
 check "spun.cat  self" "$app 0001 1.0 C:$dir" "$(cat "$work/spun.cat")"
@@ -104,4 +105,8 @@ holds /dot/spun "$new"
 holds "$dir/spun.dot" none
 holds "$dir/README.txt" "$here/../zip/README.txt"
 
+# The runs keep their images so that this script can read them; it deletes them when every check passed.
+if [ "$status" -eq 0 ] && [ -f "$work/runs.list" ]; then
+    while read -r r; do rm -f "$(readlink "$r/sd.img")" "$r/sd.img"; done < "$work/runs.list"
+fi
 exit $status
