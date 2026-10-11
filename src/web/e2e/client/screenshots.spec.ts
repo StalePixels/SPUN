@@ -3,7 +3,7 @@ import path from "node:path";
 import type { Page } from "@playwright/test";
 import { thumbSize } from "../../src/lib/thumbs";
 import { appRow, screenshotRows } from "../support/db";
-import { blackPng, readyNxi as readyNxiData, stripesPng } from "../support/images";
+import { blackPng, plainPng, readyNxi as readyNxiData, stripesPng } from "../support/images";
 import { clickHydrated, deleteAppInUi, expect, test, uploadRelease, waitForHydration } from "../support/pages";
 import { accounts, settings } from "../support/settings";
 import { makeZip, sampleEntries, tempFiles } from "../support/zips";
@@ -47,6 +47,31 @@ async function naturalWidth(page: Page, testId: string): Promise<number> {
   await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.complete)).toBe(true);
   return image.evaluate((element: HTMLImageElement) => element.naturalWidth);
 }
+
+// .spun shows Layer 2 colour 0xE3 as transparent; a screenshot must never use it.
+test("a screenshot never has the transparent colour 0xE3, ready NXI or converted", async ({ page, apps }) => {
+  const id = await apps.create("Transparent");
+  await page.goto(`/publish/apps/${id}`);
+  await uploadRelease(page, { version: "1.0", file: files.write("1.0.zip", makeZip(sampleEntries())) });
+  await expect(page).toHaveURL(new RegExp(`/publish/apps/${id}/releases/1$`));
+
+  const nxi = readyNxiData();
+  nxi.set([0xe3, 1], 2);
+  await page.goto(`/publish/apps/${id}`);
+  await uploadScreenshot(page, 1, files.write("magenta.nxi", nxi));
+  await expect(page.getByTestId("screenshot-preview-1")).toBeVisible();
+  await uploadScreenshot(page, 2, files.write("magenta.png", await plainPng(256, 192, "#ff00ff")));
+  await expect(page.getByTestId("screenshot-preview-2")).toBeVisible();
+
+  const ready = readFileSync(nxiFile(id, 1));
+  expect([...ready.subarray(0, 4)]).toEqual([0x00, 0x00, 0xe7, 0x01]);
+  expect(ready.subarray(512).equals(nxi.subarray(512))).toBe(true);
+  const converted = readFileSync(nxiFile(id, 2));
+  expect([...converted.subarray(0, 2)]).toEqual([0xe7, 0x01]);
+  for (const slot of [1, 2]) {
+    expect(readFileSync(thumbFile(id, slot)).includes(0xe3)).toBe(false);
+  }
+});
 
 test("upload, replace and clear screenshots, and the public page shows them", async ({ page, apps }) => {
   const id = await apps.create("Screenshots");

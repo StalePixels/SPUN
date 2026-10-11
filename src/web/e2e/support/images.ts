@@ -12,6 +12,11 @@ export async function stripesPng(width: number, height: number): Promise<Buffer>
   return sharp(rgb, { raw: { width, height, channels: 3 } }).png().toBuffer();
 }
 
+// A PNG of one colour.
+export async function plainPng(width: number, height: number, colour: string): Promise<Buffer> {
+  return sharp({ create: { width, height, channels: 3, background: colour } }).png().toBuffer();
+}
+
 // A black PNG of any size; a few kilobytes even when it has millions of pixels.
 export async function blackPng(width: number, height: number): Promise<Buffer> {
   return sharp({ create: { width, height, channels: 3, background: "#000000" } })
