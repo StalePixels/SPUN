@@ -16,6 +16,9 @@
   its title, under the category's directory: `Jet Set Willy` in a category
   at `/games` gives `/games/jet-set-willy`. This is true on the app form and
   in the API when `installDir` is missing or empty.
+- Screenshots and their thumbnails no longer use colour `0xE3`, which
+  `.spun` shows as transparent. The CMS changes it to `0xE7`, one step more
+  green. This applies to converted images and to uploaded NXI files.
 
 ## 0.7.3 - 20261008
 

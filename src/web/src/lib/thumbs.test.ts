@@ -43,7 +43,7 @@ describe("thumbnail size", () => {
 });
 
 describe("thumbnail pixels", () => {
-  it("are default-palette indices, row by row, and use every colour, 0x00 included", () => {
+  it("are default-palette indices, row by row, and use every colour but 0xE3, 0x00 included", () => {
     for (const slot of [1, 2]) {
       const size = thumbSize(slot);
       const scale = 256 / size.width;
@@ -53,11 +53,13 @@ describe("thumbnail pixels", () => {
       )!;
       for (let ty = 0; ty < size.height; ty++) {
         for (let tx = 0; tx < size.width; tx++) {
-          expect(thumb[ty * size.width + tx]).toBe(blockIndex(tx, ty, size));
+          const index = blockIndex(tx, ty, size);
+          expect(thumb[ty * size.width + tx]).toBe(index === 0xe3 ? 0xe7 : index);
         }
       }
       if (slot === 1) {
-        expect(new Set(thumb).size).toBe(256);
+        expect(new Set(thumb).size).toBe(255);
+        expect(thumb.includes(0xe3)).toBe(false);
       }
     }
   });
@@ -73,7 +75,8 @@ describe("thumbnail pixels", () => {
       const thumb = makeThumbnail(data, slot)!;
       for (let ty = 0; ty < size.height; ty++) {
         for (let tx = 0; tx < size.width; tx++) {
-          expect(thumb[ty * size.width + tx]).toBe(blockIndex(tx, ty, size));
+          const index = blockIndex(tx, ty, size);
+          expect(thumb[ty * size.width + tx]).toBe(index === 0xe3 ? 0xe7 : index);
         }
       }
     }

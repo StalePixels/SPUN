@@ -1,4 +1,4 @@
-import { decodeNxi, type Frame } from "./nxi";
+import { decodeNxi, TRANSPARENT, TRANSPARENT_STANDIN, type Frame } from "./nxi";
 
 export const THUMB_SIZES = {
   big: { width: 128, height: 96 },
@@ -22,6 +22,7 @@ export function defaultColour(index: number): [number, number, number] {
 
 const PALETTE = Array.from({ length: 256 }, (_, i) => defaultColour(i));
 
+// Never the transparent index, for the same reason as opaquePalette.
 function nearest(r: number, g: number, b: number): number {
   let best = 0;
   let bestDistance = Infinity;
@@ -33,7 +34,7 @@ function nearest(r: number, g: number, b: number): number {
       bestDistance = distance;
     }
   }
-  return best;
+  return best === TRANSPARENT ? TRANSPARENT_STANDIN : best;
 }
 
 // 320x256 loses 8 lines top and bottom first, so both sizes are 4:3. Each

@@ -4,7 +4,7 @@ import { screenshots } from "@/db/schema";
 import { ownedApp, type AppId } from "./apps";
 import { db } from "./db";
 import { notify } from "./notify";
-import { checkNxi, convertImage, oneAtATime, previewPng, type NxiWidth } from "./nxi";
+import { checkNxi, convertImage, oneAtATime, opaquePalette, previewPng, type NxiWidth } from "./nxi";
 import type { Problem } from "./problems";
 import { makeThumbnail } from "./thumbs";
 import { formFile, uploadRate, type UploadFile } from "./releases";
@@ -32,7 +32,8 @@ export async function checkScreenshot(file: UploadFile | null): Promise<Screensh
     if (!result.ok) {
       return result;
     }
-    return { ok: true, shot: { nxi: result.nxi, width: result.width, png: await previewPng(result.nxi) } };
+    const nxi = opaquePalette(result.nxi);
+    return { ok: true, shot: { nxi, width: result.width, png: await previewPng(nxi) } };
   });
 }
 

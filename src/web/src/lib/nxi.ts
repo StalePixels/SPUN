@@ -9,6 +9,9 @@ export type Frame = { width: number; height: number; rgb: Buffer };
 const PALETTE_BYTES = 512;
 const PALETTE_SIZE = 256;
 
+export const TRANSPARENT = 0xe3;
+export const TRANSPARENT_STANDIN = 0xe7;
+
 export const NXI_MODES = {
   256: { width: 256, height: 192, bytes: PALETTE_BYTES + 256 * 192 },
   320: { width: 320, height: 256, bytes: PALETTE_BYTES + 320 * 256 },
@@ -132,6 +135,18 @@ export function encodeNxi(frame: Frame): Buffer {
     for (let x = 0; x < mode.width; x++) {
       const at = mode.width === 320 ? x * mode.height + y : y * mode.width + x;
       out[PALETTE_BYTES + at] = index.get(keys[y * mode.width + x])!;
+    }
+  }
+  return out;
+}
+
+// .spun shows Layer 2 colour 0xE3 as transparent, so a palette entry of that
+// colour gets one step more green; the ninth bit does not count.
+export function opaquePalette(nxi: Buffer): Buffer {
+  const out = Buffer.from(nxi);
+  for (let i = 0; i < PALETTE_SIZE; i++) {
+    if (out[i * 2] === TRANSPARENT) {
+      out[i * 2] = TRANSPARENT_STANDIN;
     }
   }
   return out;

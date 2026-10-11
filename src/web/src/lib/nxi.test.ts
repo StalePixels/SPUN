@@ -1,7 +1,16 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { deflateSync } from "node:zlib";
-import { checkNxi, chooseSize, convertImage, decodeNxi, NXI_MODES, oneAtATime, type Frame } from "./nxi";
+import {
+  checkNxi,
+  chooseSize,
+  convertImage,
+  decodeNxi,
+  NXI_MODES,
+  oneAtATime,
+  opaquePalette,
+  type Frame,
+} from "./nxi";
 import { MAX_IMAGE_PIXELS } from "./rules";
 
 // The 8 levels the Next shows for each 3-bit channel.
@@ -155,6 +164,23 @@ describe("NXI upload check", () => {
       expect(checkNxi(Buffer.alloc(bytes))).toEqual({ ok: false, error: { code: "screenshot.badNxi" } });
     },
   );
+});
+
+describe("the transparent colour", () => {
+  it("moves both 9-bit colours of 0xE3 to 0xE7, keeps the ninth bit, and leaves the rest", () => {
+    const nxi = Buffer.alloc(NXI_MODES[256].bytes);
+    nxi.set([0xe3, 0, 0xe3, 1, 0xe2, 1, 0xe7, 0, 0x03, 1], 0);
+    const out = opaquePalette(nxi);
+    expect([...out.subarray(0, 10)]).toEqual([0xe7, 0, 0xe7, 1, 0xe2, 1, 0xe7, 0, 0x03, 1]);
+    expect(out.subarray(10).equals(nxi.subarray(10))).toBe(true);
+    expect(nxi[0]).toBe(0xe3);
+  });
+
+  it("changes only the palette, not the pixel bytes", () => {
+    const nxi = Buffer.alloc(NXI_MODES[320].bytes, 0xe3);
+    const out = opaquePalette(nxi);
+    expect(out.subarray(512).equals(nxi.subarray(512))).toBe(true);
+  });
 });
 
 // A black 1-bit PNG of any size, a few kilobytes even when it is huge, as an
