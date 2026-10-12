@@ -1,10 +1,29 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { parseAppId } from "@/lib/apps";
+import { appView } from "@/lib/catalogue";
 import { liveFeature } from "@/lib/featured";
 import { FEATURED, parsePage, parseQuery } from "@/lib/rules";
 import { requireRegistration } from "@/lib/session";
 import { Catalogue } from "../../Catalogue";
 import { AppPage } from "./AppPage";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const view = await appView((await params).slug);
+  if (!view) {
+    return {};
+  }
+  const { app, screenshots } = view;
+  const title = `${app.title} - SPUN`;
+  const description = app.description ?? undefined;
+  const main = screenshots.find((shot) => shot.slot === 1);
+  return {
+    title,
+    description,
+    openGraph: { title, description, images: [main?.url ?? "/placeholder.png"] },
+    twitter: { card: "summary", title, description },
+  };
+}
 
 // An app id, featured and a category slug never clash (checkCategorySlug).
 export default async function CatalogueEntry({
