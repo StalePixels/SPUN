@@ -11,10 +11,8 @@ import { logIn, logOut } from "./actions";
 import { ThemeScript } from "./ThemeScript";
 import { ThemeSwitch } from "./ThemeSwitch";
 
-// Social cards need absolute image URLs; AUTH_URL is the CMS's public address.
 export const metadata: Metadata = {
   title: "SPUN",
-  metadataBase: process.env.AUTH_URL ? new URL(process.env.AUTH_URL) : undefined,
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

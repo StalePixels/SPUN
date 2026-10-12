@@ -13,14 +13,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!view) {
     return {};
   }
-  const { app, screenshots } = view;
+  const { app } = view;
   const title = `${app.title} - SPUN`;
   const description = app.description ?? undefined;
-  const main = screenshots.find((shot) => shot.slot === 1);
   return {
     title,
     description,
-    openGraph: { title, description, images: [main?.url ?? "/placeholder.png"] },
+    openGraph: { title, description },
     twitter: { card: "summary", title, description },
   };
 }
