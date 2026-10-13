@@ -1,24 +1,30 @@
 # Changelog
 
-## 0.8.0 (not released)
+## 0.8.0 - 20261013
 
 ### `.spun`
 
-- The GUI's question boxes (install, overwrite, updates) have a new look,
-  in the SPUI style: a black title bar with the rainbow stripe, a white
-  box with a black frame, and black buttons in the large Spectrum font. The
-  shortcut letter of each button has a colour: green to go on, red to
-  cancel, yellow for a warning.
+- New look for the question boxes in the GUI (install, overwrite, updates).
+  They're in the SPUI style now, with the rainbow stripe on the title bar,
+  and the shortcut letter on each button has a colour: green to go ahead,
+  red to cancel, yellow for a warning.
 
 ### CMS
 
-- The suggested install directory now has a folder for the app, named from
-  its title, under the category's directory: `Jet Set Willy` in a category
-  at `/games` gives `/games/jet-set-willy`. This is true on the app form and
-  in the API when `installDir` is missing or empty.
-- Screenshots and their thumbnails no longer use colour `0xE3`, which
-  `.spun` shows as transparent. The CMS changes it to `0xE7`, one step more
-  green. This applies to converted images and to uploaded NXI files.
+- The suggested install directory now ends in a folder for the app, so
+  `Jet Set Willy` in `/games` suggests `/games/jet-set-willy`. The API does
+  the same when `installDir` is left out or blank.
+- `.spun` draws colour `0xE3` as transparent, so screenshots don't use it
+  any more. The CMS swaps it for `0xE7`, a shade greener, in converted
+  images and in uploaded NXI files.
+- App pages put the app's name in the page title and carry its
+  description, so a link shared on a social network gets a proper preview
+  card.
+- The light/dark menu in the navbar is now a theme menu. The new SPUN
+  theme is the default. NextBestNetwork is the other theme, with Light,
+  Dark and Auto in its submenu.
+- On an app page, the other screenshots are in a 2x2 grid beside the main
+  one. Click a screenshot to see it large.
 
 ## 0.7.3 - 20261008
 

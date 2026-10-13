@@ -1,0 +1,220 @@
+// The SPUN theme, in the SPUI style. It has one colour mode, Bootstrap's dark mode.
+// Colours are the GUI's 8-bit Next colours (src/client/dot/BANK_screen/screen_on.c).
+
+$spun-blue: #0000b6;
+$spun-yellow: #ffff00;
+$spun-red: #ff0000;
+$spun-green: #00ff00;
+$spun-cyan: #00ffff;
+
+$primary: $spun-blue;
+$success: #00d700;
+$danger: #d70000;
+$warning: #d7d700;
+$info: #00d7d7;
+
+$body-bg-dark: $spun-blue;
+$body-color-dark: #fff;
+$body-emphasis-color-dark: #fff;
+$body-secondary-color-dark: rgba(#fff, 0.75);
+$body-secondary-bg-dark: #00009a;
+$body-tertiary-bg-dark: #0000d7;
+$headings-color-dark: #fff;
+$link-color-dark: $spun-yellow;
+$link-hover-color-dark: #fff;
+$border-color-dark: #fff;
+
+$enable-rounded: false;
+$font-family-sans-serif: specp437, monospace;
+$font-family-monospace: specp437, monospace;
+$headings-font-weight: 400;
+// An 8x8 glyph is sharp only at whole multiples of 8px.
+$h1-font-size: 2rem;
+$h2-font-size: 1.5rem;
+$h3-font-size: 1rem;
+$h4-font-size: 1rem;
+$h5-font-size: 1rem;
+$h6-font-size: 1rem;
+
+$card-border-width: 2px;
+$card-border-color: #000;
+$card-bg: #fff;
+$card-color: #000;
+$modal-md: 50rem;
+$modal-content-border-width: 2px;
+$modal-content-border-color: #000;
+$dropdown-border-width: 2px;
+$dropdown-border-color: #000;
+
+@import "bootstrap/scss/bootstrap";
+
+@font-face {
+  font-family: specp437;
+  src: url("./specp437.woff2") format("woff2");
+  font-display: swap;
+}
+
+// One band per character cell, as box_draw.c draws them: each leans one cell
+// to the right over the height of the bar, and one cell of bar is left after them.
+$spun-stripe: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='6' height='1' viewBox='0 0 6 1' preserveAspectRatio='none'><path fill='#{$spun-red}' d='M0 1h1l1-1H1z'/><path fill='#{$spun-yellow}' d='M1 1h1l1-1H2z'/><path fill='#{$spun-green}' d='M2 1h1l1-1H3z'/><path fill='#{$spun-cyan}' d='M3 1h1l1-1H4z'/></svg>");
+$spun-bar-height: 2rem;
+
+// A white box: the dark-mode values of the page do not apply inside it.
+@mixin spun-box {
+  color-scheme: light;
+  --bs-body-bg: #fff;
+  --bs-body-bg-rgb: 255, 255, 255;
+  --bs-body-color: #000;
+  --bs-body-color-rgb: 0, 0, 0;
+  --bs-emphasis-color: #000;
+  --bs-emphasis-color-rgb: 0, 0, 0;
+  --bs-heading-color: #000;
+  --bs-secondary-color: rgba(0, 0, 0, 0.65);
+  --bs-secondary-bg: #e7e7e7;
+  --bs-secondary-bg-rgb: 231, 231, 231;
+  --bs-tertiary-bg: #f3f3f3;
+  --bs-tertiary-bg-rgb: 243, 243, 243;
+  --bs-border-color: #000;
+  --bs-link-color: #{$spun-blue};
+  --bs-link-color-rgb: 0, 0, 182;
+  --bs-link-hover-color: #000;
+  --bs-link-hover-color-rgb: 0, 0, 0;
+  --bs-form-select-bg-img: #{escape-svg($form-select-indicator)};
+  --bs-form-switch-bg: #{escape-svg($form-switch-bg-image)};
+
+  @each $color, $value in $theme-colors-text {
+    --bs-#{$color}-text-emphasis: #{$value};
+  }
+  @each $color, $value in $theme-colors-bg-subtle {
+    --bs-#{$color}-bg-subtle: #{$value};
+  }
+  @each $color, $value in $theme-colors-border-subtle {
+    --bs-#{$color}-border-subtle: #{$value};
+  }
+}
+
+body {
+  // The font has one weight.
+  font-synthesis: none;
+}
+
+code {
+  padding: 1px 4px;
+  border: 1px solid var(--bs-border-color);
+}
+
+code,
+pre {
+  color: var(--bs-body-color);
+  background-color: var(--bs-secondary-bg);
+}
+
+pre {
+  padding: 1em;
+  border: 1px solid var(--bs-border-color);
+}
+
+pre code {
+  color: inherit;
+  background-color: transparent;
+  border: none;
+}
+
+// The GUI's top bar: blue on white.
+.navbar[data-bs-theme] {
+  @include spun-box;
+  --bs-primary-rgb: 255, 255, 255;
+  --bs-light-rgb: 0, 0, 182;
+  --bs-navbar-color: #{$spun-blue};
+  --bs-navbar-hover-color: #000;
+  --bs-navbar-active-color: #000;
+  --bs-navbar-brand-color: #{$spun-blue};
+  --bs-navbar-brand-hover-color: #000;
+}
+
+.card,
+.modal,
+.dropdown-menu {
+  @include spun-box;
+}
+
+// The GUI's title bar: one line of white on black, with the rainbow stripe
+// at the right over its full height.
+.card-header,
+.modal-header {
+  height: $spun-bar-height;
+  padding-top: 0.5 * ($spun-bar-height - 1.5rem);
+  padding-bottom: 0.5 * ($spun-bar-height - 1.5rem);
+  padding-right: 6 * $spun-bar-height + 0.5rem;
+  line-height: 1.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #fff;
+  background: escape-svg($spun-stripe) right center / auto 100% no-repeat, #000;
+  border-bottom: 0;
+  --bs-heading-color: #fff;
+  --bs-secondary-color: rgba(255, 255, 255, 0.75);
+  --bs-link-color: #{$spun-yellow};
+  --bs-link-hover-color: #fff;
+}
+
+.card-header .btn,
+.modal-header .btn {
+  --bs-btn-padding-y: 0;
+  --bs-btn-font-size: 1rem;
+  --bs-btn-line-height: calc(1.5rem - 2 * var(--bs-btn-border-width));
+}
+
+// The close button goes right of the stripe, in the bar left after it.
+.modal-header {
+  padding-right: 1rem;
+  background-position: right 1.5rem center, 0 0;
+}
+
+.modal-title {
+  min-width: 0;
+  padding-right: 6 * $spun-bar-height;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 1rem;
+  line-height: inherit;
+}
+
+.modal-header .btn-close {
+  flex-shrink: 0;
+  --bs-btn-close-filter: #{$btn-close-filter-dark};
+}
+
+.text-bg-secondary {
+  color: var(--bs-body-bg) !important;
+  background-color: var(--bs-emphasis-color) !important;
+}
+
+// Black buttons in a white box, white ones on the blue.
+.btn-primary,
+.navbar .btn-light {
+  --bs-btn-color: var(--bs-body-bg);
+  --bs-btn-bg: var(--bs-emphasis-color);
+  --bs-btn-border-color: var(--bs-emphasis-color);
+  --bs-btn-hover-color: #{$spun-yellow};
+  --bs-btn-hover-bg: var(--bs-emphasis-color);
+  --bs-btn-hover-border-color: var(--bs-emphasis-color);
+  --bs-btn-active-color: #{$spun-yellow};
+  --bs-btn-active-bg: var(--bs-emphasis-color);
+  --bs-btn-active-border-color: var(--bs-emphasis-color);
+}
+
+.btn-outline-primary,
+.btn-secondary,
+.navbar .btn-outline-light {
+  --bs-btn-color: var(--bs-emphasis-color);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: var(--bs-emphasis-color);
+  --bs-btn-hover-color: var(--bs-body-bg);
+  --bs-btn-hover-bg: var(--bs-emphasis-color);
+  --bs-btn-hover-border-color: var(--bs-emphasis-color);
+  --bs-btn-active-color: var(--bs-body-bg);
+  --bs-btn-active-bg: var(--bs-emphasis-color);
+  --bs-btn-active-border-color: var(--bs-emphasis-color);
+}

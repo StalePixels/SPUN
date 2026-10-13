@@ -5,8 +5,8 @@ import Container from "react-bootstrap/Container";
 import Navbar from "react-bootstrap/Navbar";
 import NavbarBrand from "react-bootstrap/NavbarBrand";
 import "bootstrap-icons/font/bootstrap-icons.min.css";
-import "@/styles/theme.scss";
 import { currentUser, isAdmin } from "@/lib/session";
+import { findTheme, MODE_COOKIE, resolveMode, THEME_COOKIE, themeHref, THEME_LINK_ID } from "@/themes";
 import { logIn, logOut } from "./actions";
 import { ThemeScript } from "./ThemeScript";
 import { ThemeSwitch } from "./ThemeSwitch";
@@ -18,16 +18,19 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await currentUser();
   const admin = user ? await isAdmin(user.id) : false;
-  const stored = (await cookies()).get("NBN-theme")?.value;
-  const serverTheme = stored === "light" || stored === "dark" ? stored : "light";
+  const jar = await cookies();
+  const theme = findTheme(jar.get(THEME_COOKIE)?.value);
+  const mode = resolveMode(theme, jar.get(MODE_COOKIE)?.value);
   return (
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      data-bs-theme={serverTheme}
+      data-theme={theme.id}
+      data-bs-theme={mode === "auto" ? "light" : mode}
       suppressHydrationWarning
     >
       <head>
+        <link rel="stylesheet" id={THEME_LINK_ID} href={themeHref(theme.id)} />
         <ThemeScript />
       </head>
       <body>

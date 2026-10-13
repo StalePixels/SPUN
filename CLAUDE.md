@@ -51,6 +51,11 @@ of `.spun` uses.
   real check in every admin page, action and data function; lint allows
   imports of `admin.ts` only from `src/app/admin/`. `src/proxy.ts` is a
   cheap cookie gate.
+- Themes: one directory per theme in `src/themes/`, with a `theme.scss`
+  that is a complete Bootstrap build. A new theme is listed in `THEMES` in
+  `src/themes/index.ts`. `scripts/themes.mts` compiles each theme to
+  `public/themes/<id>/` (`pnpm dev` and `pnpm build` run it); the layout
+  links only the chosen theme's stylesheet.
 
 ## Gotchas
 

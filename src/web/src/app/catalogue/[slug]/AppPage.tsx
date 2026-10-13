@@ -6,7 +6,7 @@ import { savedIds } from "@/lib/saved";
 import { currentUser } from "@/lib/session";
 import { Breadcrumbs } from "../../Breadcrumbs";
 import { SaveButton } from "../../SaveButton";
-import { Screenshot } from "../../Screenshot";
+import { ScreenshotGallery } from "./ScreenshotGallery";
 
 export async function AppPage({ id }: { id: string }) {
   const view = await appView(id);
@@ -14,8 +14,6 @@ export async function AppPage({ id }: { id: string }) {
     notFound();
   }
   const { app, releases: rows, categories, screenshots } = view;
-  const main = screenshots.find((shot) => shot.slot === 1);
-  const others = screenshots.filter((shot) => shot.slot !== 1);
   const latest = rows[0];
   const user = await currentUser();
   const saved = user ? (await savedIds(user.id, [app.id])).has(app.id) : null;
@@ -42,32 +40,7 @@ export async function AppPage({ id }: { id: string }) {
         <p className="mb-4" data-testid="public-app-description">{app.description}</p>
       )}
 
-      <div className="d-flex flex-wrap align-items-start gap-3 mb-4" data-testid="public-screenshots">
-        {main ? (
-          <Screenshot
-            url={main.url}
-            width={main.width}
-            scale={2}
-            alt={`${app.title}, main screenshot`}
-            testId="public-screenshot-1"
-          />
-        ) : (
-          <Screenshot url="/placeholder.png" width={320} scale={2} alt="SPUN" testId="public-screenshot-placeholder" />
-        )}
-        {others.length > 0 && (
-          <div className="d-flex flex-column gap-3">
-            {others.map((shot) => (
-              <Screenshot
-                key={shot.slot}
-                url={shot.url}
-                width={shot.width}
-                alt={`${app.title}, screenshot ${shot.slot}`}
-                testId={`public-screenshot-${shot.slot}`}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      <ScreenshotGallery title={app.title} shots={screenshots} />
 
       <div className="card mb-4">
         <div className="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">

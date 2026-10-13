@@ -23,6 +23,9 @@
 # production
 /build
 
+# compiled themes (scripts/themes.mts)
+/public/themes/
+
 # misc
 .DS_Store
 *.pem

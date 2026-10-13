@@ -1,20 +1,32 @@
 "use client";
 
+import { MODE_COOKIE, THEME_COOKIE, THEMES } from "@/themes";
+
+const THEME_MODES = JSON.stringify(Object.fromEntries(THEMES.map((theme) => [theme.id, theme.modes])));
+
 // Runs before paint: for "auto" only the browser knows the system setting.
 const THEME_INIT_SCRIPT = `(function(){
   try {
-    var cookie = document.cookie.split('; ').find(function(c){return c.indexOf('NBN-theme=')===0});
-    var value = cookie ? decodeURIComponent(cookie.split('=').slice(1).join('=')) : null;
-    var theme;
-    if (value === 'light' || value === 'dark') {
-      theme = value;
-    } else {
+    var themes = ${THEME_MODES};
+    function cookie(name) {
+      var c = document.cookie.split('; ').find(function(c){return c.indexOf(name + '=')===0});
+      return c ? decodeURIComponent(c.split('=').slice(1).join('=')) : null;
+    }
+    var id = cookie('${THEME_COOKIE}');
+    if (!Object.prototype.hasOwnProperty.call(themes, id)) id = '${THEMES[0].id}';
+    var modes = themes[id];
+    var mode = cookie('${MODE_COOKIE}');
+    if (modes.indexOf(mode) < 0) mode = modes.indexOf('auto') >= 0 ? 'auto' : modes[0];
+    if (mode === 'auto') {
       var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      theme = prefersDark ? 'dark' : 'light';
+      mode = prefersDark ? 'dark' : 'light';
     }
     var html = document.documentElement;
-    if (html.getAttribute('data-bs-theme') !== theme) {
-      html.setAttribute('data-bs-theme', theme);
+    if (html.getAttribute('data-theme') !== id) {
+      html.setAttribute('data-theme', id);
+    }
+    if (html.getAttribute('data-bs-theme') !== mode) {
+      html.setAttribute('data-bs-theme', mode);
     }
   } catch(_) {}
 })();`;
