@@ -8,7 +8,7 @@ unsigned char *gui_install(char *id) {
     unsigned char *error;
     unsigned char result;
 
-    if((error = _farWithPointer(BANK_NET, (void *(*)(void *))latest, id))) return error;
+    if((error = _farWithPointer(BANK_NET, (far_ptr_fn_t)latest, id))) return error;
     check_install_drive();
     if((result = install(id))) return unzipErrors[result - 1];
     return NULL;

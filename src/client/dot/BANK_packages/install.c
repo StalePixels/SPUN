@@ -32,7 +32,7 @@ static void print_error(unsigned char *text) __z88dk_fastcall {
 }
 
 // Returns the key pressed, one of keys. At the end of POSIX input it returns the last key, the safe answer
-static unsigned char ask(const char *keys) __z88dk_fastcall {
+static unsigned char ask(const char *keys) {
     unsigned char chr;
 
 #ifdef __ZXNEXT
@@ -62,7 +62,7 @@ unsigned char overwrite_ask(const char *name) {
 
     if(guiOpen) {
         intrinsic_ei();
-        choice = modal_ask((unsigned char *)"Overwrite", &line, 1, overwriteButtons, 3);
+        choice = modal_ask((const unsigned char *)"Overwrite", &line, 1, overwriteButtons, 3);
         intrinsic_di();
         pointer_hide();
         return overwriteButtons[choice].shortcut;
@@ -113,7 +113,7 @@ unsigned char install(char *id) __z88dk_fastcall {
     int code;
 
     sprintf(zipPath, "C:/tmp/%s-%04x.zip", id, serial);
-    if((error = _farWithPointer(BANK_NET, (void *(*)(void *))download, id))) NBN_Fail(error);
+    if((error = _farWithPointer(BANK_NET, (far_ptr_fn_t)download, id))) NBN_Fail(error);
 
     if(!quiet) printf("Installing to %s\n", installDir);
     result = unzip(zipPath, installDir);
@@ -139,7 +139,7 @@ unsigned char *spun_get(char *id) {
     unsigned char result;
 
     *appid = 0;
-    if((error = _farWithPointer(BANK_NET, (void *(*)(void *))latest, id))) return error;
+    if((error = _farWithPointer(BANK_NET, (far_ptr_fn_t)latest, id))) return error;
     if(*appid && strcmp(appid, id)) {
         id = (char *)appid;
         check_catalogue(id);
@@ -187,7 +187,7 @@ unsigned char *spun_update(void) {
         strcpy(installDir, entry + parse_entry());
         strcpy(appid, entryApp);
 
-        if((error = _farWithPointer(BANK_NET, (void *(*)(void *))latest, appid))) {
+        if((error = _farWithPointer(BANK_NET, (far_ptr_fn_t)latest, appid))) {
             if(error == err_wrong_version) return error;
 
             updateError = error;

@@ -30,9 +30,15 @@ TXT2BAS ?= txt2bas
 
 CRT := 30
 
-CC=zcc
-CCFLAGS=+zxn -vn -O3 -startup=$(CRT) -clib=new -pragma-include:zpragma.inc '-DSPUN_VERSION=\"$(VERSION)\"' '-DSPUN_NAME=\"$(NAME)\"'
-LDFLAGS=-m -lm
+# z88dk runs in its Docker image, with src/ mounted at the same path, so relative and absolute paths both work
+SRC_ROOT := $(abspath ../..)
+Z88DK_IMAGE ?= z88dk/z88dk:latest
+Z88DK_RUN = docker run --rm --user $(shell id -u):$(shell id -g) -e HOME=/tmp -v $(SRC_ROOT):$(SRC_ROOT) -w $(1) $(Z88DK_IMAGE)
+
+ZOPT ?= --max-allocs-per-node200000
+CC=$(call Z88DK_RUN,$(CURDIR)) zcc
+CCFLAGS=+zxn -vn -startup=$(CRT) -clib=sdcc_iy -SO3 $(ZOPT) --opt-code-size -pragma-include:zpragma.inc '-DSPUN_VERSION=\"$(VERSION)\"' '-DSPUN_NAME=\"$(NAME)\"'
+LDFLAGS=-m
 # Main ends below the stack, which starts at $BFD8 (zpragma.inc) with 1K reserved;
 # above it are the mouse variables and the IM2 table (gui/isr.asm).
 # appmake fails the build if data or BSS reaches the fence.
@@ -126,7 +132,8 @@ BANK_OBJS := $(addprefix $(TMP_DIR)/BANK_,net.o net_nbn.o packages.o gui.o scree
 
 # Run inside $(UNZIP): INCLUDE resolves from the current directory
 $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin: $(UNZIP)/inflate.asm $(UNZIP)/inflate_job.inc
-	cd $(UNZIP) && z88dk-z80asm -mz80n -b inflate.asm && rm -f inflate.o inflate.bin
+	$(call Z88DK_RUN,$(abspath $(UNZIP))) z88dk-z80asm -mz80n -b inflate.asm
+	rm -f $(UNZIP)/inflate.o $(UNZIP)/inflate.bin
 
 dotn: banks $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin
 	$(CC) $(CCFLAGS) $(LDFLAGS) $(DEFINES) @spun.lst $(BANK_OBJS) -o$(NAME) -create-app -subtype=dotn $(CZFLAGS)

@@ -10,12 +10,12 @@ void search_run(void) {
     unsigned char key;
 
     *text = 0;
-    tm_text(1, INPUT_ROW, (unsigned char *)"Search:", ATTR_TEXT);
+    tm_text(1, INPUT_ROW, (const unsigned char *)"Search:", ATTR_TEXT);
 
     while(1) {
         tm_blank(INPUT_COL, INPUT_ROW, SEARCH_LENGTH + 1, ATTR_BAR);
         tm_text(INPUT_COL, INPUT_ROW, text, ATTR_BAR);
-        tm_text(INPUT_COL + length, INPUT_ROW, (unsigned char *)"_", ATTR_BAR_KEY);
+        tm_text(INPUT_COL + length, INPUT_ROW, (const unsigned char *)"_", ATTR_BAR_KEY);
 
         do {
             intrinsic_halt();

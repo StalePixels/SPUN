@@ -119,7 +119,7 @@ unsigned int os_mapping(unsigned char drive) __z88dk_fastcall;
 void sprites_load(void);
 void pointer_hide(void);
 void tm_blank(uint8_t col, uint8_t row, uint16_t count, uint8_t attr);
-unsigned char *tm_text(uint8_t col, uint8_t row, unsigned char *text, uint8_t attr);
+const unsigned char *tm_text(uint8_t col, uint8_t row, const unsigned char *text, uint8_t attr);
 void tm_attr(uint8_t col, uint8_t row, uint8_t count, uint8_t attr);
 unsigned char input_poll(void);
 void button_draw(const struct gui_button *button) __z88dk_fastcall;
@@ -127,7 +127,7 @@ uint8_t button_at(const struct gui_button *table, uint8_t count);
 uint8_t button_key(const struct gui_button *table, uint8_t count, unsigned char key);
 void message_show(unsigned char *message) __z88dk_fastcall;
 void title_draw(void);
-uint8_t modal_ask(unsigned char *title, unsigned char **lines, uint8_t lineCount, const struct modal_button *buttons, uint8_t count);
+uint8_t modal_ask(const unsigned char *title, unsigned char **lines, uint8_t lineCount, const struct modal_button *buttons, uint8_t count);
 void tm_cut(uint8_t col, uint8_t row, unsigned char *text, uint8_t width, uint8_t attr);
 
 void os_give(void);

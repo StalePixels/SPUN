@@ -8,7 +8,7 @@ unsigned char *install_check(char *id) {
     unsigned char *error;
 
     check_catalogue(id);
-    if((error = _farWithPointer(BANK_NET, (void *(*)(void *))latest, id))) return error;
+    if((error = _farWithPointer(BANK_NET, (far_ptr_fn_t)latest, id))) return error;
 
     installCase = INSTALL_NEW;
     if(!installed) return NULL;

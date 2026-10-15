@@ -9,8 +9,8 @@
 bool app_open(void) {
     bool quit;
 
-    _farWithPointer(BANK_NET, (void *(*)(void *))gui_app_at, (void *)(uint16_t)listSel);
-    quit = _far(BANK_APP, (void *(*)(void))app_run) != NULL;
+    _farWithPointer(BANK_NET, (far_ptr_fn_t)gui_app_at, (void *)(uint16_t)listSel);
+    quit = _far(BANK_APP, (far_fn_t)app_run) != NULL;
     if(quit) return true;
 
     tm_blank(0, TITLE_ROW + 1, GUI_COLUMNS * (BUTTON_ROW - TITLE_ROW - 1), ATTR_TEXT);

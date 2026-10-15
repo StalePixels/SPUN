@@ -10,16 +10,16 @@ void clog_show(void) {
     unsigned char line[GUI_COLUMNS];
     unsigned char *error;
 
-    _farWithPointer(BANK_NET, (void *(*)(void *))gui_release_at, (void *)(uint16_t)relSel);
+    _farWithPointer(BANK_NET, (far_ptr_fn_t)gui_release_at, (void *)(uint16_t)relSel);
     tm_blank(0, STATUS_ROW, GUI_COLUMNS, ATTR_TEXT);
-    tm_text(1, STATUS_ROW, (unsigned char *)"Loading", ATTR_TEXT);
+    tm_text(1, STATUS_ROW, (const unsigned char *)"Loading", ATTR_TEXT);
 
     intrinsic_di();
     pointer_hide();
-    error = _far(BANK_NET, (void *(*)(void))gui_clog);
+    error = _far(BANK_NET, (far_fn_t)gui_clog);
     intrinsic_ei();
 
-    _far(BANK_SCREEN, (void *(*)(void))layer2_off);
+    _far(BANK_SCREEN, (far_fn_t)layer2_off);
     tm_blank(0, TITLE_ROW + 1, GUI_COLUMNS * (BUTTON_ROW - TITLE_ROW - 1), ATTR_TEXT);
     buttons_draw(1);
     if(error) {
@@ -28,7 +28,7 @@ void clog_show(void) {
         sprintf(line, "Changelog of %s %s, %s", title, version, date);
         tm_text(1, TITLE_ROW + 2, line, ATTR_KEY);
         if(*changelog) text_wrap(changelog, 1, CLOG_ROW, TEXT_WIDTH, CLOG_ROWS);
-        else tm_text(1, CLOG_ROW, (unsigned char *)"This release has no changelog.", ATTR_TEXT);
+        else tm_text(1, CLOG_ROW, (const unsigned char *)"This release has no changelog.", ATTR_TEXT);
     }
     wait_back();
 }

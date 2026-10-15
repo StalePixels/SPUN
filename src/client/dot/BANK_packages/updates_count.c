@@ -11,7 +11,7 @@ uint16_t updates_count(void) {
         if(!*entry || *entry == '#' || *entry == ';') continue;
         parse_entry();
         strcpy(appid, entryApp);
-        if(_farWithPointer(BANK_NET, (void *(*)(void *))latest, appid)) continue;
+        if(_farWithPointer(BANK_NET, (far_ptr_fn_t)latest, appid)) continue;
         if(serial > entrySerial) count++;
     }
     close_in();

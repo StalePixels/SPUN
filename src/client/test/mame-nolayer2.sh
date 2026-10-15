@@ -23,8 +23,11 @@ finish() {
 trap finish EXIT
 [ -z "${SPUN_TEST_SERVER_UP:-}" ] || eval "$SPUN_TEST_SERVER_UP"
 
-(cd "$work" && PATH=$Z88DK/bin:$PATH ZCCCFG=$Z88DK/lib/config \
-    zcc +zxn -vn -startup=30 -clib=new "$here/fragment/fragment.c" -o fragment -subtype=dot -create-app)
+# z88dk runs in its Docker image, as for dot/Makefile, with both folders mounted at their own paths
+fragment=$(cd "$here/fragment" && pwd -P)
+build=$(cd "$work" && pwd -P)
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$fragment:$fragment" -v "$build:$build" -w "$build" z88dk/z88dk:latest \
+    zcc +zxn -vn -startup=30 -clib=sdcc_iy -SO3 --opt-code-size "$fragment/fragment.c" -o fragment -subtype=dot -create-app
 
 scn=$(sed -e "s|@SPUN@|$spun|" -e "s|@FRAGMENT@|$work/fragment|" "$here/spun-nolayer2.scn.in")
 printf '%s\n' "$scn" > "$work/spun-nolayer2.scn"

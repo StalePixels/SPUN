@@ -56,8 +56,8 @@ export default async function Home({
               Download the SPUN zip
             </a>
             <p className="mb-0" data-testid="get-spun-nbnget">
-              On the Next, you can also run <code>.nbnget /dot/spun : ../spun get spun</code>. It downloads the SPUN
-              dot command from the NBN CDN into the current directory, then runs it to install SPUN with SPUN.
+              On your Next run <code>.nbnget /dot/spun : ../spun get spun</code> to automatically down the SPUN
+              dot command and bootstrap the full installer.
             </p>
           </div>
         </div>

@@ -6,7 +6,7 @@ bool helpShown;
 
 // The help goes over the list, and the GUI keeps no copy of the list, so hiding the help asks the server again
 void help_toggle(void) {
-    unsigned char *line = help;
+    const unsigned char *line = help;
     uint8_t row = HEAD_ROW;
 
     if(helpShown) {

@@ -14,13 +14,13 @@ unsigned char *view_show(uint8_t slot) __z88dk_fastcall {
     file.slot = slot;
     file.width = 0;
 
-    _far(BANK_SCREEN, (void *(*)(void))tilemap_off);
-    _far(BANK_SCREEN, (void *(*)(void))layer2_clear);
-    _farWithPointer(BANK_SCREEN, (void *(*)(void *))layer2_on, (void *)(shotWidth[slot - 1] == 320 ? LAYER2_320 : LAYER2_256));
+    _far(BANK_SCREEN, (far_fn_t)tilemap_off);
+    _far(BANK_SCREEN, (far_fn_t)layer2_clear);
+    _farWithPointer(BANK_SCREEN, (far_ptr_fn_t)layer2_on, (void *)(shotWidth[slot - 1] == 320 ? LAYER2_320 : LAYER2_256));
 
     intrinsic_di();
     pointer_hide();
-    error = _farWithPointer(BANK_NET, (void *(*)(void *))gui_get, &file);
+    error = _farWithPointer(BANK_NET, (far_ptr_fn_t)gui_get, &file);
     intrinsic_ei();
 
     if(!error) {
@@ -28,8 +28,8 @@ unsigned char *view_show(uint8_t slot) __z88dk_fastcall {
         while(!input_poll());
     }
 
-    _far(BANK_SCREEN, (void *(*)(void))layer2_off);
-    _far(BANK_SCREEN, (void *(*)(void))palette_default);
-    _far(BANK_SCREEN, (void *(*)(void))tilemap_on);
+    _far(BANK_SCREEN, (far_fn_t)layer2_off);
+    _far(BANK_SCREEN, (far_fn_t)palette_default);
+    _far(BANK_SCREEN, (far_fn_t)tilemap_on);
     return error;
 }

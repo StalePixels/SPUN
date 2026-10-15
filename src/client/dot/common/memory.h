@@ -12,11 +12,15 @@
 #define BANK_APP        (42<<1)
 #define BANK_UI         (41<<1)
 
+// zsdcc misreads a function pointer type written inside a cast, so casts use these names
+typedef void *(*far_fn_t)(void);
+typedef void *(*far_ptr_fn_t)(void *);
+
 #ifdef __ZXNEXT
 extern unsigned char _z_page_table[];
 
-void *_far(uint8_t bank, void *(*fn)(void));
-void *_farWithPointer(uint8_t bank, void *(*fn)(void *), void *data);
+void *_far(uint8_t bank, far_fn_t fn);
+void *_farWithPointer(uint8_t bank, far_ptr_fn_t fn, void *data);
 #else
 // The POSIX build has no banks
 #define _far(bank, fn) ((fn)())

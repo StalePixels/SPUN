@@ -47,12 +47,12 @@ static uint8_t pageArg = 0;
 // An exit in the middle of a block read leaves another page over the screen and BASIC's
 // system variables at $4000, so the ULA's pages go back first; NextZXOS's own mapping goes back last.
 // A download cut short, for example by a lost connection, leaves no part of its zip
-static void shutdown() {
+static void shutdown(void) {
 #ifdef __ZXNEXT
     NBN_PageOut();
     gui_end();
 #endif
-    _far(BANK_NET, (void *(*)(void))net_close);
+    _far(BANK_NET, (far_fn_t)net_close);
     if(file_out) esxdos_f_close(file_out);
     if(downloading) esxdos_f_unlink(zipPath);
     if(file_in) esxdos_f_close(file_in);
@@ -67,7 +67,7 @@ static void shutdown() {
 }
 
 static void usage(unsigned char *error) __z88dk_fastcall {
-    _farWithPointer(BANK_PACKAGES, (void *(*)(void *))help_and_exit, error);
+    _farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)help_and_exit, error);
 }
 
 #ifdef __ZXNEXT
@@ -163,6 +163,10 @@ static void own_file_close(void) {
 }
 #endif
 
+#ifdef __SDCC
+// zsdcc warns about any main with arguments; the dotn crt passes argc and argv
+#pragma disable_warning 323
+#endif
 int main(int argc, char** argv) {
     unsigned char *error;
 
@@ -249,15 +253,15 @@ int main(int argc, char** argv) {
         }
     }
 
-    if(pageArg) _farWithPointer(BANK_PACKAGES, (void *(*)(void *))parse_page, argv[pageArg]);
+    if(pageArg) _farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)parse_page, argv[pageArg]);
 
     if(commandArg && stricmp(argv[commandArg], "update") == 0) {
-        if(!_farWithPointer(BANK_PACKAGES, (void *(*)(void *))check_catalogue, NULL)) {
+        if(!_farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)check_catalogue, NULL)) {
             if(!quiet) printf("No updates\n");
             exit(0);
         }
     } else if (commandArg && stricmp(argv[commandArg], "get") == 0) {
-        _farWithPointer(BANK_PACKAGES, (void *(*)(void *))check_catalogue, argv[valueArg]);
+        _farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)check_catalogue, argv[valueArg]);
     }
 
     atexit(shutdown);
@@ -269,7 +273,7 @@ int main(int argc, char** argv) {
 
     netServer = customServer ? argv[customServer] : (char *)defaultServer;
     netPort = customPort ? argv[customPort] : (char *)defaultPort;
-    _far(BANK_NET, (void *(*)(void))net_open);
+    _far(BANK_NET, (far_fn_t)net_open);
 
 #ifdef __ZXNEXT
     if(!commandArg) {
@@ -279,18 +283,18 @@ int main(int argc, char** argv) {
 #endif
 
     if (stricmp(argv[commandArg], "find") == 0) {
-        error = _farWithPointer(BANK_NET, (void *(*)(void *))spun_find, argv[valueArg]);
+        error = _farWithPointer(BANK_NET, (far_ptr_fn_t)spun_find, argv[valueArg]);
     } else if (stricmp(argv[commandArg], "info") == 0) {
-        error = _farWithPointer(BANK_NET, (void *(*)(void *))spun_info, argv[valueArg]);
+        error = _farWithPointer(BANK_NET, (far_ptr_fn_t)spun_info, argv[valueArg]);
     } else if (stricmp(argv[commandArg], "update") == 0) {
-        error = _far(BANK_PACKAGES, (void *(*)(void))spun_update);
+        error = _far(BANK_PACKAGES, (far_fn_t)spun_update);
     } else {
-        error = _farWithPointer(BANK_PACKAGES, (void *(*)(void *))spun_get, argv[valueArg]);
+        error = _farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)spun_get, argv[valueArg]);
     }
 
     if(error) NBN_Fail(error);
 #ifdef __ZXNEXT
     if(getInstalled) enter_install_dir();
 #endif
-    exit(0);
+    return 0;
 }

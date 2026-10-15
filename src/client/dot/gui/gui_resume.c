@@ -4,6 +4,6 @@
 
 void gui_resume(void) {
     os_take();
-    _far(BANK_SCREEN, (void *(*)(void))screen_on);
+    _far(BANK_SCREEN, (far_fn_t)screen_on);
     guiOpen = true;
 }

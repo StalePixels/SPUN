@@ -67,6 +67,6 @@ unsigned char *app_run(void) {
         }
     }
 
-    _far(BANK_SCREEN, (void *(*)(void))layer2_off);
+    _far(BANK_SCREEN, (far_fn_t)layer2_off);
     return quit;
 }

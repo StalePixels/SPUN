@@ -17,7 +17,7 @@ void app_install(void) {
     unsigned char *error;
     bool suggested = false;
 
-    error = os_call(BANK_PACKAGES, (void *(*)(void *))install_check, appid);
+    error = os_call(BANK_PACKAGES, (far_ptr_fn_t)install_check, appid);
     strcpy(latestVersion, version);
     sprintf(head, "Install %s %s to:", title, latestVersion);
     lines[0] = head;
@@ -25,7 +25,7 @@ void app_install(void) {
     lines[2] = (unsigned char *)"";
     if(!error && installCase == INSTALL_NEW && *suggestDir) {
         sprintf(installDir, "C:%s", suggestDir);
-        suggested = modal_ask((unsigned char *)"Install", lines, 3, suggestButtons, 2) == 0;
+        suggested = modal_ask((const unsigned char *)"Install", lines, 3, suggestButtons, 2) == 0;
     }
     if(!error && installCase == INSTALL_NEW && !suggested) {
         while(in_test_key()) intrinsic_halt();
@@ -41,24 +41,24 @@ void app_install(void) {
     }
 
     if(suggested) {
-        error = os_call(BANK_PACKAGES, (void *(*)(void *))dir_make, NULL);
+        error = os_call(BANK_PACKAGES, (far_ptr_fn_t)dir_make, NULL);
     } else if(installCase != INSTALL_UPDATE) {
         if(installCase == INSTALL_AGAIN) {
             sprintf(head, "%s %s is installed in:", title, latestVersion);
             lines[2] = (unsigned char *)"Install it again?";
         }
-        if(modal_ask((unsigned char *)"Install", lines, 3, confirmButtons, 2) != 0) {
+        if(modal_ask((const unsigned char *)"Install", lines, 3, confirmButtons, 2) != 0) {
             app_show(false);
             return;
         }
     }
 
-    if(!error) error = os_call(BANK_PACKAGES, (void *(*)(void *))gui_install, appid);
+    if(!error) error = os_call(BANK_PACKAGES, (far_ptr_fn_t)gui_install, appid);
     app_show(false);
     if(error) {
         message_show(error);
         return;
     }
-    tm_text(1, STATUS_ROW, (unsigned char *)"Installed to", ATTR_TEXT);
+    tm_text(1, STATUS_ROW, (const unsigned char *)"Installed to", ATTR_TEXT);
     tm_cut(14, STATUS_ROW, installDir, GUI_COLUMNS - 15, ATTR_TEXT);
 }

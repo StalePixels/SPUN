@@ -11,7 +11,6 @@ set -a
 set +a
 
 cd "$here/../dot"
-export PATH=$Z88DK/bin:$PATH ZCCCFG=$Z88DK/lib/config
 test="SERVER=$SPUN_TEST_SERVER PORT=$SPUN_TEST_PORT TMP_DIR=./TMP-test"
 make $test BUILD_DIR=./BUILD-test binaries
 rm -rf BUILD-test-posix

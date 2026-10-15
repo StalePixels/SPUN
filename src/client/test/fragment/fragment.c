@@ -22,6 +22,8 @@ static unsigned int take_all(void) {
     return count;
 }
 
+// zsdcc warns about any main with arguments; the dot crt passes argc and argv
+#pragma disable_warning 323
 int main(int argc, char **argv) {
     unsigned char text[8];
     unsigned char file;
@@ -36,7 +38,7 @@ int main(int argc, char **argv) {
         esxdos_f_read(file, text, sizeof(text) - 1);
         esxdos_f_close(file);
         printf("FREE %u, BEFORE %s\n", count, text);
-        printf(count == atoi(text) ? "FRAGMENT SAME\n" : "FRAGMENT CHANGED\n");
+        puts(count == atoi(text) ? "FRAGMENT SAME" : "FRAGMENT CHANGED");
         return 0;
     }
 

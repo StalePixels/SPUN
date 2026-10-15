@@ -12,11 +12,11 @@ void page_show(void) {
     helpShown = false;
     listCount = 0;
     tm_blank(0, HEAD_ROW, GUI_COLUMNS * (STATUS_ROW + 1 - HEAD_ROW), ATTR_TEXT);
-    tm_text(1, STATUS_ROW, (unsigned char *)"Loading", ATTR_TEXT);
+    tm_text(1, STATUS_ROW, (const unsigned char *)"Loading", ATTR_TEXT);
 
     intrinsic_di();
     pointer_hide();
-    error = _farWithPointer(BANK_NET, (void *(*)(void *))page_request, searchText);
+    error = _farWithPointer(BANK_NET, (far_ptr_fn_t)page_request, searchText);
     intrinsic_ei();
 
     tm_blank(0, STATUS_ROW, GUI_COLUMNS, ATTR_TEXT);
@@ -25,8 +25,8 @@ void page_show(void) {
         return;
     }
 
-    tm_text(COL_ID, HEAD_ROW, (unsigned char *)"App    Title                            Publisher        Version     Downloads", ATTR_KEY);
-    while(row != LIST_ROW + LIST_ROWS && _far(BANK_NET, (void *(*)(void))reply_next_app)) entry_draw(row++);
+    tm_text(COL_ID, HEAD_ROW, (const unsigned char *)"App    Title                            Publisher        Version     Downloads", ATTR_KEY);
+    while(row != LIST_ROW + LIST_ROWS && _far(BANK_NET, (far_fn_t)reply_next_app)) entry_draw(row++);
     listCount = row - LIST_ROW;
     if(listSel >= listCount) listSel = listCount ? listCount - 1 : 0;
     list_select(listSel);

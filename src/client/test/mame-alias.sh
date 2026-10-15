@@ -122,7 +122,7 @@ catalogue point als002
 scenario spun-alias-moved
 check "spun.cat  moved" "$(printf 'als001 0001 1.0 C:/apps/alsa\nals002 0001 1.0 C:/apps/alsb')" "$(cat "$work/spun.cat")"
 installed als002 /apps/alsb
-check "server    unknown alias" "$(printf 'SPINFO nosuchalias 1\n< NoApp_ERROR')" "$(sed -E 's/^[0-9.]* //' "$work/commands.log")"
+check "server    unknown alias" "$(printf 'SPINFO nosuchalias 1\n< NoApp_ERROR')" "$(sed -En 's/^([0-9.]* )?(SP.*|GET .*|< .*)/\2/p' "$work/commands.log")"
 # The number of the autoexec line with the get of the unknown alias, read from the run's image
 "$HDFMONKEY" get "$run/sd.img" /nextzxos/autoexec.bas "$work/autoexec.bas" > /dev/null
 line=$(python3 -c '

@@ -11,11 +11,11 @@ void spun_gui(void) {
     bool splashOn = !quiet;
 
     quiet = true;
-    if(_farWithPointer(BANK_PACKAGES, (void *(*)(void *))check_catalogue, NULL)) {
-        updateCount = (uint16_t)_far(BANK_PACKAGES, (void *(*)(void))updates_count);
+    if(_farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)check_catalogue, NULL)) {
+        updateCount = (uint16_t)_far(BANK_PACKAGES, (far_fn_t)updates_count);
     }
     gui_open();
-    if(splashOn) _far(BANK_SCREEN, (void *(*)(void))splash);
-    _far(BANK_GUI, (void *(*)(void))gui_run);
+    if(splashOn) _far(BANK_SCREEN, (far_fn_t)splash);
+    _far(BANK_GUI, (far_fn_t)gui_run);
     gui_close();
 }

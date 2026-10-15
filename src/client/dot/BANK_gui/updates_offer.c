@@ -14,8 +14,8 @@ void updates_offer(void) {
     else sprintf(text, "%u installed apps have updates.", updateCount);
 
     tm_blank(0, BUTTON_ROW, GUI_COLUMNS, ATTR_TEXT);
-    if(modal_ask((unsigned char *)"Updates", &line, 1, updateButtons, 2) == 0) {
-        error = os_call(BANK_PACKAGES, (void *(*)(void *))spun_update, NULL);
+    if(modal_ask((const unsigned char *)"Updates", &line, 1, updateButtons, 2) == 0) {
+        error = os_call(BANK_PACKAGES, (far_ptr_fn_t)spun_update, NULL);
         if(error) updateError = error;
     }
     gui_draw();

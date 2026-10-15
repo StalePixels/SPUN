@@ -7,7 +7,7 @@
 void gui_suspend(void) {
     if(guiOpen) {
         guiOpen = false;
-        _far(BANK_SCREEN, (void *(*)(void))screen_off);
+        _far(BANK_SCREEN, (far_fn_t)screen_off);
     }
     os_give();
     pointer_hide();

@@ -16,11 +16,11 @@ bool app_show(bool pictures) __z88dk_fastcall {
 
     tm_blank(0, TITLE_ROW + 1, GUI_COLUMNS * (BUTTON_ROW - TITLE_ROW - 1), ATTR_TEXT);
     buttons_draw(appButtonCount);
-    tm_text(1, STATUS_ROW, (unsigned char *)"Loading", ATTR_TEXT);
+    tm_text(1, STATUS_ROW, (const unsigned char *)"Loading", ATTR_TEXT);
 
     intrinsic_di();
     pointer_hide();
-    error = _far(BANK_NET, (void *(*)(void))gui_info);
+    error = _far(BANK_NET, (far_fn_t)gui_info);
     intrinsic_ei();
 
     tm_blank(0, STATUS_ROW, GUI_COLUMNS, ATTR_TEXT);
@@ -31,10 +31,10 @@ bool app_show(bool pictures) __z88dk_fastcall {
 
     info_draw();
     releases_draw();
-    tm_text(1, HINT_ROW, (unsigned char *)"Up/Down: release   ENTER or click: changelog   1-5 or click: picture", ATTR_TEXT);
+    tm_text(1, HINT_ROW, (const unsigned char *)"Up/Down: release   ENTER or click: changelog   1-5 or click: picture", ATTR_TEXT);
 
-    if(pictures) _far(BANK_SCREEN, (void *(*)(void))layer2_clear);
-    _farWithPointer(BANK_SCREEN, (void *(*)(void *))layer2_on, (void *)LAYER2_320);
+    if(pictures) _far(BANK_SCREEN, (far_fn_t)layer2_clear);
+    _farWithPointer(BANK_SCREEN, (far_ptr_fn_t)layer2_on, (void *)LAYER2_320);
     error = thumbs_load(pictures);
     if(error) message_show(error);
     return true;

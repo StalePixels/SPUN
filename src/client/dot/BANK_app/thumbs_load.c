@@ -17,7 +17,7 @@ unsigned char *thumbs_load(bool load) __z88dk_fastcall {
 
     for(slot = 1; slot <= SLOTS; slot++) {
         thumb_rect(slot, &rect);
-        for(row = 0; row != rect.height / 8; row++) tm_blank(rect.x / 4, rect.y / 8 + row, rect.width / 4, ATTR_BLACK);
+        for(row = 0; row != rect.height / 8U; row++) tm_blank(rect.x / 4, rect.y / 8U + row, rect.width / 4U, ATTR_BLACK);
         if(!shotWidth[slot - 1]) missing |= 1 << slot;
     }
     if(!load) return NULL;
@@ -27,7 +27,7 @@ unsigned char *thumbs_load(bool load) __z88dk_fastcall {
     for(slot = 1; slot <= SLOTS; slot++) {
         if(missing & (1 << slot)) continue;
         thumb_rect(slot, &rect);
-        error = _farWithPointer(BANK_NET, (void *(*)(void *))gui_get, &rect);
+        error = _farWithPointer(BANK_NET, (far_ptr_fn_t)gui_get, &rect);
         if(!error) continue;
         failed = error;
         missing |= 1 << slot;
@@ -37,7 +37,7 @@ unsigned char *thumbs_load(bool load) __z88dk_fastcall {
     for(slot = 1; slot <= SLOTS; slot++) {
         if(!(missing & (1 << slot))) continue;
         thumb_rect(slot, &rect);
-        _farWithPointer(BANK_SCREEN, (void *(*)(void *))placeholder_draw, &rect);
+        _farWithPointer(BANK_SCREEN, (far_ptr_fn_t)placeholder_draw, &rect);
     }
     return failed;
 }
