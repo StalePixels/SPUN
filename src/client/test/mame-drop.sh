@@ -10,7 +10,7 @@
 # not hung), and leave no zip in C:/tmp, no file in the install directory and
 # no line in /sys/spun.cat.
 # Before the runs it adds the app drop01 to the e2e database (owner the e2e
-# client, install_dir /apps/drop) and its zip, 2 blocks and some bytes, to the
+# client, install_dir /apps/drop) and its zip, 2 blocks of 16K and some bytes, to the
 # e2e storage, and removes both after.
 # SPUN_BIN=FILE runs another build of .spun instead, such as an older one.
 # Exits with 1 if a run or a check fails.
@@ -67,7 +67,7 @@ catalogue add
 
 mkdir -p "$(dirname "$zip")" "$work/zip"
 cp "$here/../zip/README.txt" "$work/zip/README.txt"
-head -c 10000 /dev/urandom > "$work/zip/DATA.BIN"
+head -c 40000 /dev/urandom > "$work/zip/DATA.BIN"
 (cd "$work/zip" && zip -X -q -0 "$zip" README.txt DATA.BIN)
 
 status=0

@@ -74,19 +74,6 @@ dirs:
 	$(MKDIR) $(BUILD_DIR)
 	$(MKDIR) $(TMP_DIR)
 
-# BANK_NET
-bank_47: dirs
-	$(CC) $(CCFLAGS) -c \
-		--codesegBANK_47 --constsegBANK_47 \
-		--datasegBANK_47 --bsssegBANK_47   \
-		@BANK_net/net.lst -o$(TMP_DIR)/BANK_net.o
-
-# The NBNtools code in BANK_NET. Its BSS (nbnBuff) stays in main, where main and both banks reach it
-bank_47_nbn: dirs
-	$(CC) $(CCFLAGS) -c \
-		--codesegBANK_47 --constsegBANK_47 --datasegBANK_47 \
-		@BANK_net/nbn.lst -o$(TMP_DIR)/BANK_net_nbn.o
-
 # BANK_PACKAGES
 bank_46: dirs
 	$(CC) $(CCFLAGS) -c \
@@ -94,19 +81,20 @@ bank_46: dirs
 		--datasegBANK_46 --bsssegBANK_46   \
 		@BANK_packages/packages.lst -o$(TMP_DIR)/BANK_packages.o
 
-# BANK_GUI: the GUI's own code
-bank_45: dirs
-	$(CC) $(CCFLAGS) -c \
-		--codesegBANK_45 --constsegBANK_45 \
-		--datasegBANK_45 --bsssegBANK_45   \
-		@BANK_gui/gui.lst -o$(TMP_DIR)/BANK_gui.o
-
-# BANK_SCREEN: sets up the GUI's layers and font and puts NextZXOS's back
+# BANK_GUI: the GUI's own code, the screen set-up (layers, font, NextZXOS's back), the modal boxes
+# and the network code. The NBNtools code's BSS (nbnBuff) stays in main, where main and every bank reach it
 bank_44: dirs
 	$(CC) $(CCFLAGS) -c \
 		--codesegBANK_44 --constsegBANK_44 \
 		--datasegBANK_44 --bsssegBANK_44   \
-		@BANK_screen/screen.lst -o$(TMP_DIR)/BANK_screen.o
+		@BANK_gui/gui.lst @BANK_screen/screen.lst @BANK_ui/ui.lst -o$(TMP_DIR)/BANK_gui.o
+	$(CC) $(CCFLAGS) -c \
+		--codesegBANK_44 --constsegBANK_44 \
+		--datasegBANK_44 --bsssegBANK_44   \
+		@BANK_net/net.lst -o$(TMP_DIR)/BANK_net.o
+	$(CC) $(CCFLAGS) -c \
+		--codesegBANK_44 --constsegBANK_44 --datasegBANK_44 \
+		@BANK_net/nbn.lst -o$(TMP_DIR)/BANK_net_nbn.o
 
 # BANK_APP: the GUI's app page
 bank_42: dirs
@@ -115,20 +103,13 @@ bank_42: dirs
 		--datasegBANK_42 --bsssegBANK_42   \
 		@BANK_app/app.lst -o$(TMP_DIR)/BANK_app.o
 
-# BANK_UI: the modal boxes
-bank_41: dirs
-	$(CC) $(CCFLAGS) -c \
-		--codesegBANK_41 --constsegBANK_41 \
-		--datasegBANK_41 --bsssegBANK_41   \
-		@BANK_ui/ui.lst -o$(TMP_DIR)/BANK_ui.o
-
 # BANK_SPRITES: the sprite sheet, data only
 bank_43: dirs
 	$(CC) $(CCFLAGS) -c @BANK_sprites/sprites.lst -o$(TMP_DIR)/BANK_sprites.o
 
-banks: bank_47 bank_47_nbn bank_46 bank_45 bank_44 bank_43 bank_42 bank_41
+banks: bank_46 bank_44 bank_43 bank_42
 
-BANK_OBJS := $(addprefix $(TMP_DIR)/BANK_,net.o net_nbn.o packages.o gui.o screen.o sprites.o app.o ui.o)
+BANK_OBJS := $(addprefix $(TMP_DIR)/BANK_,net.o net_nbn.o packages.o gui.o sprites.o app.o)
 
 # Run inside $(UNZIP): INCLUDE resolves from the current directory
 $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin: $(UNZIP)/inflate.asm $(UNZIP)/inflate_job.inc
@@ -176,4 +157,4 @@ $(POSIX_DIR)/help.c: help.txt
 	$(MKDIR) $(POSIX_DIR)
 	( echo "unsigned char help[] = {"; xxd -i < help.txt; echo ", 0 };" ) > $@
 
-.PHONY: all clean dirs spunjane banks bank_47 bank_47_nbn bank_46 bank_45 bank_44 bank_43 bank_42 bank_41 dotn binaries zip posix
+.PHONY: all clean dirs spunjane banks bank_46 bank_44 bank_43 bank_42 dotn binaries zip posix

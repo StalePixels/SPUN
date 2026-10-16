@@ -7,9 +7,11 @@ unsigned char reply_byte(void) {
 
     if(replyValue >= replyEnd) NBN_Fail(err_nbn_protocol);
 
+    NBN_IntsOff();
     NBN_PageIn();
     value = nbnBlock[replyValue++];
     NBN_PageOut();
+    NBN_IntsBack();
 
     return value;
 }

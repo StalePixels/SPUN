@@ -116,7 +116,7 @@ unsigned char *gui_get(struct l2_target *file) {
     for(; blocks; blocks--) {
         NET_PutCh(NBN_BLOCK_SUCCESS);
         NET_Send("\x0D\x0A", 2);
-        block(NBN_MAX_BLOCKSIZE);
+        block(nbnFileBlockSize);
     }
     NET_Send("!", 1);
     NET_Send("\x0D\x0A", 2);

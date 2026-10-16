@@ -58,4 +58,5 @@ void net_open(void) {
 #endif
 
     NET_Send(logVersion, sizeof(logVersion) - 1);
+    NBN_SetBlockSize(NBN_LARGE_BLOCKSIZE);
 }

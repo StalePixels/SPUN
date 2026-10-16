@@ -13,5 +13,3 @@ spunjane_*.bin
 TMP-spunjane
 BUILD-spunjane
 .env
-BUILD-sdcc
-TMP-sdcc

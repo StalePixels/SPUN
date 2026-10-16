@@ -4,13 +4,15 @@
 #include <stdint.h>
 
 // Logical pages of the 16K banks, as the dotn page table counts them
-#define BANK_NET        (47<<1)
 #define BANK_PACKAGES   (46<<1)
-#define BANK_GUI        (45<<1)
-#define BANK_SCREEN     (44<<1)
+#define BANK_GUI        (44<<1)
 #define BANK_SPRITES    (43<<1)
 #define BANK_APP        (42<<1)
-#define BANK_UI         (41<<1)
+
+// The GUI, screen, UI and network code share one bank
+#define BANK_SCREEN     BANK_GUI
+#define BANK_UI         BANK_GUI
+#define BANK_NET        BANK_GUI
 
 // zsdcc misreads a function pointer type written inside a cast, so casts use these names
 typedef void *(*far_fn_t)(void);

@@ -86,14 +86,18 @@ static bool make_dir(void) {
 unsigned char *dir_make(void) {
     unsigned char *at = installDir + 3;
     unsigned char chr;
+    int code;
 
     do {
         while(*at && *at != '/') at++;
         chr = *at;
         *at = 0;
         if(!make_dir()) {
+            code = errno ? errno : IO_ERROR;
             *at = chr;
-            return err_bad_directory;
+            gui_end();
+            print_error(err_bad_directory);
+            exit(code);
         }
         *at++ = chr;
     } while(chr);
@@ -153,7 +157,7 @@ unsigned char *spun_get(char *id) {
             if(ask("yn") != 'y') return NULL;
         }
     } else if(use_suggested()) {
-        if((error = dir_make())) return error;
+        dir_make();
     } else {
         if(!choose_dir()) return NULL;
         printf("Install to %s? (y/n) ", installDir);

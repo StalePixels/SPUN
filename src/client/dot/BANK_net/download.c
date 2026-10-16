@@ -65,7 +65,7 @@ unsigned char *download(char *id) {
         NET_PutCh(NBN_BLOCK_SUCCESS);
         NET_Send("\x0D\x0A", 2);
 
-        receive_block(NBN_MAX_BLOCKSIZE);
+        receive_block(nbnFileBlockSize);
         progress(PROGRESS_DOWNLOAD, ++done, total, filename);
     }
     NET_Send("!", 1);

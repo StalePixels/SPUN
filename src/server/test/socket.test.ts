@@ -133,6 +133,10 @@ const blockWithChecksum = (from: number, to: number): Buffer => {
   return Buffer.concat([block, Buffer.from([checksum(block)])]);
 };
 
+// Three 16K blocks and a short last block.
+const LARGE_BLOCK = 16384;
+const largeBytes = Buffer.from(Array.from({ length: 3 * LARGE_BLOCK + 100 }, (_, i) => (i * 11) % 256));
+
 // Exactly two blocks, so the last block has no data, only its checksum.
 const exactBytes = Buffer.from(Array.from({ length: 2 * BLOCK }, (_, i) => (i * 13) % 256));
 
@@ -148,6 +152,7 @@ before(async () => {
   writeFileSync(path.join(dataDir, user, "tst002-0001.zip"), exactBytes);
   mkdirSync(path.join(dataDir, user, "nxi", "tst001"), { recursive: true });
   writeFileSync(path.join(dataDir, user, "nxi", "tst001", "1"), fileBytes);
+  writeFileSync(path.join(dataDir, user, "nxi", "tst001", "2"), largeBytes);
   ({ server, port } = await startSpunServer(fakeCatalogue(tables), dataDir));
 });
 
@@ -459,18 +464,18 @@ describe("GET", () => {
 });
 
 // A whole GET as .spun does it: one "!" for the header and for each block.
-const expectFile = async (name: string, bytes: Buffer, served = name): Promise<void> => {
+const expectFile = async (name: string, bytes: Buffer, served = name, size = BLOCK): Promise<void> => {
   client.send(`GET ${user}/${name}\n`);
   const header = Buffer.alloc(11);
   header[0] = 2;
   header.writeUInt32LE(bytes.length, 1);
-  header.writeUInt32LE(Math.floor(bytes.length / BLOCK), 5);
-  header.writeUInt16LE(bytes.length % BLOCK, 9);
+  header.writeUInt32LE(Math.floor(bytes.length / size), 5);
+  header.writeUInt16LE(bytes.length % size, 9);
   const expected = Buffer.concat([header, Buffer.from(`${served}\0`)]);
   assert.deepEqual(await client.read(expected.length), expected);
 
-  for (let from = 0; from <= bytes.length; from += BLOCK) {
-    const block = bytes.subarray(from, Math.min(from + BLOCK, bytes.length));
+  for (let from = 0; from <= bytes.length; from += size) {
+    const block = bytes.subarray(from, Math.min(from + size, bytes.length));
     client.send("!\r\n");
     assert.deepEqual(
       await client.read(block.length + 1),
@@ -490,6 +495,57 @@ describe("two GETs on one connection", () => {
     await expectFile("tst002-0001.zip", exactBytes);
     assert.equal((await client.drain()).length, 0);
     await expectOpen();
+  });
+});
+
+describe("BLOCKSIZE", () => {
+  beforeEach(connect);
+  afterEach(() => client.close());
+
+  test("a new connection sends 4096 byte blocks", async () => {
+    await expectFile("nxi/tst001/2", largeBytes, "2");
+    await expectOpen();
+  });
+
+  test("BLOCKSIZE 16384 answers ! and later GETs send 16384 byte blocks", async () => {
+    client.send("BLOCKSIZE 16384\n");
+    assert.equal((await client.read(3)).toString(), "!\r\n");
+    await expectFile("nxi/tst001/2", largeBytes, "2", LARGE_BLOCK);
+    await expectFile("tst001-0001.zip", fileBytes, "tst001-0001.zip", LARGE_BLOCK);
+    assert.equal((await client.drain()).length, 0);
+    await expectOpen();
+  });
+
+  test("BLOCKSIZE 4096 goes back to 4096 byte blocks", async () => {
+    client.send("BLOCKSIZE 16384\n");
+    assert.equal((await client.read(3)).toString(), "!\r\n");
+    client.send("BLOCKSIZE 4096\n");
+    assert.equal((await client.read(3)).toString(), "!\r\n");
+    await expectFile("nxi/tst001/2", largeBytes, "2");
+    await expectOpen();
+  });
+
+  test("any other size answers <, keeps the session and the size in use", async () => {
+    client.send("BLOCKSIZE 16384\n");
+    assert.equal((await client.read(3)).toString(), "!\r\n");
+    for (const bad of ["", " 8192", " 0", " 65536", " 16384x", " 0x4000", " 16384.0", " -4096", " abc"]) {
+      client.send(`BLOCKSIZE${bad}\n`);
+      assert.equal((await client.read(3)).toString(), "<\r\n", `BLOCKSIZE${bad}`);
+    }
+    await expectFile("nxi/tst001/2", largeBytes, "2", LARGE_BLOCK);
+    await expectOpen();
+  });
+
+  test("the size belongs to one connection", async () => {
+    client.send("BLOCKSIZE 16384\n");
+    assert.equal((await client.read(3)).toString(), "!\r\n");
+    const first = client;
+    await connect();
+    try {
+      await expectFile("nxi/tst001/2", largeBytes, "2");
+    } finally {
+      first.close();
+    }
   });
 });
 

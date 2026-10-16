@@ -9,7 +9,7 @@ static void text_copy(unsigned char *to, const unsigned char *from, uint8_t widt
     *to = 0;
 }
 
-// The UI bank replaces the caller's bank at $C000, so what the box shows is copied to main memory first
+// The GUI bank replaces the bank of a caller in the app or packages code at $C000, so what the box shows is copied to main memory first
 uint8_t modal_ask(const unsigned char *title, unsigned char **lines, uint8_t lineCount, const struct modal_button *buttons, uint8_t count) {
     uint8_t index;
 
