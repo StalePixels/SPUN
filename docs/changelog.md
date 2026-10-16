@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.1 - (unreleased)
+- Apparently it's cool to get AI to speed up your launcher! Steam and 
+  Epic are 'teh cool kids', and they did it - and I want to be cool, so...
+  Sped up downloads >5%, reduce app size by >10%, sped up startup too!
+
 ## 0.8.0 - 20261013
 
 ### `.spun`
