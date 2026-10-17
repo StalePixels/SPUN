@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { crc32 } from "node:zlib";
 import type { Page } from "@playwright/test";
 import { thumbSize } from "../../src/lib/thumbs";
 import { makeApiKey, signedFetch, signedJson, type ApiKey } from "../support/api";
@@ -15,6 +16,11 @@ const nxiFile = (appId: string, slot: number) => path.join(settings.dataDir, cli
 const thumbFile = (appId: string, slot: number) =>
   path.join(settings.dataDir, client.username, "thumb", appId, String(slot));
 const pngFile = (appId: string, slot: number) => path.join(settings.assetDir, "screenshots", appId, `${slot}.png`);
+// The row keeps the CRC32 of the thumbnail and NXI files, for the client's cache.
+const fileCrcs = (appId: string, slot: number) => ({
+  thumb_crc: crc32(readFileSync(thumbFile(appId, slot))),
+  nxi_crc: crc32(readFileSync(nxiFile(appId, slot))),
+});
 const shotFiles = (appId: string, slot: number) => [nxiFile(appId, slot), pngFile(appId, slot), thumbFile(appId, slot)];
 
 async function createApp(page: Page, key: ApiKey): Promise<string> {
@@ -72,6 +78,11 @@ test("upload, replace and clear screenshots through the API", async ({ page }) =
       { slot: 2, width: 256 },
       { slot: 3, width: 320 },
     ]);
+    for (const row of rows) {
+      expect(row, `slot ${row.slot}`).toMatchObject(fileCrcs(id, row.slot));
+      expect(row.thumb_crc).not.toBe(0);
+      expect(row.nxi_crc).not.toBe(0);
+    }
     const view = await signedJson(page.request, key, "GET", `/api/apps/${id}`);
     expect((view.body.screenshots as { slot: number; width: number }[]).map(({ slot, width }) => ({ slot, width })))
       .toEqual([
@@ -89,7 +100,9 @@ test("upload, replace and clear screenshots through the API", async ({ page }) =
     expect(statSync(nxiFile(id, 1)).size).toBe(82_432);
     expect(readFileSync(thumbFile(id, 1)).equals(thumbBefore)).toBe(false);
     const replaced = await screenshotRows(id);
-    expect(replaced[0]).toMatchObject({ slot: 1, width: 320 });
+    expect(replaced[0]).toMatchObject({ slot: 1, width: 320, ...fileCrcs(id, 1) });
+    expect(replaced[0].thumb_crc).not.toBe(rows[0].thumb_crc);
+    expect(replaced[0].nxi_crc).not.toBe(rows[0].nxi_crc);
     expect(replaced[0].updated_at.getTime()).toBeGreaterThan(rows[0].updated_at.getTime());
 
     expect(await signedJson(page.request, key, "DELETE", `/api/apps/${id}/screenshots/2`)).toEqual({

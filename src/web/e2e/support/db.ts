@@ -400,8 +400,8 @@ export async function removeCategories(ids: number[]): Promise<void> {
 }
 
 export async function screenshotRows(appId: string) {
-  return query<{ slot: number; width: number; updated_at: Date }>(
-    "select slot, width, updated_at from screenshots where app_id = ? order by slot",
+  return query<{ slot: number; width: number; thumb_crc: number; nxi_crc: number; updated_at: Date }>(
+    "select slot, width, thumb_crc, nxi_crc, updated_at from screenshots where app_id = ? order by slot",
     [appId],
   );
 }

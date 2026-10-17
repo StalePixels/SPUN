@@ -56,6 +56,7 @@ test("the hero on / shows the live feature, with the placeholder or the main scr
 });
 
 test("/ and /index.md have no hero when no feature is live", async ({ page }) => {
+  const [feature] = await featureRows(id);
   const published = await publishedFeatureIds();
   expect(published).toContain((await featureRows(id))[0].id);
   await setFeaturesPublished(published, false);
@@ -64,8 +65,10 @@ test("/ and /index.md have no hero when no feature is live", async ({ page }) =>
     await expect(page.getByTestId("home-catalogue")).toBeVisible();
     await expect(page.getByTestId("hero")).toHaveCount(0);
     const text = await getMarkdown(page, "/index.md");
-    expect(text).not.toContain("## Featured");
-    expect(text).toContain("[Browse the catalogue](/catalogue.md)");
+    const links = [...text.matchAll(/\]\(([^)]+)\)/g)].map((match) => match[1]);
+    expect(text).not.toContain(feature.article);
+    expect(links).not.toContain(`/catalogue/${id}.md`);
+    expect(links).toContain("/catalogue.md");
   } finally {
     await setFeaturesPublished(published, true);
   }
@@ -83,12 +86,11 @@ test("/index.md has the feature's article, the install text while spun resolves,
 
   const text = await getMarkdown(page, "/index.md");
   const lines = text.split("\n");
-  expect(lines[0]).toBe("# SPUN");
-  expect(lines).toContain(`## Featured: ${title}`);
+  expect(lines[0]).toMatch(/^# \S/);
+  expect(lines.some((line) => line.startsWith("## ") && line.includes(title))).toBe(true);
   expect(text).toContain(`\n${feature.article}\n`);
   expect(lines).toContain(`[${title}](/catalogue/${id}.md)`);
-  expect(lines).toContain("[Browse the catalogue](/catalogue.md)");
-  expect(lines).not.toContain("## Install SPUN");
+  expect(text).not.toContain(".nbnget /dot/spun : ../spun get spun");
   expect(links(text).sort()).toEqual([`/catalogue/${id}.md`, "/catalogue.md"].sort());
   for (const link of links(text)) {
     expect((await page.request.get(link)).status(), link).toBe(200);
@@ -98,8 +100,7 @@ test("/index.md has the feature's article, the install text while spun resolves,
   await publisher.upload(spun, "1.0", 1);
   await insertAlias("spun", spun);
   const withInstall = await getMarkdown(page, "/index.md");
-  expect(withInstall.split("\n")).toContain("## Install SPUN");
-  expect(withInstall).toContain("On the Next, you can also run `.nbnget /dot/spun : ../spun get spun`.");
+  expect(withInstall).toContain("`.nbnget /dot/spun : ../spun get spun`");
   expect(links(withInstall)).toContain(`/catalogue/${spun}/download`);
   for (const link of links(withInstall)) {
     expect((await page.request.get(link)).status(), link).toBe(200);

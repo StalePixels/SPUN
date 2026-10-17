@@ -1,34 +1,40 @@
+import { readdirSync, readFileSync } from "node:fs";
 import http from "node:http";
+import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { settings } from "../support/settings";
 
-test("/api.md is served, and /llms.txt links to it", async ({ page }) => {
+// Every route under src/app/api with the methods its file exports, in the form /api.md uses.
+// The doc's wording and layout can change; a route missing from it fails the test.
+function apiRoutes(dir = path.join(__dirname, "..", "..", "src", "app", "api"), url = "/api"): string[] {
+  const routes: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      if (url === "/api" && entry.name === "auth") continue;
+      const part = entry.name.replace(/^\[(.+)\]$/, "{$1}");
+      routes.push(...apiRoutes(path.join(dir, entry.name), `${url}/${part}`));
+    } else if (entry.name === "route.ts") {
+      const source = readFileSync(path.join(dir, entry.name), "utf8");
+      for (const [, method] of source.matchAll(/^export const (GET|POST|PUT|PATCH|DELETE)\b/gm)) {
+        routes.push(`${method} ${url}`);
+      }
+    }
+  }
+  return routes;
+}
+
+test("/api.md is served, describes every API route, and /llms.txt links to it", async ({ page }) => {
   const api = await page.request.get("/api.md");
   expect(api.status()).toBe(200);
   expect(api.headers()["content-type"]).toBe("text/markdown; charset=utf-8");
   const text = await api.text();
-  expect(text.startsWith("# SPUN API\n")).toBe(true);
   for (const header of ["X-SPUN-Key", "X-SPUN-Timestamp", "X-SPUN-Nonce", "X-SPUN-Signature"]) {
     expect(text).toContain(header);
   }
-  for (const call of [
-    "GET /api/apps",
-    "GET /api/categories",
-    "GET /api/apps/{id}",
-    "POST /api/apps",
-    "PUT /api/apps/{id}",
-    "DELETE /api/apps/{id}",
-    "POST /api/apps/{id}/releases",
-    "GET /api/apps/{id}/releases/{serial}",
-    "PUT /api/apps/{id}/releases/{serial}/changelog",
-    "DELETE /api/apps/{id}/releases/{serial}",
-    "PUT /api/apps/{id}/screenshots/{slot}",
-    "DELETE /api/apps/{id}/screenshots/{slot}",
-    "GET /api/saved",
-    "PUT /api/saved/{id}",
-    "DELETE /api/saved/{id}",
-  ]) {
-    expect(text).toContain(`### ${call}\n`);
+  const routes = apiRoutes();
+  expect(routes).toContain("GET /api/apps");
+  for (const route of routes) {
+    expect(text, route).toContain(route);
   }
 
   const llms = await (await page.request.get("/llms.txt")).text();

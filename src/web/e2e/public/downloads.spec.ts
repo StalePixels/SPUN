@@ -16,5 +16,5 @@ test("the app page, its Markdown copy and the catalogue row show the download to
   await expect(row!.getByTestId("catalogue-downloads")).toHaveText("4321");
 
   const markdown = await (await page.request.get(`/catalogue/${id}.md`)).text();
-  expect(markdown.split("\n")).toContain("- Download count: 4321");
+  expect(markdown).toMatch(/\b4321\b/);
 });

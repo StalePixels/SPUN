@@ -103,7 +103,7 @@ test("an admin writes a draft, schedules it and publishes it; a live version has
   await page.goto("/admin");
   await page.getByTestId("admin-link-terms").click();
   await expect(page).toHaveURL((url) => url.pathname === "/admin/terms");
-  await expect(page.getByTestId("terms-current-title")).toHaveText(`Version ${seed}`);
+  await expect(page.getByTestId("terms-current-title").getByRole("link")).toHaveAttribute("href", `/admin/terms/${seed}`);
   expect(await stateOf(page, seed)).toBe("current");
 
   const draft = await writeVersion(page, "terms-draft", { text: "# Terms\n\nThe **first** version." });
@@ -122,7 +122,7 @@ test("an admin writes a draft, schedules it and publishes it; a live version has
   expect(scheduled.published).toBe(1);
   expect(scheduled.publish_at!.getTime()).toBeGreaterThan(Date.now());
   expect(await stateOf(page, draft)).toBe("scheduled");
-  await expect(page.getByTestId("terms-current-title")).toHaveText(`Version ${seed}`);
+  await expect(page.getByTestId("terms-current-title").getByRole("link")).toHaveAttribute("href", `/admin/terms/${seed}`);
 
   // A scheduled version can still change, be unpublished or be deleted.
   await page.goto(`/admin/terms/${draft}`);
@@ -139,7 +139,7 @@ test("an admin writes a draft, schedules it and publishes it; a live version has
   expect(await acceptedTermsOf(admin.id)).toBe(draft);
 
   expect(await stateOf(page, draft)).toBe("current");
-  await expect(page.getByTestId("terms-current-title")).toHaveText(`Version ${draft}`);
+  await expect(page.getByTestId("terms-current-title").getByRole("link")).toHaveAttribute("href", `/admin/terms/${draft}`);
   expect(await stateOf(page, seed)).toBe("past");
   await page.goto(`/admin/terms/${draft}`);
   await expect(page.getByTestId("terms-locked")).toBeVisible();

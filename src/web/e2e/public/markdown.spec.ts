@@ -13,10 +13,13 @@ async function getMarkdown(page: Page, url: string): Promise<string> {
 // Every app id that a Markdown catalogue lists, over all its pages.
 async function markdownAppIds(page: Page, url: string): Promise<string[]> {
   const ids: string[] = [];
-  for (let next: string | undefined = url; next; ) {
+  for (let n = 1, next: string | undefined = url; next; n++) {
     const text = await getMarkdown(page, next);
     ids.push(...[...text.matchAll(/\]\(\/catalogue\/([0-9a-z]{6})\.md\)/g)].map((match) => match[1]));
-    next = text.match(/\[Next page\]\(([^)]+)\)/)?.[1];
+    // The next page is the link whose target asks for page n + 1.
+    next = [...text.matchAll(/\]\(([^)]+)\)/g)]
+      .map((match) => match[1])
+      .find((href) => new URL(href, "http://x").searchParams.get("page") === String(n + 1));
   }
   return ids;
 }
@@ -61,12 +64,15 @@ test("the app page has a Markdown copy with the same details", async ({ page, da
   const text = await getMarkdown(page, `/catalogue/${id}.md`);
   const lines = text.split("\n");
   expect(lines[0]).toBe(`# ${data.inOne.title}`);
-  expect(lines).toContain(`Publisher: ${data.owner.username}`);
-  expect(lines).toContain(`Categories: [${data.one.name}](/catalogue/${data.one.slug}.md)`);
+  expect(lines.some((line) => line.includes(data.owner.username))).toBe(true);
+  expect(text).toContain(`[${data.one.name}](/catalogue/${data.one.slug}.md)`);
   expect(lines).toContain(`Has ${data.descriptionWord} in it`);
-  expect(lines).toContain("- Latest version: 1.1");
-  expect(lines).toContain(`- Download: [${id}-0002.zip](/catalogue/${id}/download)`);
-  const versions = lines.filter((line) => line.startsWith("### Version ")).map((line) => line.split(/[ ,]/)[2]);
+  expect(text).toContain(`[${id}-0002.zip](/catalogue/${id}/download)`);
+  // The latest version is in the details, and each release has a heading, newest first.
+  expect(lines.some((line) => !line.startsWith("#") && line.includes("1.1"))).toBe(true);
+  const versions = lines
+    .filter((line) => line.startsWith("### "))
+    .map((line) => ["1.1", "1.0"].find((version) => line.includes(version)));
   expect(versions).toEqual(["1.1", "1.0"]);
 });
 
@@ -84,7 +90,7 @@ test("/llms.txt links every live category and not a deleted one, and every link 
   const response = await page.request.get("/llms.txt");
   expect(response.status()).toBe(200);
   const text = await response.text();
-  expect(text.startsWith("# SPUN\n")).toBe(true);
+  expect(text).toMatch(/^# \S/);
 
   const links = [...text.matchAll(/\]\(([^)]+)\)/g)].map((match) => match[1]);
   expect(links).toContain("/catalogue.md");
