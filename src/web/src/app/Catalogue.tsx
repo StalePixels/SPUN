@@ -124,7 +124,8 @@ export async function CatalogueRows({ rows }: { rows: CatalogueRow[] }) {
             </span>
             <span className="small text-body-secondary">
               <span data-testid="catalogue-version">{app.version}</span>
-              <span className="ms-2" data-testid="catalogue-date">{formatDay(app.releaseDate)}</span>
+              <i className="bi bi-dot" aria-hidden="true" />
+              <span data-testid="catalogue-date">{formatDay(app.releaseDate)}</span>
               <span className="ms-2" title="Downloads">
                 <i className="bi bi-download me-1" aria-hidden="true" />
                 <span data-testid="catalogue-downloads">{app.downloads}</span>
