@@ -7,7 +7,7 @@ This page is for the person who hosts SPUN. It covers the two servers, the datab
 `docker/compose.yml` runs one Compose project, `spun`, with four services:
 
 - `cms`: the web site and the API (Next.js, source in `src/web`). Publishers upload releases here and admins manage the site here.
-- `spun-server`: SPUNServer (source in `src/server`). The `.spun` dot command on a Next talks to it. It speaks the NBN protocol of NBNtools, on port 48128. The `.spun` client has this port compiled in, so change it with `SPUN_PORT` only if you also build a client for it.
+- `spun-server`: SPUNServer (source in `src/server`). The `.spun` dot command on a Next connects to it. It uses the NBN protocol of NBNtools, on port 48128. The `.spun` client has this port compiled in, so change it with `SPUN_PORT` only if you also build a client for it.
 - `mariadb`: the database.
 - `redis`: the claim set of each user, request counters and the nonces of signed API requests.
 
@@ -17,7 +17,7 @@ Users log in through an NBN:ID server (an OIDC server). The CMS has no passwords
 
 ## Settings files
 
-The full list of settings, with a comment on each, is in two files. Read them; this page does not copy them.
+These files list every setting, with a comment on each:
 
 - `docker/.env.example`: host paths, database name and passwords, ports. Copy it to `docker/.env`.
 - `src/web/.env.example`: the CMS settings. Copy it to `docker/cms.env`, without the keys that `docker/.env.example` says `compose.yml` sets itself.
@@ -38,7 +38,7 @@ None of these files is committed. Treat `AUTH_SECRET`, `API_KEY_SECRET`, `AUTH_N
 
 ### The database
 
-MariaDB makes the empty database and its account on the first start. It does not make the tables. The tables are defined in `src/web/src/db/schema.ts`, and the repository has no migrations. The test setup `src/web/e2e/reset.mts` makes tables from that file with `drizzle-kit push`; the same command, run in `src/web` with `DATABASE_URL` pointing at your database, does the same for yours.
+MariaDB makes the empty database and its account on the first start. It does not make the tables. The tables are defined in `src/web/src/db/schema.ts`, and the repository has no migrations. To make them, run `drizzle-kit push` in `src/web` with `DATABASE_URL` set to your database. The test setup, `src/web/e2e/reset.mts`, makes its tables the same way.
 
 The CMS needs some rows to exist before it is useful:
 
@@ -49,16 +49,6 @@ The CMS needs some rows to exist before it is useful:
 
 Each row in `screenshots` has the CRC32 of the screenshot's thumbnail file (`thumb_crc`) and of its NXI file (`nxi_crc`). SPUNServer sends them to `.spun`, which uses them to keep the pictures it downloads in a cache on the SD card. The CMS sets both values when it writes a screenshot. The value 0 means "not known": SPUNServer does not send it, and `.spun` does not cache that file.
 
-A database made before 0.8.1 has no such columns. Run `src/web/scripts/screenshot-crcs.mts` once on it, before you start a CMS or SPUNServer of 0.8.1 or later. The script adds the two columns if they are missing. Then it reads the files of each screenshot row and sets both values: from `STORAGE_DIR/public` for an app that is live, and from `STORAGE_DIR/bin` for an app that is deleted. A file that is not there gets 0, and the script prints its path. The script can run more than once; a second run changes only the rows whose files changed.
-
-Run it in `src/web`, on a host that can reach the database and that has the storage directory:
-
-```
-DATABASE_URL=mysql://USER:PASSWORD@DB_HOST:3306/DATABASE STORAGE_DIR=/path/to/storage node scripts/screenshot-crcs.mts
-```
-
-Without these two variables in the environment, the script reads them from `src/web/.env`. `STORAGE_DIR` is the host path, the same directory as `STORAGE_DIR_HOST` in `docker/.env`. The CMS image does not contain the script. In `docker/compose.yml`, MariaDB has no port on the host: only containers on the project's network can reach it.
-
 ### The first admin
 
 The first user who logs in becomes the admin. Log in once yourself before you announce the site. Every user after that is a normal user. An admin can make other users admins in `/admin/users`; see [ADMIN.md](ADMIN.md).
@@ -67,7 +57,7 @@ The first user who logs in becomes the admin. Log in once yourself before you an
 
 `STORAGE_DIR` has three directories.
 
-- `public`: what SPUNServer serves. Release zips are at `public/<username>/<appid>-<serial as 4 hex>.zip` and screenshots at `public/<username>/nxi/<appid>/<slot>`, with thumbnails in `public/<username>/thumb/<appid>/<slot>`. These are public download paths, so the layout is a contract with the `.spun` client.
+- `public`: what SPUNServer serves. Release zips are at `public/<username>/<appid>-<serial as 4 hex>.zip` and screenshots at `public/<username>/nxi/<appid>/<slot>`, with thumbnails in `public/<username>/thumb/<appid>/<slot>`. These are public download paths that `.spun` uses, so do not change the layout.
 - `bin`: the recycle bin, below.
 - `assets`: web assets, such as the PNG copies of screenshots. SPUNServer does not mount it.
 
@@ -75,7 +65,7 @@ Do not put symbolic links in `STORAGE_DIR/public`. SPUNServer checks that a requ
 
 ## The recycle bin
 
-The CMS never removes a release zip. A delete moves the file from `public` to `bin`, so every delete can be audited and undone by an admin in `/admin`.
+The CMS never removes a release zip. A delete moves the file from `public` to `bin`, so an admin can see and undo every delete in `/admin`.
 
 Names in the bin are flat:
 
@@ -84,7 +74,7 @@ Names in the bin are flat:
 
 These names have no user name, so they are unique only because app ids are never reused. SPUNServer does not mount the bin, so a deleted file cannot be downloaded.
 
-A screenshot replace or clear does not use the bin. The old files are overwritten or removed. Only the delete of a whole app moves its screenshots to the bin.
+A screenshot replace or clear does not use the bin. The CMS overwrites or removes the old files. Only the delete of a whole app moves its screenshots to the bin.
 
 The CMS has no setting or page to empty the bin. Files leave it only when an admin restores them.
 
@@ -100,9 +90,9 @@ The CMS uses `sharp` to convert screenshots. It must work on both arm64 and amd6
 
 The CMS can send one plain-text mail to an admin address for each event you choose. A mail names the app, its publisher and the user who acted, with links. A screenshot mail has the image attached.
 
-Mail is sent only when `SMTP_HOST` and `ADMIN_NOTIFY_EMAIL` are set and `NOTIFY_EVENTS` names at least one event. Since 0.8.1, only the events named in `NOTIFY_EVENTS` send mail. The names are listed in `src/web/.env.example` and in `src/web/src/lib/notices.ts`. A name that is not on that list sends nothing, and the CMS writes it to its log each time an event happens.
+The CMS sends mail only when `SMTP_HOST` and `ADMIN_NOTIFY_EMAIL` are set, and then only for the events in `NOTIFY_EVENTS`. `src/web/.env.example` lists the event names, and `NOTIFY_EVENTS` in `src/web/src/lib/notices.ts` is the same list. The CMS ignores a name it does not know, and writes that name to its log at each event.
 
-Mail is sent after the response, so a mail server that is slow or down never blocks a user. A failed mail is written to the CMS log and is not retried.
+The CMS sends mail after the response, so a mail server that is slow or down never blocks a user. The CMS writes a failed mail to its log and does not try again.
 
 ## Backups
 

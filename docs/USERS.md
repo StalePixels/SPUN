@@ -12,7 +12,7 @@ There are two ways. Both start on the front page of the SPUN site.
 .nbnget /dot/spun : ../spun get spun
 ```
 
-The front page describes it as downloading the SPUN dot command and bootstrapping the full installer.
+It downloads `.spun` into the current directory, then runs it to install SPUN.
 
 **With the zip.** Use "Download the SPUN zip" on the front page, and unpack the zip on the SD card of your Next. Then run `spun.bas`. The menu moves `spun.dot` to `C:/dot/spun`, so `.spun` runs from any directory.
 
@@ -29,7 +29,7 @@ The menu offers: browse the catalogue, update installed apps, install an app by 
 
 ## The `.spun` command
 
-The commands and options are in `src/client/dot/help.txt`, which `.spun` shows when you run it with a wrong option. The guide, `src/client/zip/spun.gde`, explains each one. Read those two; this page does not copy them.
+The commands and options are in `src/client/dot/help.txt`, which `.spun` shows when you run it with a wrong option. The guide, `src/client/zip/spun.gde`, explains each one.
 
 In short: `.spun find TEXT`, `.spun info APPID`, `.spun get APPID` and `.spun update`. With no command, `.spun` opens the SPUN browser. `APPID` can also be an alias. `get featured` installs the app that the site currently features.
 
@@ -38,17 +38,22 @@ In short: `.spun find TEXT`, `.spun info APPID`, `.spun get APPID` and `.spun up
 Run `.spun` with no command, or choose "Browse the catalogue" in the menu.
 
 - **The list.** It shows the apps in the catalogue with their id, title, publisher, version and download count. Move with the cursor keys and open an app with ENTER or a click. The buttons are Prev, Next, Search, Help and Quit. Help shows the same text as `help.txt`.
-- **The app screen.** It shows the details of the app, its releases, and its screenshots (keys 1 to 5 show one in full). ENTER or a click on a release shows its changelog. The buttons are Back, Changelog, Install and Quit.
+- **The app screen.** It shows the details of the app, its releases, and its screenshots (keys 1 to 5 show one in full). ENTER or a click on a release shows its changelog. The buttons are Back, Changelog, Install, Quit and Advanced.
 - **Install.** Install asks where to put the app, as described below, and then installs it. If a file in the app already exists, SPUN asks whether to overwrite it once, overwrite all, or cancel.
 - **Updates.** When the browser starts and installed apps have a newer release, it offers to update them or ignore them.
+- **Advanced.** Clear cache (key L) deletes the cached screenshots of the app.
+
+## The screenshot cache
+
+SPUN keeps each screenshot it downloads in `C:/tmp/spun/<appid>/`, and shows it from the card the next time. It downloads a screenshot again when the publisher changes it, or when you delete its file from the cache.
 
 ## Where apps install
 
 The first time you install an app, SPUN offers the install directory that the publisher suggested, on drive `C:`. You can accept it, or choose another directory in the NextZXOS file browser. A RAM disk or a disk image cannot hold an app.
 
-SPUN remembers the directory. An update goes to the same place. If the installed release is the latest, SPUN asks before it installs the same release again. If the installed release is newer than the latest on the server, it refuses.
+SPUN remembers the directory. An update goes to the same place. If the installed release is the latest, SPUN asks before it installs the same release again. If the installed release is newer than the latest on the server, SPUN does not install.
 
-Where the app has dot commands, SPUN moves them to `C:/dot/` after the install.
+If the app has dot commands, SPUN moves them to `C:/dot/` after the install.
 
 ## The catalogue file
 
@@ -58,13 +63,13 @@ SPUN keeps the list of what it installed in the text file `C:/sys/spun.cat`. Eac
 abc123 0003 1.2 C:/apps/myapp
 ```
 
-Empty lines and lines that start with `#` or `;` are ignored. If a line is bad, `.spun` stops and names the line number before it changes anything. Deleting a line makes SPUN forget that app: it is no longer updated. The files of the app stay.
+SPUN ignores empty lines and lines that start with `#` or `;`. If a line is bad, `.spun` stops and names the line number before it changes anything. If you delete a line, SPUN no longer updates that app. The files of the app stay.
 
 ## The web site
 
 The catalogue is also on the web site, at `/catalogue`. You can read it without an account.
 
 - Search with the search box, and filter by category.
-- Open an app to see its details, and to download the latest release as a zip. A download from the web site does not count in the download count.
+- Open an app to see its details, and to download the latest release as a zip. The download count does not include downloads from the web site.
 - Every page also exists as Markdown: add `.md` to the address.
 - With an account you can save apps. The save button is on each app and in the catalogue list. Your saved apps are on the "My Apps" tab of your account page, `/me/apps`.

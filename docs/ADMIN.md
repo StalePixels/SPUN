@@ -10,10 +10,9 @@ Admin is one flag on a user. There are no lesser levels: an admin can do everyth
 - An admin sets or clears the flag on the user's page, `/admin/users/<id>`.
 - The last enabled admin cannot lose the flag, be disabled or be deleted. The site refuses with `admin.lastAdmin`. Make another admin first.
 - Admin rights apply only under `/admin`. Everywhere else an admin is a normal user: an admin edits only their own apps on the publisher pages. To change another user's app, use `/admin/apps`.
-- `/admin` looks absent to anyone who is not an admin. The page answers 404, not "forbidden". Every admin page, action and data function checks the flag again on its own (`requireAdmin()` in `src/web/src/lib/admin.ts`).
+- For anyone who is not an admin, `/admin` answers 404, not 403. Every admin page, action and data function checks the flag again on its own (`requireAdmin()` in `src/web/src/lib/admin.ts`).
 - An admin must also have accepted the current terms and conditions, like any user.
 
-The admin home page links to the sections below.
 
 ## Settings
 
@@ -32,7 +31,7 @@ A user's page shows the email address, the registration date and the status. Fro
 
 ### Usernames
 
-A username is permanent for the publisher. The publisher cannot change it; only an admin rename does. A new name follows the same rules as a chosen one: 8 to 16 characters of letters, digits, `-` and `_`, and not already taken. Letter case does not make a name different.
+A username is permanent for the publisher. The publisher cannot change it; only an admin can rename a user. A new name follows the same rules as a chosen one: 8 to 16 characters of letters, digits, `-` and `_`, and not already taken. Letter case does not make a name different.
 
 A rename moves the user's directory in the storage directory. The download paths of the user's apps change, and the old paths stop working.
 
@@ -40,7 +39,7 @@ A rename moves the user's directory in the storage directory. The download paths
 
 A disabled user cannot log in. Disabling also ends the user's sessions at once and stops the user's API keys.
 
-The user's apps stay public and downloadable. A lock-out never breaks installs on a Next. "Enable" lets the user log in again.
+The user's apps stay public, and Nexts can still install them. "Enable" lets the user log in again.
 
 ### Delete
 
@@ -74,13 +73,15 @@ An alias is a short name for an app. `.spun get <alias>` works like `.spun get <
 
 ### Reserved dot commands
 
-A dot command is a file at the root of a release zip with a name ending `.dot`. The names of the dot commands that the Next ships, and `spun`, are reserved, and a zip that has one is refused. An override for a name lets the releases of that one app have a dot command with that name. The list of reserved names is in `src/web/src/lib/dotcommands.ts`.
+A dot command is a file at the root of a release zip with a name ending `.dot`. The names of the dot commands that the Next ships, and `spun`, are reserved. The site refuses a zip that has one. An override for a name lets the releases of that one app have a dot command with that name. The list of reserved names is in `src/web/src/lib/dotcommands.ts`.
 
 ## Delete and restore
 
 A delete never removes a release zip or a screenshot. It marks the row and moves the files to the recycle bin, `STORAGE_DIR/bin`. See [CMS.md](CMS.md) for the file names.
 
-**App.** "Delete" marks the app as deleted and moves the zips of its releases that are not deleted, and its screenshots, to the bin. The app disappears from the catalogue and its files cannot be downloaded. The app id stays taken. "Restore" brings them back.
+The recycle bin has no page of its own. Restore an app, a release or a category on its own page. Users, features and terms versions have no restore; an admin can enable a deleted user again (see Delete under Users).
+
+**App.** "Delete" marks the app as deleted and moves the zips of its releases that are not deleted, and its screenshots, to the bin. The catalogue no longer lists the app, and no one can download its files. The app id stays taken. "Restore" brings them back.
 
 Each release keeps its own `deleted_at`. An app restore brings back only the releases that were not deleted on their own. A release that someone deleted before the app was deleted stays deleted, and its zip stays in the bin.
 
@@ -95,9 +96,9 @@ Each release keeps its own `deleted_at`. An app restore brings back only the rel
 - A slug: the URL of the category, `/catalogue/<slug>`. It has up to 16 characters from `a-z`, `0-9` and `-`. It cannot be a page of the site, `featured`, or six letters and digits, which is the form of an app id. A change breaks the old URL.
 - A name, up to 32 characters.
 - An install directory, which SPUN suggests to an app in this category.
-- A specificity, a whole number from 0 to 65535. When an app has several categories, the directory of the category with the highest specificity is suggested. On a tie, the longest directory wins.
+- A specificity, a whole number from 0 to 65535. When an app has several categories, SPUN suggests the directory of the category with the highest specificity. On a tie, it suggests the longest directory.
 
-A deleted category can be restored. Its slug cannot be used by another category while it is deleted.
+An admin can restore a deleted category. While it is deleted, no other category can use its slug.
 
 ## Featured apps
 
@@ -116,17 +117,9 @@ A feature is a short article about a public app. The home page shows the live fe
 
 - A version goes live at its publish time. The version that is live is the current one.
 - A live version cannot be edited, unpublished or deleted. Write a new version instead.
-- When a new version goes live, every user must accept it before they use the site again. Users who log in with an older acceptance are sent to `/terms`. This includes admins.
+- When a new version goes live, every user must accept it before they use the site again. The site sends a user who accepted only an older version to `/terms`. This includes admins.
 - A new user accepts the live version when choosing a username.
 
 ## Client statistics
 
 `/admin/clients` charts the information that `.spun` clients send to SPUNServer, as stored in the database. Choose the key, whether to count IP addresses or connections, and the number of days. Days are in UTC.
-
-## Revalidate
-
-Revalidate is on each app's page; see Apps above.
-
-## Recycle bin and restores
-
-The recycle bin has no page of its own. A restore is done on the page of the thing that was deleted: an app, a release or a category. Users, features and terms versions have no restore. A deleted user can be enabled again, as described above.
