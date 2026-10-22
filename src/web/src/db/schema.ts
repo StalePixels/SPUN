@@ -224,6 +224,9 @@ export const screenshots = mysqlTable(
     slot: tinyint("slot", { unsigned: true }).notNull(),
     // 256 or 320: an NXI has no header, so the file alone cannot say.
     width: smallint("width", { unsigned: true }).notNull(),
+    // CRC32s of the thumbnail and NXI files, for the client's cache. 0 is unknown.
+    thumbCrc: int("thumb_crc", { unsigned: true }).notNull().default(0),
+    nxiCrc: int("nxi_crc", { unsigned: true }).notNull().default(0),
     // Milliseconds: the PNG URL carries it, so two replaces in one second differ.
     updatedAt: timestamp("updated_at", { mode: "date", fsp: 3 }).notNull().defaultNow(),
   },

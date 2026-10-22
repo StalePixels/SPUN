@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AppId } from "./apps";
-import { fieldChanges, mailConfig, noticeMail, type Notice, type NoticeApp } from "./notices";
+import { fieldChanges, mailConfig, noticeEvent, noticeMail, type Notice, type NoticeApp } from "./notices";
 
 const BASE = "https://spun.example.com";
 const owner = { id: "owner-1", username: "Owner" };
@@ -29,6 +29,8 @@ describe("mailConfig", () => {
       from: "spun@example.com",
       to: "admin@example.com",
       baseUrl: BASE,
+      events: [],
+      unknownEvents: [],
     });
     expect(mailConfig({ ...full, SMTP_PORT: "465", SMTP_SECURE: "true", SMTP_USER: "u", SMTP_PASS: "p" })?.smtp).toEqual({
       host: "relay.example.com",
@@ -40,6 +42,22 @@ describe("mailConfig", () => {
 
   it("sends from noreply at the CMS host when MAIL_FROM is not set", () => {
     expect(mailConfig({ ...full, MAIL_FROM: undefined })?.from).toBe('"SPUN" <noreply@spun.example.com>');
+  });
+
+  it("takes the events from NOTIFY_EVENTS, split by commas or spaces, and keeps unknown names apart", () => {
+    const config = mailConfig({ ...full, NOTIFY_EVENTS: "SCREENSHOT, USER_JOIN app_create  APP_CREATE,BOGUS" });
+    expect(config?.events).toEqual(["USER_JOIN", "APP_CREATE", "SCREENSHOT"]);
+    expect(config?.unknownEvents).toEqual(["app_create", "BOGUS"]);
+    expect(mailConfig({ ...full, NOTIFY_EVENTS: " " })?.events).toEqual([]);
+  });
+});
+
+describe("noticeEvent", () => {
+  it("gives each kind of notice its NOTIFY_EVENTS name", () => {
+    expect(noticeEvent({ kind: "userJoined", actorId: "u" })).toBe("USER_JOIN");
+    expect(noticeEvent({ kind: "publisherJoined", actorId: "u" })).toBe("PUBLISHER_JOIN");
+    expect(noticeEvent({ kind: "appEdited", actorId: "u", appId, changes: [] })).toBe("APP_UPDATE");
+    expect(noticeEvent({ kind: "screenshot", actorId: "u", appId, slot: 1, action: "removed" })).toBe("SCREENSHOT");
   });
 });
 
@@ -125,6 +143,57 @@ describe("noticeMail", () => {
     const mail = noticeMail({ kind: "screenshot", actorId: owner.id, appId, slot: 2, action: "replaced" }, app, owner, BASE);
     expect(mail.subject).toBe("SPUN: Screenshot replaced: My Game (abc123)");
     expect(mail.text).toContain("Slot: 2");
+  });
+
+  it("an added or replaced screenshot goes with the mail as a PNG; a removed one does not", () => {
+    const png = Buffer.from("png");
+    const added = noticeMail({ kind: "screenshot", actorId: owner.id, appId, slot: 2, action: "added" }, app, owner, BASE, png);
+    expect(added.attachments).toEqual([{ filename: "abc123-2.png", content: png, contentType: "image/png" }]);
+    expect(added.text).toContain("The screenshot is attached.");
+    const removed = noticeMail({ kind: "screenshot", actorId: owner.id, appId, slot: 2, action: "removed" }, app, owner, BASE, png);
+    expect(removed.attachments).toEqual([]);
+    expect(removed.text).not.toContain("attached");
+    const missing = noticeMail({ kind: "screenshot", actorId: owner.id, appId, slot: 2, action: "added" }, app, owner, BASE);
+    expect(missing.attachments).toEqual([]);
+    expect(missing.text).not.toContain("attached");
+  });
+
+  it("lists the app, its publisher and a different acting user, with their details", () => {
+    const detailed: NoticeApp = {
+      ...app,
+      details: { Title: "My Game", Downloads: "12" },
+      owner: { ...owner, details: { Username: "Owner", Email: "owner@example.com" } },
+    };
+    const actor = { ...admin, details: { Username: "Admin", Admin: "yes" } };
+    const text = noticeMail({ kind: "appDeleted", actorId: admin.id, appId }, detailed, actor, BASE).text;
+    expect(text).toContain("App:\n  Title: My Game\n  Downloads: 12\n");
+    expect(text).toContain("Publisher Owner:\n  Username: Owner\n  Email: owner@example.com\n");
+    expect(text).toContain("Acting user Admin:\n  Username: Admin\n  Admin: yes\n");
+    const own = noticeMail({ kind: "appDeleted", actorId: owner.id, appId }, detailed, detailed.owner, BASE).text;
+    expect(own).not.toContain("Acting user");
+  });
+
+  it("a new app lists its fields once, not again as the app", () => {
+    const detailed: NoticeApp = { ...app, details: { Title: "My Game" } };
+    const text = noticeMail({ kind: "appCreated", actorId: owner.id, appId, fields: { Title: "My Game" } }, detailed, owner, BASE).text;
+    expect(text).toContain("Details:\n  Title: My Game\n");
+    expect(text).not.toContain("App:");
+  });
+
+  it("a deleted app has no public page link", () => {
+    const deleted = noticeMail({ kind: "appDeleted", actorId: owner.id, appId }, app, owner, BASE).text;
+    expect(deleted).not.toContain("/catalogue/");
+    const edited = noticeMail({ kind: "appEdited", actorId: owner.id, appId, changes: [] }, app, owner, BASE).text;
+    expect(edited).toContain(`  Public page: ${BASE}/catalogue/abc123`);
+  });
+
+  it("a new user is named by email, with their details and their user page", () => {
+    const user = { id: "user-7", username: null, details: { Username: "(none yet)", Email: "new@example.com" } };
+    const mail = noticeMail({ kind: "userJoined", actorId: user.id }, null, user, BASE);
+    expect(mail.subject).toBe("SPUN: New user: new@example.com");
+    expect(mail.text).toContain("New user: new@example.com logged in for the first time.");
+    expect(mail.text).toContain("User:\n  Username: (none yet)\n  Email: new@example.com\n");
+    expect(mail.text).toContain(`${BASE}/admin/users/user-7`);
   });
 
   it("a new publisher is named in the subject and links to their user page", () => {

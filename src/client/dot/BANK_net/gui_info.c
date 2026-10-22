@@ -11,6 +11,8 @@ unsigned char *gui_info(void) {
     uint16_t listPage = page;
     uint16_t end;
     uint16_t width;
+    uint32_t thumbCrc;
+    uint32_t nxiCrc;
     uint8_t slot;
 
     page = 1;
@@ -33,12 +35,19 @@ unsigned char *gui_info(void) {
             end = reply_enter();
             slot = 0;
             width = 0;
+            thumbCrc = 0;
+            nxiCrc = 0;
             while(reply_field()) {
                 if(replyTag == TAG_SLOT) slot = reply_number();
                 else if(replyTag == TAG_WIDTH) width = reply_number();
+                else if(replyTag == TAG_THUMB_CRC) thumbCrc = reply_number();
+                else if(replyTag == TAG_NXI_CRC) nxiCrc = reply_number();
             }
             reply_leave(end);
-            if(slot >= 1 && slot <= SLOTS) shotWidth[slot - 1] = width;
+            if(slot < 1 || slot > SLOTS) continue;
+            shotWidth[slot - 1] = width;
+            shotCrc[slot - 1] = thumbCrc;
+            shotCrc[SLOTS + slot - 1] = nxiCrc;
         }
     }
     reply_rewind();

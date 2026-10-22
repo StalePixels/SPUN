@@ -109,7 +109,7 @@ export function mysqlCatalogue(uri: string): Catalogue {
         [id],
       );
       const [screenshots] = await pool.query<RowDataPacket[]>(
-        "SELECT slot, width FROM screenshots WHERE app_id = ? ORDER BY slot",
+        "SELECT slot, width, thumb_crc AS thumbCrc, nxi_crc AS nxiCrc FROM screenshots WHERE app_id = ? ORDER BY slot",
         [id],
       );
       const [app] = rows;

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { users } from "@/db/schema";
 import { db } from "./db";
+import { notify } from "./notify";
 import { mustAcceptTerms } from "./rules";
 import { currentTermsId } from "./terms";
 
@@ -64,7 +65,7 @@ type NewUser = { name?: string | null; email: string; emailVerified?: Date | nul
 export async function createUser(data: NewUser): Promise<typeof users.$inferSelect> {
   for (let attempt = 1; ; attempt++) {
     try {
-      return await db().transaction(async (tx) => {
+      const created = await db().transaction(async (tx) => {
         const admins = await tx
           .select({ id: users.id })
           .from(users)
@@ -83,6 +84,8 @@ export async function createUser(data: NewUser): Promise<typeof users.$inferSele
         const [row] = await tx.select().from(users).where(eq(users.id, id));
         return row;
       });
+      notify({ kind: "userJoined", actorId: created.id });
+      return created;
     } catch (err) {
       const e = err as { code?: string; cause?: { code?: string } };
       if (attempt < 5 && (e.code ?? e.cause?.code) === "ER_LOCK_DEADLOCK") {

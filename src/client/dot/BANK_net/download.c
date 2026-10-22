@@ -57,7 +57,7 @@ unsigned char *download(char *id) {
     }
     downloading = true;
 
-    if(!quiet) printf("Name: %s\nSize: %lu bytes\n", filename, (unsigned long)size);
+    if(!quiet) printf("File: %s\nSize: %lu bytes\n", filename, (unsigned long)size);
 
     done = 0;
     total = blocks + 1;

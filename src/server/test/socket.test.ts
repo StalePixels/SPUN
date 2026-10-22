@@ -63,8 +63,8 @@ const tables: Tables = {
       downloads: 12,
       categories: ["Tools", "Games"],
       screenshots: [
-        { slot: 4, width: 256 },
-        { slot: 1, width: 320 },
+        { slot: 4, width: 256, thumbCrc: 0x11223344, nxiCrc: 0 },
+        { slot: 1, width: 320, thumbCrc: 0xcafef00d, nxiCrc: 0xdeadbeef },
       ],
       installDir: "/apps/mixed",
     },
@@ -323,14 +323,14 @@ describe("SPINFO", () => {
     assert.equal((await client.drain()).length, 0);
   });
 
-  test("carries the download count, the categories by name and the screenshots by slot", async () => {
+  test("carries the download count, the categories by name and the screenshots by slot, with their CRCs", async () => {
     client.send("SPINFO abc123\n");
     const page = await client.reply(decodeInfo);
     assert.equal(page.app.downloads, 12);
     assert.deepEqual(page.app.categories, ["Games", "Tools"]);
     assert.deepEqual(page.app.screenshots, [
-      { slot: 1, width: 320 },
-      { slot: 4, width: 256 },
+      { slot: 1, width: 320, thumbCrc: 0xcafef00d, nxiCrc: 0xdeadbeef },
+      { slot: 4, width: 256, thumbCrc: 0x11223344, nxiCrc: 0 },
     ]);
     assert.equal(page.app.installDir, "/apps/mixed");
   });

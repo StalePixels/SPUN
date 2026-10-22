@@ -1,6 +1,7 @@
 import "server-only";
 import { link, mkdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { crc32 } from "node:zlib";
 import { releaseFileName } from "./rules";
 import { requireEnv } from "./env";
 
@@ -105,13 +106,14 @@ export async function renameUserDir(from: string, to: string): Promise<void> {
   await rename(path.join(dataDir(), from), path.join(dataDir(), to));
 }
 
-// A replace overwrites: the bin is only for deletes.
+// A replace overwrites: the bin is only for deletes. Returns the CRC32s the
+// screenshot row keeps for the client's cache.
 export async function writeScreenshot(
   username: string,
   appId: string,
   slot: number,
   files: { nxi: Buffer; png: Buffer; thumb: Buffer },
-): Promise<void> {
+): Promise<{ thumbCrc: number; nxiCrc: number }> {
   for (const [file, data] of [
     [screenshotPath(username, appId, slot), files.nxi],
     [screenshotPngPath(appId, slot), files.png],
@@ -120,6 +122,7 @@ export async function writeScreenshot(
     await mkdir(path.dirname(file), { recursive: true });
     await writeFile(file, data);
   }
+  return { thumbCrc: crc32(files.thumb), nxiCrc: crc32(files.nxi) };
 }
 
 export async function removeScreenshot(username: string, appId: string, slot: number): Promise<void> {

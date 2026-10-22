@@ -20,6 +20,8 @@ typedef void *(*far_ptr_fn_t)(void *);
 
 #ifdef __ZXNEXT
 extern unsigned char _z_page_table[];
+// The physical pages of DOTN_NUM_EXTRA (zpragma.inc)
+extern unsigned char _z_extra_table[];
 
 void *_far(uint8_t bank, far_fn_t fn);
 void *_farWithPointer(uint8_t bank, far_ptr_fn_t fn, void *data);

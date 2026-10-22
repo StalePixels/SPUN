@@ -15,7 +15,7 @@ vi.mock("./categories", () => ({ appCategoryList: async () => [] }));
 const { notify } = await import("./notify");
 
 const notice = { kind: "appDeleted" as const, actorId: "u1", appId: "abc123" as AppId };
-const KEYS = ["SMTP_HOST", "ADMIN_NOTIFY_EMAIL"] as const;
+const KEYS = ["SMTP_HOST", "ADMIN_NOTIFY_EMAIL", "NOTIFY_EVENTS"] as const;
 const saved: Record<string, string | undefined> = {};
 
 beforeEach(() => {
@@ -41,9 +41,22 @@ describe("notify", () => {
     expect(after).not.toHaveBeenCalled();
   });
 
+  it("does nothing for an event that NOTIFY_EVENTS does not name, and logs unknown names", () => {
+    process.env.SMTP_HOST = "relay.example.com";
+    process.env.ADMIN_NOTIFY_EMAIL = "admin@example.com";
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    delete process.env.NOTIFY_EVENTS;
+    notify(notice);
+    process.env.NOTIFY_EVENTS = "APP_CREATE,APP_DELTE";
+    notify(notice);
+    expect(after).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith("NOTIFY_EVENTS has unknown names, which send no mail: APP_DELTE");
+  });
+
   it("sends after the response, and logs a failure instead of throwing it", async () => {
     process.env.SMTP_HOST = "relay.example.com";
     process.env.ADMIN_NOTIFY_EMAIL = "admin@example.com";
+    process.env.NOTIFY_EVENTS = "APP_DELETE";
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     notify(notice);
     expect(after).toHaveBeenCalledTimes(1);
@@ -54,6 +67,7 @@ describe("notify", () => {
   it("logs, and does not throw, when it is called outside a request", () => {
     process.env.SMTP_HOST = "relay.example.com";
     process.env.ADMIN_NOTIFY_EMAIL = "admin@example.com";
+    process.env.NOTIFY_EVENTS = "APP_DELETE";
     after.mockImplementation(() => {
       throw new Error("outside a request");
     });

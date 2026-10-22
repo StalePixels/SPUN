@@ -11,5 +11,6 @@ const struct gui_button appButtons[] = {
     { 8, BUTTON_ROW, 'c', "Changelog" },
     { 31, BUTTON_ROW, 'q', "Quit" },
     { 20, BUTTON_ROW, 'i', "Install" },
+    { 38, BUTTON_ROW, 'a', "Advanced" },
 };
 const uint8_t appButtonCount = sizeof(appButtons) / sizeof(appButtons[0]);

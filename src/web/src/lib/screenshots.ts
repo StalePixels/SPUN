@@ -67,12 +67,12 @@ export async function putScreenshot(
   shot: ScreenshotUpload,
 ): Promise<"added" | "replaced"> {
   const action = (await slots(appId)).includes(slot) ? "replaced" : "added";
-  await writeScreenshot(username, appId, slot, { ...shot, thumb: makeThumbnail(shot.nxi, slot)! });
+  const crcs = await writeScreenshot(username, appId, slot, { ...shot, thumb: makeThumbnail(shot.nxi, slot)! });
   const updatedAt = new Date();
   await db()
     .insert(screenshots)
-    .values({ appId, slot, width: shot.width, updatedAt })
-    .onDuplicateKeyUpdate({ set: { width: shot.width, updatedAt } });
+    .values({ appId, slot, width: shot.width, ...crcs, updatedAt })
+    .onDuplicateKeyUpdate({ set: { width: shot.width, ...crcs, updatedAt } });
   return action;
 }
 

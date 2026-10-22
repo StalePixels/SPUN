@@ -56,6 +56,7 @@ unsigned char *app_run(void) {
             break;
         }
         if(action == APP_INSTALL) app_install();
+        if(action == APP_ADVANCED) app_advanced();
         if(action == APP_CHANGELOG && releaseRows) {
             clog_show();
             app_show(false);

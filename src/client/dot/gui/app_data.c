@@ -4,6 +4,8 @@
 #include "../BANK_app/app.h"
 
 uint16_t shotWidth[SLOTS];
+uint32_t shotCrc[SLOTS * 2];
+uint32_t cacheCrc[CACHE_SLOTS];
 unsigned char categoryText[96];
 uint16_t releaseCount;
 uint8_t releaseRows;

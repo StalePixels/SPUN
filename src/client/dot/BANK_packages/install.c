@@ -104,6 +104,10 @@ unsigned char *dir_make(void) {
     return NULL;
 }
 
+static void name_print(void) {
+    if(!quiet) printf("Name: %s\nVersion: %s\n", title, version);
+}
+
 static bool use_suggested(void) {
     if(!*suggestDir) return false;
     sprintf(installDir, "C:%s", suggestDir);
@@ -149,7 +153,7 @@ unsigned char *spun_get(char *id) {
         check_catalogue(id);
     }
 
-    if(!quiet) printf("%s\n%s\n", title, version);
+    name_print();
     if(installed) {
         if(installedSerial > serial) return err_installed_newer;
         if(installedSerial == serial) {
@@ -202,7 +206,7 @@ unsigned char *spun_update(void) {
         }
         if(serial <= entrySerial) continue;
 
-        if(!quiet) printf("%s %s\n", title, version);
+        name_print();
         updates++;
         check_install_drive();
         if((result = install(appid))) {

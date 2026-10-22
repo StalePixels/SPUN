@@ -13,3 +13,5 @@ wait_back.c
 clog_show.c
 view_show.c
 app_install.c
+app_advanced.c
+cache.c

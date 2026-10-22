@@ -47,12 +47,18 @@ struct gui_button;
 #define APP_CHANGELOG       1
 #define APP_QUIT            2
 #define APP_INSTALL         3
+#define APP_ADVANCED        4
 
 extern const struct gui_button appButtons[];
 extern const uint8_t appButtonCount;
 
 // Main memory, where the net bank writes them
 extern uint16_t shotWidth[SLOTS];
+// The CRC32 of each thumbnail, then of each NXI; 0 when the server gives none
+extern uint32_t shotCrc[SLOTS * 2];
+// The values in cache.crc. Main memory, as NextZXOS reads and writes them; so are the paths, on the stack
+#define CACHE_SLOTS         (SLOTS * 2)
+extern uint32_t cacheCrc[CACHE_SLOTS];
 extern unsigned char categoryText[96];
 extern uint16_t releaseCount;
 extern uint8_t releaseRows;
@@ -75,5 +81,6 @@ void wait_back(void);
 void clog_show(void);
 unsigned char *view_show(uint8_t slot) __z88dk_fastcall;
 void app_install(void);
+void app_advanced(void);
 
 #endif

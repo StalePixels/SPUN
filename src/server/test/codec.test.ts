@@ -75,8 +75,8 @@ const INFO_PAGE: InfoPage = {
     downloads: 7,
     categories: ["Games", "Tools"],
     screenshots: [
-      { slot: 1, width: 256 },
-      { slot: 3, width: 320 },
+      { slot: 1, width: 256, thumbCrc: 0x89abcdef, nxiCrc: 0x01020304 },
+      { slot: 3, width: 320, thumbCrc: 0xfedcba98, nxiCrc: 0x0a0b0c0d },
     ],
     installDir: null,
   },
@@ -98,8 +98,8 @@ const INFO_BODY =
   field(0x16, le(7, 4)) +
   field(0x19, ascii("Games")) +
   field(0x19, ascii("Tools")) +
-  field(0x1a, field(0x1b, "01") + field(0x1c, le(256, 2))) +
-  field(0x1a, field(0x1b, "03") + field(0x1c, le(320, 2))) +
+  field(0x1a, field(0x1b, "01") + field(0x1c, le(256, 2)) + field(0x1e, le(0x89abcdef, 4)) + field(0x1f, le(0x01020304, 4))) +
+  field(0x1a, field(0x1b, "03") + field(0x1c, le(320, 2)) + field(0x1e, le(0xfedcba98, 4)) + field(0x1f, le(0x0a0b0c0d, 4))) +
   field(0x18, field(0x14, le(2, 2)) + field(0x15, ascii("1.1")) + field(0x17, ascii("2026-09-26"))) +
   field(0x18, field(0x14, le(1, 2)) + field(0x15, ascii("1.0")) + field(0x17, ascii("2020-05-17")));
 
@@ -144,6 +144,29 @@ test("SPINFO sends the suggested install directory after the download count, onl
   );
   assert.equal(toHex(encodeInfo(suggested)), expected);
   assert.deepEqual(decodeInfo(bytes(expected)), suggested);
+});
+
+test("SPINFO leaves out a screenshot CRC of 0, and a missing CRC decodes as 0", () => {
+  const unknown: InfoPage = {
+    ...INFO_PAGE,
+    app: {
+      ...INFO_PAGE.app,
+      screenshots: [
+        { slot: 1, width: 256, thumbCrc: 0, nxiCrc: 0x01020304 },
+        { slot: 3, width: 320, thumbCrc: 0xfedcba98, nxiCrc: 0 },
+      ],
+    },
+  };
+  const expected = reply(
+    INFO_BODY.replace(
+      field(0x1a, field(0x1b, "01") + field(0x1c, le(256, 2)) + field(0x1e, le(0x89abcdef, 4)) + field(0x1f, le(0x01020304, 4))) +
+        field(0x1a, field(0x1b, "03") + field(0x1c, le(320, 2)) + field(0x1e, le(0xfedcba98, 4)) + field(0x1f, le(0x0a0b0c0d, 4))),
+      field(0x1a, field(0x1b, "01") + field(0x1c, le(256, 2)) + field(0x1f, le(0x01020304, 4))) +
+        field(0x1a, field(0x1b, "03") + field(0x1c, le(320, 2)) + field(0x1e, le(0xfedcba98, 4))),
+    ),
+  );
+  assert.equal(toHex(encodeInfo(unknown)), expected);
+  assert.deepEqual(decodeInfo(bytes(expected)), unknown);
 });
 
 test("SPCLOG encodes and decodes the agreed bytes", () => {
@@ -249,7 +272,12 @@ test("the largest SPINFO page fits in one block", () => {
       description: "d".repeat(MAX.description),
       downloads: 0xffffffff,
       categories: Array.from({ length: INFO_CATEGORIES_MAX }, () => "c".repeat(MAX.category)),
-      screenshots: Array.from({ length: MAX.slots }, (_, i) => ({ slot: i + 1, width: 320 })),
+      screenshots: Array.from({ length: MAX.slots }, (_, i) => ({
+        slot: i + 1,
+        width: 320,
+        thumbCrc: 0xffffffff,
+        nxiCrc: 0xffffffff,
+      })),
       installDir: "/".repeat(MAX.installDir),
     },
     total: 0xffff,
@@ -262,8 +290,8 @@ test("the largest SPINFO page fits in one block", () => {
     })),
   });
   // counts 12, app id 8, username 18, title 34, description 259, downloads 6, install directory 66,
-  // categories 34 each, screenshots 9 each, releases 36 each.
-  const body = 12 + 8 + 18 + 34 + 259 + 6 + 66 + INFO_CATEGORIES_MAX * 34 + MAX.slots * 9 + INFO_PAGE_SIZE * 36;
+  // categories 34 each, screenshots 21 each, releases 36 each.
+  const body = 12 + 8 + 18 + 34 + 259 + 6 + 66 + INFO_CATEGORIES_MAX * 34 + MAX.slots * 21 + INFO_PAGE_SIZE * 36;
   assert.equal(page.length - 5, body);
   assert.ok(body <= MAX_BLOCK_SIZE);
 });

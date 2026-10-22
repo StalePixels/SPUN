@@ -27,9 +27,12 @@ export interface FoundApp {
   downloads: number;
 }
 
+// A CRC32 of 0 is unknown: the reply leaves it out.
 export interface Screenshot {
   slot: number;
   width: number;
+  thumbCrc: number;
+  nxiCrc: number;
 }
 
 export interface AppInfo {

@@ -4,6 +4,7 @@
 #include "../BANK_net/reply.h"
 #include "../BANK_screen/screen.h"
 #include "app.h"
+#include "cache.h"
 
 // The cells over each picture are ATTR_BLACK, which is transparent in the tilemap, so Layer 2 shows through;
 // they are drawn also when the pictures are already in Layer 2
@@ -24,10 +25,16 @@ unsigned char *thumbs_load(bool load) __z88dk_fastcall {
 
     intrinsic_di();
     pointer_hide();
+    cache_load();
     for(slot = 1; slot <= SLOTS; slot++) {
-        if(missing & (1 << slot)) continue;
+        if(missing & (1 << slot)) {
+            cache_drop(slot);
+            continue;
+        }
         thumb_rect(slot, &rect);
+        cache_open(slot - 1);
         error = _farWithPointer(BANK_NET, (far_ptr_fn_t)gui_get, &rect);
+        cache_close(slot - 1, !error);
         if(!error) continue;
         failed = error;
         missing |= 1 << slot;

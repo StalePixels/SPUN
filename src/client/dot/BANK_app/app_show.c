@@ -12,6 +12,7 @@ bool app_show(bool pictures) __z88dk_fastcall {
 
     releaseRows = 0;
     memset(shotWidth, 0, sizeof(shotWidth));
+    memset(shotCrc, 0, sizeof(shotCrc));
     *categoryText = 0;
 
     tm_blank(0, TITLE_ROW + 1, GUI_COLUMNS * (BUTTON_ROW - TITLE_ROW - 1), ATTR_TEXT);

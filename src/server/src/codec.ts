@@ -26,6 +26,8 @@ export const Tag = {
   slot: 0x1b,
   width: 0x1c,
   installDir: 0x1d,
+  thumbCrc: 0x1e,
+  nxiCrc: 0x1f,
   description: 0x80,
   changelog: 0x81,
 } as const;
@@ -148,6 +150,12 @@ export function encodeInfo(page: InfoPage): Uint8Array {
     out.group(Tag.screenshot, (entry) => {
       entry.u8(Tag.slot, shot.slot);
       entry.u16(Tag.width, shot.width);
+      if (shot.thumbCrc !== 0) {
+        entry.u32(Tag.thumbCrc, shot.thumbCrc);
+      }
+      if (shot.nxiCrc !== 0) {
+        entry.u32(Tag.nxiCrc, shot.nxiCrc);
+      }
     });
   }
   for (const release of page.releases) {
@@ -283,10 +291,12 @@ export function decodeInfo(bytes: Uint8Array): InfoPage {
     if (tag === Tag.category) app.categories.push(fieldText(value));
     if (tag === Tag.installDir) app.installDir = fieldText(value);
     if (tag === Tag.screenshot) {
-      const shot: Screenshot = { slot: 0, width: 0 };
+      const shot: Screenshot = { slot: 0, width: 0, thumbCrc: 0, nxiCrc: 0 };
       for (const inner of readFields(value)) {
         if (inner.tag === Tag.slot) shot.slot = fieldNumber(inner.value);
         if (inner.tag === Tag.width) shot.width = fieldNumber(inner.value);
+        if (inner.tag === Tag.thumbCrc) shot.thumbCrc = fieldNumber(inner.value);
+        if (inner.tag === Tag.nxiCrc) shot.nxiCrc = fieldNumber(inner.value);
       }
       app.screenshots.push(shot);
     }

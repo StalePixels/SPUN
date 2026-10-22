@@ -4,6 +4,7 @@
 #include "../BANK_net/reply.h"
 #include "../BANK_screen/screen.h"
 #include "app.h"
+#include "cache.h"
 
 // The NXI goes straight into Layer 2 while it shows, so the user watches it arrive. The default
 // palette is set again after it for the thumbnails
@@ -20,7 +21,9 @@ unsigned char *view_show(uint8_t slot) __z88dk_fastcall {
 
     intrinsic_di();
     pointer_hide();
+    cache_open(SLOTS + slot - 1);
     error = _farWithPointer(BANK_NET, (far_ptr_fn_t)gui_get, &file);
+    cache_close(SLOTS + slot - 1, !error);
     intrinsic_ei();
 
     if(!error) {

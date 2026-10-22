@@ -1,9 +1,23 @@
 # Changelog
 
 ## 0.8.1 - (unreleased)
-- Apparently it's cool to get AI to speed up your launcher! Steam and 
+
+### `.spun`
+
+- Apparently it's cool to get AI to speed up your launcher! Steam and
   Epic are 'teh cool kids', and they did it - and I want to be cool, so...
   Sped up downloads >5%, reduce app size by >10%, sped up startup too!
+- Cache and reuse screenshots, for 75% faster viewing of something you
+  have seen before.
+- During installation or upgrades, the app's name and version show under
+  `Name:` and `Version:`, and the zip file's name under `File:`. Before,
+  `Name:` showed the file name.
+
+### CMS
+
+- The version, date and download count in the catalogue list are in
+  smaller text, so they fit better.
+- Screenshot CRC32s now generated at time of upload.
 
 ## 0.8.0 - 20261013
 

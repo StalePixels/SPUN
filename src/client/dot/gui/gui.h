@@ -41,11 +41,14 @@
 // 320x256 Layer 2, 80K; 256x192 uses the first 48K of it
 #define LAYER2_PAGES    10
 
+// A whole NBN block, 16K, for the screenshot cache to write: DOTN_NUM_EXTRA in zpragma.inc
+#define CACHE_PAGES     2
+
 #define MODAL_TITLE     16
 #define MODAL_LINES     4
 #define MODAL_TEXT      56
 #define MODAL_BUTTONS   3
-#define MODAL_LABEL     8
+#define MODAL_LABEL     11
 
 #define ULA_AREAS       5
 #define TILE_AREAS      2

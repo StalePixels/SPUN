@@ -89,7 +89,7 @@ export async function CatalogueRows({ rows }: { rows: CatalogueRow[] }) {
   return (
     <div className="list-group mb-4">
       {rows.map((app) => (
-        <div key={app.id} className="list-group-item list-group-item-action d-flex align-items-center gap-3">
+        <div key={app.id} className="catalogue-row list-group-item list-group-item-action d-flex align-items-center gap-3">
           <Link
             data-testid={`catalogue-app-${app.id}`}
             href={`/catalogue/${app.id}`}
@@ -122,7 +122,7 @@ export async function CatalogueRows({ rows }: { rows: CatalogueRow[] }) {
                 </span>
               ))}
             </span>
-            <span className="text-body-secondary">
+            <span className="small text-body-secondary">
               <span data-testid="catalogue-version">{app.version}</span>
               <span className="ms-2" data-testid="catalogue-date">{formatDay(app.releaseDate)}</span>
               <span className="ms-2" title="Downloads">

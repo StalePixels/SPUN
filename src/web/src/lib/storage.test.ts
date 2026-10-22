@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { crc32 } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -72,6 +73,22 @@ describe("screenshots", () => {
     expect(readFileSync(nxi("Darran"), "utf8")).toBe("nxi new");
     expect(readFileSync(thumb("Darran"), "utf8")).toBe("thumb new");
     expect(readFileSync(png(), "utf8")).toBe("png new");
+  });
+
+  it("returns the CRC32 of the thumbnail and NXI files it wrote", async () => {
+    // 0xcbf43926 is the standard CRC32 check value of "123456789".
+    const crcs = await writeScreenshot("Darran", "k3x9qa", 2, {
+      nxi: Buffer.from("123456789"),
+      png: Buffer.from("png"),
+      thumb: Buffer.from(""),
+    });
+    expect(crcs).toEqual({ nxiCrc: 0xcbf43926, thumbCrc: 0 });
+    expect(readFileSync(nxi("Darran"), "utf8")).toBe("123456789");
+
+    const other = await writeScreenshot("Darran", "k3x9qa", 2, shot("new"));
+    expect(other.thumbCrc).toBe(crc32(readFileSync(thumb("Darran"))));
+    expect(other.nxiCrc).toBe(crc32(readFileSync(nxi("Darran"))));
+    expect(other.thumbCrc).not.toBe(other.nxiCrc);
   });
 
   it("removes all three files", async () => {

@@ -74,38 +74,54 @@ dirs:
 	$(MKDIR) $(BUILD_DIR)
 	$(MKDIR) $(TMP_DIR)
 
+# make compiles a bank again only when a file it is built from is newer than its object.
+# Any header, the build settings or this Makefile make every bank compile again
+lst_files = $(1) $(addprefix $(dir $(1)),$(shell cat $(1)))
+HEADERS := $(wildcard *.h */*.h $(COMMON)/*.h $(UNZIP)/*.h)
+DEPS := $(HEADERS) zpragma.inc ../VERSION Makefile
+
 # BANK_PACKAGES
-bank_46: dirs
+$(TMP_DIR)/BANK_packages.o: $(call lst_files,BANK_packages/packages.lst) $(DEPS) | dirs
 	$(CC) $(CCFLAGS) -c \
 		--codesegBANK_46 --constsegBANK_46 \
 		--datasegBANK_46 --bsssegBANK_46   \
-		@BANK_packages/packages.lst -o$(TMP_DIR)/BANK_packages.o
+		@BANK_packages/packages.lst -o$@
 
 # BANK_GUI: the GUI's own code, the screen set-up (layers, font, NextZXOS's back), the modal boxes
 # and the network code. The NBNtools code's BSS (nbnBuff) stays in main, where main and every bank reach it
-bank_44: dirs
+$(TMP_DIR)/BANK_gui.o: $(call lst_files,BANK_gui/gui.lst) $(call lst_files,BANK_screen/screen.lst) $(call lst_files,BANK_ui/ui.lst) \
+		BANK_screen/specp437_128-255.bin $(DEPS) | dirs
 	$(CC) $(CCFLAGS) -c \
 		--codesegBANK_44 --constsegBANK_44 \
 		--datasegBANK_44 --bsssegBANK_44   \
-		@BANK_gui/gui.lst @BANK_screen/screen.lst @BANK_ui/ui.lst -o$(TMP_DIR)/BANK_gui.o
+		@BANK_gui/gui.lst @BANK_screen/screen.lst @BANK_ui/ui.lst -o$@
+
+$(TMP_DIR)/BANK_net.o: $(call lst_files,BANK_net/net.lst) $(DEPS) | dirs
 	$(CC) $(CCFLAGS) -c \
 		--codesegBANK_44 --constsegBANK_44 \
 		--datasegBANK_44 --bsssegBANK_44   \
-		@BANK_net/net.lst -o$(TMP_DIR)/BANK_net.o
+		@BANK_net/net.lst -o$@
+
+$(TMP_DIR)/BANK_net_nbn.o: $(call lst_files,BANK_net/nbn.lst) $(DEPS) | dirs
 	$(CC) $(CCFLAGS) -c \
 		--codesegBANK_44 --constsegBANK_44 --datasegBANK_44 \
-		@BANK_net/nbn.lst -o$(TMP_DIR)/BANK_net_nbn.o
+		@BANK_net/nbn.lst -o$@
 
 # BANK_APP: the GUI's app page
-bank_42: dirs
+$(TMP_DIR)/BANK_app.o: $(call lst_files,BANK_app/app.lst) $(DEPS) | dirs
 	$(CC) $(CCFLAGS) -c \
 		--codesegBANK_42 --constsegBANK_42 \
 		--datasegBANK_42 --bsssegBANK_42   \
-		@BANK_app/app.lst -o$(TMP_DIR)/BANK_app.o
+		@BANK_app/app.lst -o$@
 
 # BANK_SPRITES: the sprite sheet, data only
-bank_43: dirs
-	$(CC) $(CCFLAGS) -c @BANK_sprites/sprites.lst -o$(TMP_DIR)/BANK_sprites.o
+$(TMP_DIR)/BANK_sprites.o: $(call lst_files,BANK_sprites/sprites.lst) BANK_sprites/ui.spr $(DEPS) | dirs
+	$(CC) $(CCFLAGS) -c @BANK_sprites/sprites.lst -o$@
+
+bank_46: $(TMP_DIR)/BANK_packages.o
+bank_44: $(TMP_DIR)/BANK_gui.o $(TMP_DIR)/BANK_net.o $(TMP_DIR)/BANK_net_nbn.o
+bank_43: $(TMP_DIR)/BANK_sprites.o
+bank_42: $(TMP_DIR)/BANK_app.o
 
 banks: bank_46 bank_44 bank_43 bank_42
 
@@ -116,11 +132,18 @@ $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin: $(UNZIP)/inflate.asm $(UN
 	$(call Z88DK_RUN,$(abspath $(UNZIP))) z88dk-z80asm -mz80n -b inflate.asm
 	rm -f $(UNZIP)/inflate.o $(UNZIP)/inflate.bin
 
-dotn: banks $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin
-	$(CC) $(CCFLAGS) $(LDFLAGS) $(DEFINES) @spun.lst $(BANK_OBJS) -o$(NAME) -create-app -subtype=dotn $(CZFLAGS)
-	$(MV) $(NAME) $(BUILD_DIR)/$(NAME)
+# Main: the server and port are compiled in here only, so .env (the spunjane server) is a prerequisite
+$(TMP_DIR)/main.o: $(call lst_files,spun.lst) help.txt $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin \
+		$(UNZIP)/inflate_job.inc $(DEPS) $(wildcard .env) | dirs
+	$(CC) $(CCFLAGS) $(DEFINES) -c @spun.lst -o$@
 
-binaries: dirs dotn
+$(BUILD_DIR)/$(NAME): $(TMP_DIR)/main.o $(BANK_OBJS) | dirs
+	$(CC) $(CCFLAGS) $(LDFLAGS) $(DEFINES) $(TMP_DIR)/main.o $(BANK_OBJS) -o$(NAME) -create-app -subtype=dotn $(CZFLAGS)
+	$(MV) $(NAME) $@
+
+dotn: $(BUILD_DIR)/$(NAME)
+
+binaries: dotn
 
 # The menu runs the dot command it was zipped with
 $(BAS): ../zip/spun.txt | dirs
@@ -156,5 +179,7 @@ $(POSIX_DIR)/spun_messages.c: spun_messages.asm $(COMMON)/messages2c.awk
 $(POSIX_DIR)/help.c: help.txt
 	$(MKDIR) $(POSIX_DIR)
 	( echo "unsigned char help[] = {"; xxd -i < help.txt; echo ", 0 };" ) > $@
+
+.DELETE_ON_ERROR:
 
 .PHONY: all clean dirs spunjane banks bank_46 bank_44 bank_43 bank_42 dotn binaries zip posix
