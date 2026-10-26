@@ -11,8 +11,8 @@ set -a
 set +a
 
 cd "$here/../dot"
-test="SERVER=$SPUN_TEST_SERVER PORT=$SPUN_TEST_PORT TMP_DIR=./TMP-test"
+test="SERVER=$SPUN_TEST_SERVER PORT=$SPUN_TEST_PORT"
 make $test BUILD_DIR=./BUILD-test binaries
 rm -rf BUILD-test-posix
 make $test POSIX_DIR=./BUILD-test-posix posix
-make TMP_DIR=./TMP-test BUILD_DIR=./BUILD-test-s binaries
+make BUILD_DIR=./BUILD-test-s binaries

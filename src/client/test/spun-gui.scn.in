@@ -28,7 +28,7 @@ mouse 2 move 128 128
 # Page 1 of the catalogue, and the buttons in row 30 with their letters
 # highlighted (attribute 6)
 @ROWS 15.5 SPLIST 1
-expect 15.5 S\x04P\x04U\x04N\x04 4638 20 00 20 04 50 06 72 04 65 04 76 04 20 04 20 00 20 04 4e 06 65 04 78 04 74 04 20 04 20 00 20 04 53 06 65 04 61 04 72 04 63 04 68 04 20 04 20 00 20 04 48 06 65 04 6c 04 70 04 20 04 20 00 20 04 51 06 75 04 69 04 74 04 20 04 20 00
+@BUTTONS 15.5 nschq
 @POINTER 15.5 160 128
 
 # far up twice (127 each): Y stops at 8

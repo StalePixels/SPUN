@@ -2,6 +2,7 @@
 """Helpers for mame-gui.sh, the MAME test of the .spun GUI.
 
 usage: gui-test.py rows HOST PORT < SCENARIO.in > SCENARIO
+       gui-test.py appof HOST PORT COMMAND INDEX
        gui-test.py pointers SCENARIO RUNDIR
        gui-test.py ula SCENARIO RUNDIR
        gui-test.py layer2 SCENARIO RUNDIR HOST PORT DATADIR
@@ -24,6 +25,21 @@ rows   copies the scenario and expands each line "@ROWS T COMMAND": it sends
        modal box (BANK_ui/modal_run.c). A line "@MODAL T LINES TITLE
        LABEL:KEY:INK..." becomes a "dump" at T of $4000-$5FFF: the ULA screen
        and the font. INK is the Spectrum colour number of the shortcut letter. A line "@NOULA T" becomes a "dump" at T of the ULA screen.
+
+       "SPCAT SLUG PAGE [TEXT]" works as a COMMAND too, with the category's name
+       in the status line. A line "@CATS T [SEL [PAGE]]" checks the category
+       picker at T (the list area: All, then SPCATS PAGE, with entry SEL in the
+       bar colours, and the status line). A line "@GOTO T X Y"
+       moves the mouse, in steps of 0.3 s from T, so that the pointer goes from
+       where the last @GOTO left it (160,128 at first) to X,Y in pixels, and
+       dumps its position after the last step, which "pointers" checks.
+       "@GOTOCAT T SLUG" goes to the picker row of SLUG ("all" for All),
+       "@CLICK T" presses the left button at T and lets it go 0.1 s later, and
+       "@APPROW T INDEX COMMAND" checks the app page of entry INDEX of COMMAND's
+       reply. "appof HOST PORT COMMAND INDEX" prints that app id. A line "@BUTTONS T LETTERS" checks the list's button row: the buttons with
+       these shortcut letters are live, the others dim. With "picker" after the
+       letters, the Category button is Back (key b), as in the category picker. A line "@PICK T SLUG" becomes the keys
+       that move down to SLUG on page 1 of the picker and press ENTER.
 
 pointers  checks the pointer lines of the expanded SCENARIO against its run
        folder RUNDIR: the position in each @POINTER dump, and whether the
@@ -100,6 +116,7 @@ TAG_TOTAL, TAG_PAGE, TAG_PAGES, TAG_APP = 0x01, 0x02, 0x03, 0x10
 TAG_APP_ID, TAG_USERNAME, TAG_TITLE, TAG_VERSION, TAG_DOWNLOADS = 0x11, 0x12, 0x13, 0x15, 0x16
 TAG_SERIAL, TAG_DATE, TAG_RELEASE, TAG_CATEGORY = 0x14, 0x17, 0x18, 0x19
 TAG_SCREENSHOT, TAG_SLOT, TAG_WIDTH = 0x1A, 0x1B, 0x1C
+TAG_CATEGORY_ENTRY, TAG_SLUG = 0x20, 0x21
 TAG_DESCRIPTION, TAG_CHANGELOG = 0x80, 0x81
 LONG_TAG = 0x80
 
@@ -129,7 +146,7 @@ HINT = 'Up/Down: release   ENTER or click: changelog   1-5 or click: picture'
 CLOG_ROW = 5
 CLOG_ROWS = BUTTON_ROW - 1 - CLOG_ROW
 TEXT_WIDTH = COLUMNS - 2
-APP_BUTTONS = [(1, 'b', 'Back'), (8, 'c', 'Changelog'), (31, 'q', 'Quit'), (20, 'i', 'Install')]
+APP_BUTTONS = [(1, 'b', 'Back'), (8, 'c', 'Changelog'), (31, 'q', 'Quit'), (20, 'i', 'Install'), (38, 'a', 'Advanced')]
 
 
 def read_exact(sock, n):
@@ -351,6 +368,23 @@ def clog_page(t, host, port, appid, serial):
     return [f'# changelog of {appid} serial {serial}'] + screen.lines(t)
 
 
+LIST_BUTTONS = [(1, 'p', 'Prev'), (8, 'n', 'Next'), (15, 's', 'Search'), (24, 'c', 'Category'), (35, 'h', 'Help'), (42, 'q', 'Quit')]
+ATTR_BAR_DIM = 0x0C
+
+
+def list_buttons(t, live, picker=False):
+    """The button row of the list (BANK_gui/buttons.c, buttons_show.c): the
+    shortcut letters in LIVE are live, the other buttons are dim, with no
+    highlighted letter."""
+    screen = Screen()
+    buttons = [(24, 'b', 'Back') if picker and key == 'c' else (col, key, label) for col, key, label in LIST_BUTTONS]
+    for col, key, label in buttons:
+        screen.text(col, BUTTON_ROW, ' ' + label + ' ', ATTR_BAR if key in live else ATTR_BAR_DIM)
+        if key in live:
+            screen.attr(col + 1 + label.lower().index(key), BUTTON_ROW, 1, ATTR_BAR_KEY)
+    return expect_line(t, BUTTON_ROW, screen.rows[BUTTON_ROW][:49])
+
+
 def row_cells(texts, attr=ATTR_TEXT):
     cells = [(0x20, ATTR_TEXT)] * COLUMNS
     for col, text in texts:
@@ -365,8 +399,45 @@ def expect_line(t, row, cells):
     return f'expect {t} {MARKER} {offset} {hexes}'
 
 
-def status(command, reply):
+def categories(host, port, page=1):
+    """SPCATS page: (total, page, pages, [(slug, name)])."""
+    block = reply_block(host, port, f'SPCATS {page}')
+    counts = {'total': 0, 'page': 0, 'pages': 0}
+    listed = []
+    for tag, value in fields(block):
+        if tag == TAG_TOTAL:
+            counts['total'] = number(value)
+        elif tag == TAG_PAGE:
+            counts['page'] = number(value)
+        elif tag == TAG_PAGES:
+            counts['pages'] = number(value)
+        elif tag == TAG_CATEGORY_ENTRY:
+            inner = dict(fields(value))
+            listed.append((text(inner[TAG_SLUG]), text(inner[TAG_CATEGORY])))
+    return counts['total'], counts['page'], counts['pages'], listed
+
+
+def category_name(host, port, slug):
+    page = 1
+    while True:
+        _, _, pages, listed = categories(host, port, page)
+        for found, name in listed:
+            if found == slug:
+                return name
+        if page >= pages:
+            raise SystemExit(f'no category {slug}')
+        page += 1
+
+
+def status(command, reply, name=None):
     words = command.split(' ', 2)
+    if words[0] == 'SPCAT':
+        rest = command.split(' ', 3)
+        if len(rest) > 3:
+            if not reply['total']:
+                return f'Search "{rest[3]}" in {name}: 0 found'
+            return f'Search "{rest[3]}" in {name}: {reply["total"]} found, page {reply["page"]} of {reply["pages"]}'
+        return f'{name}: {reply["total"]} apps, page {reply["page"]} of {reply["pages"]}'
     if words[0] == 'SPFIND':
         if not reply['total']:
             return f'Search "{words[2]}": 0 found'
@@ -376,6 +447,7 @@ def status(command, reply):
 
 def rows(t, command, host, port, sel=0):
     reply = request(host, port, command)
+    name = category_name(host, port, command.split(' ')[1]) if command.startswith('SPCAT ') else None
     lines = [f'# {command}: {reply["total"]} in all, page {reply["page"]} of {reply["pages"]}, '
              f'{len(reply["apps"])} here: ' + ' '.join(app['id'] for app in reply['apps'])]
     lines.append(expect_line(t, HEAD_ROW, row_cells([(1, HEADING)], ATTR_KEY)))
@@ -394,11 +466,58 @@ def rows(t, command, host, port, sel=0):
         if n == sel and n < len(reply['apps']):
             cells = [(c, ATTR_BAR) for c, _ in cells]
         lines.append(expect_line(t, LIST_ROW + n, cells))
-    lines.append(expect_line(t, STATUS_ROW, row_cells([(1, status(command, reply))])))
+    lines.append(expect_line(t, STATUS_ROW, row_cells([(1, status(command, reply, name))])))
+    return lines
+
+
+def category_rows(t, host, port, sel=0, page=1):
+    """The category picker (BANK_gui/page_show.c): All, then one name per row."""
+    total, got, pages, listed = categories(host, port, page)
+    lines = [f'# SPCATS {page}: {total} in all, page {got} of {pages}, here: ' + ' '.join(slug for slug, _ in listed)]
+    lines.append(expect_line(t, HEAD_ROW, row_cells([(1, 'Category')], ATTR_KEY)))
+    names = ['All'] + [name for _, name in listed]
+    for n in range(LIST_ROWS + 1):
+        cells = row_cells([(1, names[n])] if n < len(names) else [])
+        if n == sel and n < len(names):
+            cells = [(c, ATTR_BAR) for c, _ in cells]
+        lines.append(expect_line(t, LIST_ROW + n, cells))
+    lines.append(expect_line(t, STATUS_ROW, row_cells([(1, f'Categories: {total}, page {got} of {pages}')])))
     return lines
 
 
 POINTER = 0xBFD8
+
+# Where the pointer is, and what the mouse reads. The program moves the pointer
+# by the change of each reading as a signed byte, and Y is upside down: a rise of
+# the reading moves the pointer up. mame-gui.sh's scenario starts at 160,128 with
+# the mouse reading 128,128.
+mouse = {'rx': 128, 'ry': 128, 'px': 160, 'py': 128}
+MOUSE_STEP = 120
+MOUSE_GAP = 0.3
+CATEGORY_X, CATEGORY_ROW = 40, LIST_ROW + 1
+
+
+def goto(t, x, y):
+    """mouse lines that take the pointer to x,y, from time t in steps, and a
+    dump of its position after the last one."""
+    lines = []
+    t = float(t)
+    while (mouse['px'], mouse['py']) != (x, y):
+        dx = max(-MOUSE_STEP, min(MOUSE_STEP, x - mouse['px']))
+        dy = max(-MOUSE_STEP, min(MOUSE_STEP, y - mouse['py']))
+        mouse['rx'] = (mouse['rx'] + dx) % 256
+        mouse['ry'] = (mouse['ry'] - dy) % 256
+        mouse['px'] += dx
+        mouse['py'] += dy
+        lines.append(f'mouse {t:.1f} move {mouse["rx"]} {mouse["ry"]}')
+        t += MOUSE_GAP
+    lines.append(f'dump {t:.1f} {POINTER:#06x} 4 pointer-{t:.1f}-{x}-{y}')
+    return lines
+
+
+def click(t):
+    t = float(t)
+    return [f'mouse {t:.1f} press left', f'mouse {t + 0.1:.1f} release left']
 
 
 def expand(host, port):
@@ -406,6 +525,39 @@ def expand(host, port):
         if line.startswith('@ROWS '):
             _, t, command = line.rstrip('\n').split(' ', 2)
             print('\n'.join(rows(t, command, host, int(port))))
+        elif line.startswith('@CATS '):
+            _, t, *rest = line.split()
+            print('\n'.join(category_rows(t, host, int(port), *map(int, rest))))
+        elif line.startswith('@BUTTONS '):
+            _, t, *rest = line.rstrip('\n').split(' ')
+            picker = 'picker' in rest
+            live = ''.join(r for r in rest if r != 'picker')
+            print(f'# buttons live: {live}' + (' (picker)' if picker else ''))
+            print(list_buttons(t, live, picker))
+        elif line.startswith('@GOTO '):
+            _, t, x, y = line.split()
+            print(f'# pointer to {x},{y}')
+            print('\n'.join(goto(t, int(x), int(y))))
+        elif line.startswith('@GOTOCAT '):
+            _, t, slug = line.split()
+            _, _, _, listed = categories(host, int(port))
+            at = 0 if slug == 'all' else [found for found, _ in listed].index(slug) + 1
+            print(f'# pointer to the picker row of {slug}')
+            print('\n'.join(goto(t, CATEGORY_X, (CATEGORY_ROW + at - 1) * 8 + 4)))
+        elif line.startswith('@CLICK '):
+            _, t = line.split()
+            print('\n'.join(click(t)))
+        elif line.startswith('@APPROW '):
+            _, t, index, command = line.rstrip('\n').split(' ', 3)
+            appid = request(host, int(port), command)['apps'][int(index)]['id']
+            print('\n'.join(app_page(t, host, int(port), appid, 0)))
+        elif line.startswith('@PICK '):
+            _, t, slug = line.split()
+            _, _, _, listed = categories(host, int(port))
+            at = [found for found, _ in listed].index(slug) + 1
+            print(f'# pick {slug}: {at} down')
+            print(f'key {t} ' + '{DOWN}' * at)
+            print(f'key {float(t) + 0.5 + at * 0.2:.1f} ' + '{ENTER}')
         elif line.startswith('@ROWSEL '):
             _, t, sel, command = line.rstrip('\n').split(' ', 3)
             print('\n'.join(rows(t, command, host, int(port), int(sel))))
@@ -445,10 +597,11 @@ def expand(host, port):
 
 
 # The colours of the tilemap (BANK_screen/screen_on.c) in MAME's snapshots: the
-# FoaK blue, white, yellow and red, and the black of the fallback colour in the
-# border around it. The pointer has others.
+# FoaK blue, white, yellow, red and the two greys of a dim button, and the black
+# of the fallback colour in the border around it. The pointer has others.
 # The GUI's colours and the splash's green and cyan; the pointer has none of them
-GUI_COLOURS = {(0, 0, 182), (255, 255, 255), (255, 255, 0), (255, 0, 0), (0, 0, 0), (0, 255, 0), (0, 255, 255)}
+GUI_COLOURS = {(0, 0, 182), (255, 255, 255), (255, 255, 0), (255, 0, 0), (73, 73, 109), (146, 146, 182),
+               (0, 0, 0), (0, 255, 0), (0, 255, 255)}
 
 
 def pointer_pixels(rundir, t):
@@ -860,6 +1013,8 @@ def proxy(listen, host, port, slow, log_path):
 if __name__ == '__main__':
     if len(sys.argv) == 4 and sys.argv[1] == 'rows':
         expand(sys.argv[2], sys.argv[3])
+    elif len(sys.argv) == 6 and sys.argv[1] == 'appof':
+        print(request(sys.argv[2], int(sys.argv[3]), sys.argv[4])['apps'][int(sys.argv[5])]['id'])
     elif len(sys.argv) == 4 and sys.argv[1] == 'pointers':
         sys.exit(pointers(sys.argv[2], sys.argv[3]))
     elif len(sys.argv) == 4 and sys.argv[1] == 'ula':
