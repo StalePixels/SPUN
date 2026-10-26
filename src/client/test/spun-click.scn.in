@@ -1,0 +1,91 @@
+# Clicks in the .spun GUI: the search field, the category picker and the buttons.
+# mame-click.sh fills in @SPUN@ and @PORT@; gui-test.py expands the @ lines (see
+# its header): @GOTO moves the pointer to a pixel position, @CLICK presses and
+# releases the left button, and the pointer dumps that @GOTO makes are checked
+# at the end. The pointer starts at 160,128, on entry 12 of the list (row 16).
+# A key press hides the pointer until the mouse moves, and a click while it is
+# hidden does not count in the search field.
+# The commands the GUI sends are in the proxy's log, which mame-click.sh compares.
+put @SPUN@ /dot/SPUN
+autostart .spun -p @PORT@
+autostart PAUSE 0
+autostart .ls /dot/SPUN
+autostart PRINT "SPUNGUIDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 92
+noreset 7.5
+mouse 2 move 128 128
+
+@ROWS 15.5 SPLIST 1
+@POINTER 15.5 160 128
+
+# 1. Key S and some text hide the pointer. A click with the mouse still: nothing
+# happens, the field stays open with its text, and nothing is sent
+key 16.5 s
+key 17.5 zebra
+@TEXT 19 27 1 0 Search:
+@TEXT 19 27 9 4 zebra
+snap 19
+@CLICK 19.5
+@TEXT 22 27 1 0 Search:
+@TEXT 22 27 9 4 zebra
+@ROWS 22 SPLIST 1
+@POINTER 22 160 128
+
+# 2. The mouse moves, still on entry 12, and a click closes the field and
+# opens that app: no search runs
+@GOTO 22.5 168 128
+@CLICK 23.5
+@APPROW 28 12 SPLIST 1
+snap 28
+
+# Back: the list again, with no search text and entry 12 still selected
+key 29 b
+@ROWSEL 33 12 SPLIST 1
+@TEXT 33 27 1 0        
+
+# 3. S, text, and the mouse moves onto Category (row 30) and clicks: the field
+# closes and the picker opens
+key 34 s
+key 35 zebra
+@GOTO 36.5 110 244
+@TEXT 37.5 27 9 4 zebra
+@CLICK 38.5
+@CATS 43 0
+@BUTTONS 43 b picker
+@TEXT 43 27 1 0        
+snap 43
+
+# A click on a category row picks it: Games, as the status line says
+@GOTOCAT 43.5 games
+@CLICK 45
+@ROWS 50 SPCAT games 1
+@BUTTONS 50 schq
+snap 50
+
+# A click on Category opens the picker, and a click on Back (in its place)
+# leaves it as it was
+@GOTO 50.5 110 244
+@CLICK 52
+@CATS 55.5 0
+@CLICK 56
+@ROWS 60 SPCAT games 1
+
+# Category again, and a click on All takes the category off
+@CLICK 60.5
+@CATS 64 0
+@GOTOCAT 64.5 all
+@CLICK 66
+@ROWS 70.5 SPLIST 1
+
+# 4. S, text, and the mouse moves onto Quit and clicks: .spun quits and BASIC
+# goes on
+key 71 s
+key 72 zebra
+@GOTO 73.5 180 244
+@TEXT 75 27 9 4 zebra
+@CLICK 75.5
+key 80 {SPACE}
+screen 86 SPUNGUIDONE
+
+snap 86

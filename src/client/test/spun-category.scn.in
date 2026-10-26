@@ -1,0 +1,107 @@
+# The category filter of the .spun GUI (scratchpad/docs/design_category-filter.md),
+# through gui-test.py's proxy (@PORT@) to the test server. mame-category.sh fills
+# in @SPUN@ and @PORT@. gui-test.py expands "@ROWS T COMMAND" (also
+# "SPCAT SLUG PAGE [TEXT]"), "@CATS T SEL" (the category picker), "@PICK T SLUG"
+# (the keys that pick SLUG) and "@TEXT T ROW COL ATTR TEXT" into checks against
+# the server's own replies. The commands the GUI sends are in the proxy's log,
+# which mame-category.sh compares with the list at its end.
+# Games holds gui003, gui005, gui011 and gui024 (src/web/e2e/gui-catalogue.mts);
+# gui003 and gui011 have "zebra" in the description.
+# A button that would do nothing is dim (attribute 0x0C): @BUTTONS names the live ones.
+# In the picker the Category button is Back.
+# BREAK is CAPS SHIFT + SPACE. The search field shows "Search:" at row 27.
+put @SPUN@ /dot/SPUN
+autostart .spun -p @PORT@
+autostart PAUSE 0
+autostart .ls /dot/SPUN
+autostart PRINT "SPUNGUIDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 102
+noreset 7.5
+mouse 2 move 128 128
+
+# The catalogue, with the Category button after Search
+@ROWS 15.5 SPLIST 1
+@BUTTONS 15.5 nschq
+
+# Key C: the picker, All selected. Down and up move the bar.
+key 16.5 c
+@CATS 19.5 0
+@BUTTONS 19.5 b picker
+snap 19.5
+key 20.5 {DOWN}
+@CATS 22.5 1
+key 23 {DOWN}
+@CATS 25 2
+key 25.5 {UP}
+@CATS 27.5 1
+
+# Edit leaves the picker with the catalogue as it was
+key 28 {EDIT}
+@ROWS 31.5 SPLIST 1
+@BUTTONS 31.5 nschq
+
+# BREAK does the same
+key 32 c
+@CATS 35 0
+key 35.5 {BREAK}
+@ROWS 39 SPLIST 1
+
+# Pick Games: its apps, the category in the status line
+key 39.5 c
+@CATS 42.5 0
+@PICK 43 games
+@ROWS 49 SPCAT games 1
+@BUTTONS 49 schq
+snap 49
+
+# A search inside Games
+key 49.5 s
+key 50.5 zebra
+key 52 {ENTER}
+@ROWS 55.5 SPCAT games 1 zebra
+snap 55.5
+
+# BREAK cancels the search field: it was open, it closes, nothing is typed or
+# sent, and the list and the search text are as they were
+key 56 s
+@TEXT 57 27 1 0 Search:
+key 57.5 abc
+key 58.5 {BREAK}
+@TEXT 59.5 27 1 0         
+@ROWS 59.5 SPCAT games 1 zebra
+
+# All takes the category off and keeps the search text
+key 60 c
+@CATS 63 0
+key 63.5 {ENTER}
+@ROWS 67 SPFIND 1 zebra
+@BUTTONS 67 schq
+snap 67
+
+# No search text, no category: the whole catalogue
+key 67.5 s
+key 68.5 {ENTER}
+@ROWS 71.5 SPLIST 1
+
+# In the picker key C does nothing; Back (key B) leaves it as Edit and BREAK do
+key 72 c
+@CATS 75 0
+@BUTTONS 75 b picker
+key 75.5 c
+@CATS 78 0
+key 78.5 b
+@ROWS 82 SPLIST 1
+@BUTTONS 82 nschq
+
+# Help dims Prev and Next
+key 83 h
+@BUTTONS 84.5 schq
+key 85 h
+@BUTTONS 86.5 nschq
+
+key 87 q
+key 91 {SPACE}
+screen 97 SPUNGUIDONE
+
+snap 97
