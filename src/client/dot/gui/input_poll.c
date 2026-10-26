@@ -8,13 +8,17 @@ static unsigned char lastKey;
 static uint8_t lastButton = MOUSE_LEFT;
 
 // A key acts when it goes down and a click when the left button goes down; holding either does
-// nothing more. The state is shared by every page, so a click that opens a page does not act on it
+// nothing more. The state is shared by every page, so a click that opens a page does not act on it.
+// A key hides the pointer until the mouse moves (isr.asm)
 unsigned char input_poll(void) {
     unsigned char key = in_inkey();
     uint8_t button = mouse_btn & MOUSE_LEFT;
     unsigned char event = 0;
 
-    if(key && key != lastKey) event = key;
+    if(key && key != lastKey) {
+        event = key;
+        ptr_hide = 1;
+    }
     lastKey = key;
 
     if(!button && lastButton) {

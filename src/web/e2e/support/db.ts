@@ -530,3 +530,8 @@ export async function removeClientLog(names: string[]): Promise<void> {
   if (names.length === 0) return;
   await query("delete from client_log where name in (?)", [names]);
 }
+
+// The live categories in the order SPCATS lists them: by name, then id.
+export async function liveCategoriesByName(): Promise<{ slug: string; name: string }[]> {
+  return query("select slug, name from categories where deleted_at is null order by name, id");
+}

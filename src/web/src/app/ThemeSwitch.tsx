@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { Fragment, useEffect, useState, useSyncExternalStore } from "react";
 import Dropdown from "react-bootstrap/Dropdown";
 import Nav from "react-bootstrap/Nav";
 import { findTheme, MODE_COOKIE, MODES, resolveMode, THEME_COOKIE, THEME_LINK_ID, themeHref, THEMES, type Mode, type Theme } from "@/themes";
@@ -91,10 +91,11 @@ export function ThemeSwitch() {
         <Dropdown.Toggle data-testid="theme-toggle"
           as={Nav.Link}
           id="bd-theme"
-          className="px-2 py-2 d-flex align-items-center"
+          className="px-0 px-xl-2 py-2 d-flex align-items-center"
           aria-label="Choose theme"
         >
           <i className={`bi ${toggleIcon}`} aria-hidden="true" />
+          <span className="d-xl-none ms-1 me-1">Theme</span>
         </Dropdown.Toggle>
         <Dropdown.Menu>
           {THEMES.map((theme) => {
@@ -121,31 +122,26 @@ export function ThemeSwitch() {
               );
             }
             return (
-              <Dropdown key={theme.id} drop="start">
-                <Dropdown.Toggle data-testid={`theme-${theme.id}`}
-                  as="button"
-                  type="button"
-                  className={`dropdown-item d-flex align-items-center${active ? " active" : ""}`}
-                >
-                  {label}
-                </Dropdown.Toggle>
-                <Dropdown.Menu>
-                  {theme.modes.map((value) => (
-                    <Dropdown.Item data-testid={`theme-${theme.id}-${value}`}
-                      key={value}
-                      as="button"
-                      type="button"
-                      className="d-flex align-items-center"
-                      active={active && mode === value}
-                      onClick={() => choose(theme, value)}
-                    >
-                      <i className={`bi ${MODES[value].icon}`} aria-hidden="true" />
-                      <span className="ms-2 me-3">{MODES[value].label}</span>
-                      {active && mode === value && <i className="bi bi-check2 ms-auto" aria-hidden="true" />}
-                    </Dropdown.Item>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown>
+              <Fragment key={theme.id}>
+                <Dropdown.Header data-testid={`theme-${theme.id}`} className="d-flex align-items-center">
+                  <i className={`bi ${theme.icon}`} aria-hidden="true" />
+                  <span className="ms-2">{theme.label}</span>
+                </Dropdown.Header>
+                {theme.modes.map((value) => (
+                  <Dropdown.Item data-testid={`theme-${theme.id}-${value}`}
+                    key={value}
+                    as="button"
+                    type="button"
+                    className="d-flex align-items-center ps-4"
+                    active={active && mode === value}
+                    onClick={() => choose(theme, value)}
+                  >
+                    <i className={`bi ${MODES[value].icon}`} aria-hidden="true" />
+                    <span className="ms-2 me-3">{MODES[value].label}</span>
+                    {active && mode === value && <i className="bi bi-check2 ms-auto" aria-hidden="true" />}
+                  </Dropdown.Item>
+                ))}
+              </Fragment>
             );
           })}
         </Dropdown.Menu>

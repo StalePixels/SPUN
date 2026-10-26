@@ -37,7 +37,10 @@ In short: `.spun find TEXT`, `.spun info APPID`, `.spun get APPID` and `.spun up
 
 Run `.spun` with no command, or choose "Browse the catalogue" in the menu.
 
-- **The list.** It shows the apps in the catalogue with their id, title, publisher, version and download count. Move with the cursor keys and open an app with ENTER or a click. The buttons are Prev, Next, Search, Help and Quit. Help shows the same text as `help.txt`.
+- **The list.** It shows the apps in the catalogue with their id, title, publisher, version and download count. Move with the cursor keys and open an app with ENTER or a click. The buttons are Prev, Next, Search, Category, Help and Quit. A button that does nothing on the current screen is grey, and its key and click do nothing. Help shows the same text as `help.txt`.
+- **Search.** Search (key S) opens a box at the bottom of the screen. ENTER searches; EDIT or BREAK closes the box. Once the mouse has moved, a click closes the box and acts on what you clicked.
+- **Category.** Category (key C) shows the categories in place of the list. Choose one with the cursor keys and ENTER, or a click. "All" removes the filter. Back (key B), EDIT or BREAK returns to the list unchanged. With a category chosen, the list and a search show only the apps in it, and the status line names it.
+- **The pointer.** The mouse pointer hides when you press a key, and comes back when the mouse moves.
 - **The app screen.** It shows the details of the app, its releases, and its screenshots (keys 1 to 5 show one in full). ENTER or a click on a release shows its changelog. The buttons are Back, Changelog, Install, Quit and Advanced.
 - **Install.** Install asks where to put the app, as described below, and then installs it. If a file in the app already exists, SPUN asks whether to overwrite it once, overwrite all, or cancel.
 - **Updates.** When the browser starts and installed apps have a newer release, it offers to update them or ignore them.

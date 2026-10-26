@@ -10,7 +10,7 @@ uint8_t button_at(const struct gui_button *table, uint8_t count) {
         if(row != table[index].row) continue;
         if(col < table[index].col) continue;
         if(col >= table[index].col + strlen(table[index].label) + 2) continue;
-        return index;
+        return table[index].action;
     }
     return ACTION_NONE;
 }

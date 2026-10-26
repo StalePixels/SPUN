@@ -16,19 +16,27 @@ void page_show(void) {
 
     intrinsic_di();
     pointer_hide();
-    error = _farWithPointer(BANK_NET, (far_ptr_fn_t)page_request, searchText);
+    error = _farWithPointer(BANK_NET, categoriesShown ? (far_ptr_fn_t)gui_categories : (far_ptr_fn_t)page_request, searchText);
     intrinsic_ei();
 
     tm_blank(0, STATUS_ROW, GUI_COLUMNS, ATTR_TEXT);
     if(error) {
         message_show(error);
+        buttons_show();
         return;
     }
 
-    tm_text(COL_ID, HEAD_ROW, (const unsigned char *)"App    Title                            Publisher        Version     Downloads", ATTR_KEY);
-    while(row != LIST_ROW + LIST_ROWS && _far(BANK_NET, (far_fn_t)reply_next_app)) entry_draw(row++);
+    if(categoriesShown) {
+        tm_text(COL_ID, HEAD_ROW, (const unsigned char *)"Category", ATTR_KEY);
+        tm_text(COL_ID, row++, (const unsigned char *)"All", ATTR_TEXT);
+        while(row != LIST_ROW + 1 + LIST_ROWS && _far(BANK_NET, (far_fn_t)gui_next_category)) tm_text(COL_ID, row++, entryName, ATTR_TEXT);
+    } else {
+        tm_text(COL_ID, HEAD_ROW, (const unsigned char *)"App    Title                            Publisher        Version     Downloads", ATTR_KEY);
+        while(row != LIST_ROW + LIST_ROWS && _far(BANK_NET, (far_fn_t)reply_next_app)) entry_draw(row++);
+    }
     listCount = row - LIST_ROW;
     if(listSel >= listCount) listSel = listCount ? listCount - 1 : 0;
     list_select(listSel);
     status_show();
+    buttons_show();
 }

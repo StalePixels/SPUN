@@ -1,6 +1,28 @@
 # Changelog
 
-## 0.8.1 - (unreleased)
+## 0.8.2 - 20261026
+
+### `.spun`
+
+- Filter the browser by category, as on the website: Category (key C)
+  lists the categories, and a search then looks only in the chosen one.
+  "All" removes the filter.
+- BREAK closes the search box. Before, it typed a space.
+- The mouse pointer hides when you press a key, and comes back when the
+  mouse moves.
+- Buttons that do nothing on the current screen are grey, such as Prev on
+  the first page, and their keys and clicks do nothing.
+- A click works in the search box once the mouse has moved: it closes the
+  box and acts on what you clicked.
+
+### SPUNServer
+
+- New commands for the category filter: `SPCATS [page]` lists the
+  categories, and `SPCAT <slug> <page> [text]` lists or searches the apps
+  in one category. A `.spun` with the category filter needs a server that
+  has them.
+
+## 0.8.1 - 20261022
 
 ### `.spun`
 

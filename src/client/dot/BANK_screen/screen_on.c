@@ -10,7 +10,7 @@ uint8_t paletteSaved[512];
 uint8_t ulaPaletteSaved[64];
 
 // Pairs of paper and ink for the ATTR_ values in gui.h, in 8-bit colour; 0x02 is the FoaK blue
-static const uint8_t palette[] = { 0x02, 0xFF, 0x02, 0xFC, 0xFF, 0x02, 0xFF, 0xE0, 0xE3, 0xE3, 0xFF, 0x00 };
+static const uint8_t palette[] = { 0x02, 0xFF, 0x02, 0xFC, 0xFF, 0x02, 0xFF, 0xE0, 0xE3, 0xE3, 0xFF, 0x00, 0x49, 0x92 };
 // For ink and paper, only the BRIGHT colours show: the plain ones are NR 0x14's colour, so a zeroed ULA and the
 // border, which the network code flashes, are transparent
 static const uint8_t ulaPalette[] = {

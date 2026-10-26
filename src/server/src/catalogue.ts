@@ -2,6 +2,7 @@
 // (test/codec.test.ts). An app's categories are capped for the same reason.
 export const FIND_PAGE_SIZE = 20;
 export const LIST_PAGE_SIZE = 20;
+export const CATEGORY_PAGE_SIZE = 20;
 export const INFO_PAGE_SIZE = 64;
 export const INFO_CATEGORIES_MAX = 16;
 
@@ -63,6 +64,11 @@ export interface ClientLog {
   value: string;
 }
 
+export interface Category {
+  slug: string;
+  name: string;
+}
+
 export interface Slice<T> {
   total: number;
   items: T[];
@@ -72,12 +78,16 @@ export interface Slice<T> {
 // serial that is not deleted. find(), list() and app() show only apps that have one.
 // resolve() gives the id that an app id or an alias names, deleted or not; an alias
 // can move to another app at any time, so the server resolves on every request.
+// categories() lists the live ones by name; inCategory() gives null for a slug that is not live,
+// else find() (text) or list() (no text) limited to the category's apps.
 // featured gives the app of the live feature: the latest published one whose time
 // has passed and whose app is public.
 export interface Catalogue {
   resolve(name: AppName): Promise<AppId | null>;
   find(text: string, offset: number, limit: number): Promise<Slice<FoundApp>>;
   list(offset: number, limit: number): Promise<Slice<FoundApp>>;
+  categories(offset: number, limit: number): Promise<Slice<Category>>;
+  inCategory(slug: string, text: string, offset: number, limit: number): Promise<Slice<FoundApp> | null>;
   app(id: AppId): Promise<AppInfo | null>;
   releases(id: AppId, offset: number, limit: number): Promise<Slice<Release>>;
   changelog(id: AppId, serial: number): Promise<Changelog | null>;
@@ -135,6 +145,12 @@ export function parseLog(text: string): { name: string; value: string } | null {
   const name = text.slice(0, at).toLowerCase();
   const value = text.slice(at + 1);
   return at !== -1 && LOG_NAMES.has(name) && value.length <= LOG_VALUE_MAX ? { name, value } : null;
+}
+
+const CATEGORY_SLUG_RE = /^[a-z0-9-]{1,16}$/;
+
+export function parseCategorySlug(value: string | undefined): string | null {
+  return value !== undefined && CATEGORY_SLUG_RE.test(value) ? value : null;
 }
 
 export function parsePage(value: string | undefined): number | null {

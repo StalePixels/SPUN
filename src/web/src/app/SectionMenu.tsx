@@ -9,6 +9,7 @@ export function SectionMenu({
   label,
   sections,
   active,
+  variant = "tabs",
   className = "mb-4",
 }: {
   id: string;
@@ -16,10 +17,11 @@ export function SectionMenu({
   label: string;
   sections: readonly Section[];
   active: string | null;
+  variant?: "tabs" | "pills";
   className?: string;
 }) {
   return (
-    <nav className={`nav nav-tabs ${className}`} aria-label={label} data-testid={id}>
+    <nav className={`nav nav-${variant} ${className}`} aria-label={label} data-testid={id}>
       {sections.map((section) => (
         <Link
           key={section.href}

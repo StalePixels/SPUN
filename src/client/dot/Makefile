@@ -1,5 +1,4 @@
 NAME ?= spun
-TMP_DIR ?= ./TMP
 COMMON ?= ../../vendor/NBNtools/clients/common
 UNZIP ?= ../unzip
 UNZIP_BANK ?= 33
@@ -20,6 +19,9 @@ else
 BUILD_DIR ?= ./BUILD-dev
 endif
 
+# Each build has its own objects and link output, so builds for different servers never mix and can run at once
+TMP_DIR ?= $(dir $(BUILD_DIR))TMP-$(patsubst BUILD-%,%,$(notdir $(BUILD_DIR)))
+
 VERSION := $(shell cat ../VERSION)
 
 # The release zip: the dot command as spun.dot, then these files, all at the zip's root
@@ -37,13 +39,13 @@ Z88DK_RUN = docker run --rm --user $(shell id -u):$(shell id -g) -e HOME=/tmp -v
 
 ZOPT ?= --max-allocs-per-node200000
 CC=$(call Z88DK_RUN,$(CURDIR)) zcc
-CCFLAGS=+zxn -vn -startup=$(CRT) -clib=sdcc_iy -SO3 $(ZOPT) --opt-code-size -pragma-include:zpragma.inc '-DSPUN_VERSION=\"$(VERSION)\"' '-DSPUN_NAME=\"$(NAME)\"'
+CCFLAGS=+zxn -vn -startup=$(CRT) -clib=sdcc_iy -SO3 $(ZOPT) --opt-code-size -pragma-include:$(CURDIR)/zpragma.inc '-DSPUN_VERSION=\"$(VERSION)\"' '-DSPUN_NAME=\"$(NAME)\"'
 LDFLAGS=-m
 # Main ends below the stack, which starts at $BFD8 (zpragma.inc) with 1K reserved;
 # above it are the mouse variables and the IM2 table (gui/isr.asm).
 # appmake fails the build if data or BSS reaches the fence.
 CZFLAGS=-Cz"--fullsize --main-fence 0xBBD8"
-DEFINES='-DSPUN_SERVER=\"$(SERVER)\"' '-DSPUN_PORT=\"$(PORT)\"' -Ddotn -DUNZIP_BANK=$(UNZIP_BANK) -Cm-DUNZIP_BANK=$(UNZIP_BANK) -Ca-I$(UNZIP)
+DEFINES='-DSPUN_SERVER=\"$(SERVER)\"' '-DSPUN_PORT=\"$(PORT)\"' -Ddotn -DUNZIP_BANK=$(UNZIP_BANK) -Cm-DUNZIP_BANK=$(UNZIP_BANK) -Ca-I$(abspath $(UNZIP))
 
 MKDIR := mkdir -p
 RM := rm -rfv
@@ -63,10 +65,6 @@ all: binaries
 clean:
 	$(RM) $(BUILD_DIR)
 	$(RM) $(TMP_DIR)
-	$(RM) $(NAME).map
-	$(RM) $(NAME)_CODE.bin
-	$(RM) $(NAME)_MAIN.bin
-	$(RM) $(NAME)_UNASSIGNED.bin
 	$(RM) $(POSIX_DIR)
 	$(RM) $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin
 
@@ -137,9 +135,10 @@ $(TMP_DIR)/main.o: $(call lst_files,spun.lst) help.txt $(UNZIP)/inflate_PAGEA.bi
 		$(UNZIP)/inflate_job.inc $(DEPS) $(wildcard .env) | dirs
 	$(CC) $(CCFLAGS) $(DEFINES) -c @spun.lst -o$@
 
+# appmake names a dot command from the first 8 characters of -o, in capitals, so the link runs inside TMP_DIR
 $(BUILD_DIR)/$(NAME): $(TMP_DIR)/main.o $(BANK_OBJS) | dirs
-	$(CC) $(CCFLAGS) $(LDFLAGS) $(DEFINES) $(TMP_DIR)/main.o $(BANK_OBJS) -o$(NAME) -create-app -subtype=dotn $(CZFLAGS)
-	$(MV) $(NAME) $@
+	$(call Z88DK_RUN,$(abspath $(TMP_DIR))) zcc $(CCFLAGS) $(LDFLAGS) $(DEFINES) main.o $(notdir $(BANK_OBJS)) -o$(NAME) -create-app -subtype=dotn $(CZFLAGS)
+	$(MV) $(TMP_DIR)/$(NAME) $@
 
 dotn: $(BUILD_DIR)/$(NAME)
 
@@ -160,7 +159,7 @@ zip: binaries $(BAS)
 
 spunjane:
 	@test -n "$(SPUNJANE_SERVER)" || { echo "Set SPUNJANE_SERVER in .env" >&2; exit 1; }
-	$(MAKE) NAME=spunjane SERVER=$(SPUNJANE_SERVER) PORT=$(SPUNJANE_PORT) BUILD_DIR=./BUILD-spunjane TMP_DIR=./TMP-spunjane zip
+	$(MAKE) NAME=spunjane SERVER=$(SPUNJANE_SERVER) PORT=$(SPUNJANE_PORT) BUILD_DIR=./BUILD-spunjane zip
 
 posix: $(POSIX_DIR)/$(NAME)
 

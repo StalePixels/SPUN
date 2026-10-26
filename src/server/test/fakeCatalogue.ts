@@ -2,6 +2,7 @@ import {
   FEATURED,
   type AppId,
   type Catalogue,
+  type Category,
   type ClientLog,
   type FoundApp,
   type Release,
@@ -51,11 +52,25 @@ export interface FeatureRow {
   deleted?: boolean;
 }
 
+export interface CategoryRow {
+  id: number;
+  slug: string;
+  name: string;
+  deleted?: boolean;
+}
+
+export interface AppCategoryRow {
+  appId: string;
+  categoryId: number;
+}
+
 export interface Tables {
   users: UserRow[];
   apps: AppRow[];
   releases: ReleaseRow[];
   aliases?: AliasRow[];
+  categoryRows?: CategoryRow[];
+  appCategories?: AppCategoryRow[];
   features?: FeatureRow[];
   clientLog?: ClientLog[];
 }
@@ -79,6 +94,11 @@ export function fakeCatalogue(tables: Tables): Catalogue {
 
   const publicApps = (): AppRow[] =>
     tables.apps.filter((app) => !app.deleted && liveReleases(app.id).length > 0);
+
+  const liveCategories = (): CategoryRow[] =>
+    (tables.categoryRows ?? [])
+      .filter((row) => !row.deleted)
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
 
   const liveFeature = (): FeatureRow | undefined =>
     (tables.features ?? [])
@@ -133,6 +153,31 @@ export function fakeCatalogue(tables: Tables): Catalogue {
         .sort((a, b) => date(b).localeCompare(date(a)) || byTitle(a, b))
         .map(found);
       return slice(listed, offset, limit);
+    },
+
+    async categories(offset, limit) {
+      const live: Category[] = liveCategories().map(({ slug, name }) => ({ slug, name }));
+      return slice(live, offset, limit);
+    },
+
+    async inCategory(slug, text, offset, limit) {
+      const category = liveCategories().find((row) => row.slug === slug);
+      if (!category) {
+        return null;
+      }
+      const linked = new Set(
+        (tables.appCategories ?? []).filter((row) => row.categoryId === category.id).map((row) => row.appId),
+      );
+      const needle = text.toLowerCase();
+      const matches = publicApps()
+        .filter((app) => linked.has(app.id))
+        .filter(
+          (app) =>
+            text === "" || app.title.toLowerCase().includes(needle) || app.description.toLowerCase().includes(needle),
+        );
+      const date = (app: AppRow): string => liveReleases(app.id)[0].releaseDate;
+      matches.sort((a, b) => (text === "" ? date(b).localeCompare(date(a)) : 0) || byTitle(a, b));
+      return slice(matches.map(found), offset, limit);
     },
 
     async app(id) {

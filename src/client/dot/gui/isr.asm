@@ -10,6 +10,7 @@ PUBLIC _ptr_y
 PUBLIC _mouse_btn
 PUBLIC _mouse_last_x
 PUBLIC _mouse_last_y
+PUBLIC _ptr_hide
 
 ; 16 vectors at the top of main memory, so on a 32-byte boundary, and the mouse
 ; variables below them; the stack starts below those (REGISTER_SP = $BFD8)
@@ -19,6 +20,8 @@ defc _ptr_y = $BFDA
 defc _mouse_btn = $BFDC
 defc _mouse_last_x = $BFDD
 defc _mouse_last_y = $BFDE
+; Set by a key, cleared when the mouse moves; the pointer is not shown while it is set
+defc _ptr_hide = $BFDF
 
 defc POINTER_PATTERN = 63
 ; Rows 1-30 of the tilemap: rows 0 and 31 are outside the picture on a 60 Hz display
@@ -51,6 +54,7 @@ mouse:
    ld e,a
    sub (hl)
    ld (hl),e
+   call nz,moved
    ld e,a
    ld d,0
    bit 7,a
@@ -79,6 +83,7 @@ x_set:
    ld e,a
    sub (hl)
    ld (hl),e
+   call nz,moved
    neg
    ld e,a
    ld d,0
@@ -120,7 +125,19 @@ y_set:
    ld a,(_ptr_x + 1)
    and 1
    out ($57),a
+   ld a,(_ptr_hide)
+   or a
    ld a,$80 | POINTER_PATTERN
+   jr z,ptr_show
+   ld a,POINTER_PATTERN
+ptr_show:
    out ($57),a
+   ret
+
+moved:
+   push af
+   xor a
+   ld (_ptr_hide),a
+   pop af
    ret
 

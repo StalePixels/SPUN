@@ -5,7 +5,6 @@ type Mode = "light" | "dark" | "auto";
 
 async function chooseMode(page: Page, mode: Mode) {
   await clickHydrated(page.getByTestId("theme-toggle"));
-  await page.getByTestId("theme-nbn").click();
   await page.getByTestId(`theme-nbn-${mode}`).click();
 }
 

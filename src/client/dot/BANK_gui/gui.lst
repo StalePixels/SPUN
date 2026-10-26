@@ -6,6 +6,8 @@ page_show.c
 entry_draw.c
 status_show.c
 search_run.c
+buttons_show.c
+category_key.c
 list_select.c
 list_key.c
 list_click.c

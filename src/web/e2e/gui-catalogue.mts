@@ -6,7 +6,7 @@ import mysql, { type RowDataPacket } from "mysql2/promise";
 // client and admin, with release rows (no zip) and set download counts. gui024,
 // the newest, has three releases with changelogs for the app page test; the
 // others have one release each. gui024 is also in four of the categories that the
-// reset seeds. "add" puts them in
+// reset seeds, and gui003, gui005, gui011 and gui024 are in Games. "add" puts them in
 // the e2e database, after removing any left from an earlier run; "remove" takes
 // them out again. The ids are fixed, so a later run finds them.
 // Run with: node e2e/gui-catalogue.mts add|remove
@@ -23,6 +23,9 @@ if (!new URL(databaseUrl).pathname.endsWith("_e2e") || owners.includes("")) {
 
 const COUNT = 24;
 const GUI024_CATEGORIES = ["games", "demos", "music", "systool"];
+// Other apps in Games, so that the category test has apps to filter. gui003 and
+// gui011 have SEARCH_WORD in the description; gui005 has not.
+const GAMES_ALSO = [3, 5, 11];
 // The apps whose description has this word; the scenario searches for it.
 const SEARCH_WORD = "zebra";
 const SEARCHED = [3, 11, 19];
@@ -100,6 +103,12 @@ try {
         app.description,
         app.downloads,
       ]);
+      if (GAMES_ALSO.includes(Number(app.id.slice(3)))) {
+        await connection.query("insert into app_categories (app_id, category_id) select ?, id from categories where slug = ?", [
+          app.id,
+          "games",
+        ]);
+      }
       if (app.id === "gui024") {
         await connection.query(
           "insert into app_categories (app_id, category_id) select ?, id from categories where slug in (?)",

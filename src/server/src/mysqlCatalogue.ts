@@ -4,6 +4,7 @@ import {
   type AppId,
   type AppName,
   type Catalogue,
+  type Category,
   type Changelog,
   type FoundApp,
   type Release,
@@ -21,6 +22,9 @@ const FOUND = `SELECT a.id, u.username, a.title, r.serial, r.version, a.download
   JOIN users u ON u.id = a.user_id
   JOIN releases r ON r.app_id = a.id AND r.serial = (
     SELECT MAX(serial) FROM releases WHERE app_id = a.id AND deleted_at IS NULL)`;
+
+const IN_CATEGORY = `AND EXISTS (
+  SELECT 1 FROM app_categories WHERE app_id = a.id AND category_id = ?)`;
 
 function likePattern(text: string): string {
   return `%${text.toLowerCase().replace(/[\\%_]/g, "\\$&")}%`;
@@ -85,6 +89,47 @@ export function mysqlCatalogue(uri: string): Catalogue {
          ORDER BY r.release_date DESC, a.title, a.id
          LIMIT ? OFFSET ?`,
         [limit, offset],
+      );
+      return { total: Number(count.total), items: rows.map(foundApp) };
+    },
+
+    async categories(offset, limit) {
+      const [[count]] = await pool.query<RowDataPacket[]>(
+        "SELECT COUNT(*) AS total FROM categories WHERE deleted_at IS NULL",
+      );
+      const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT slug, name FROM categories
+         WHERE deleted_at IS NULL
+         ORDER BY name, id
+         LIMIT ? OFFSET ?`,
+        [limit, offset],
+      );
+      return { total: Number(count.total), items: rows as Category[] };
+    },
+
+    async inCategory(slug, text, offset, limit) {
+      const [categories] = await pool.query<RowDataPacket[]>(
+        "SELECT id FROM categories WHERE slug = ? AND deleted_at IS NULL",
+        [slug],
+      );
+      if (categories.length === 0) {
+        return null;
+      }
+      const categoryId = categories[0].id;
+      const pattern = likePattern(text);
+      const where = text === "" ? `${PUBLIC} ${IN_CATEGORY}` : `${MATCH} ${IN_CATEGORY}`;
+      const order = text === "" ? "r.release_date DESC, a.title, a.id" : "a.title, a.id";
+      const args = text === "" ? [categoryId] : [pattern, pattern, categoryId];
+      const [[count]] = await pool.query<RowDataPacket[]>(
+        `SELECT COUNT(*) AS total FROM apps a WHERE ${where}`,
+        args,
+      );
+      const [rows] = await pool.query<RowDataPacket[]>(
+        `${FOUND}
+         WHERE ${where}
+         ORDER BY ${order}
+         LIMIT ? OFFSET ?`,
+        [...args, limit, offset],
       );
       return { total: Number(count.total), items: rows.map(foundApp) };
     },

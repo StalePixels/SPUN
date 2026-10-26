@@ -21,6 +21,7 @@
 #define ATTR_BAR_KEY    0x06
 #define ATTR_BLACK      0x08
 #define ATTR_MODAL      0x0A
+#define ATTR_BAR_DIM    0x0C
 #define ATTR_ULA_OVER   0x01
 
 #define MOUSE_LEFT      0x02
@@ -65,7 +66,9 @@ struct bank5_area {
     uint16_t size;
 };
 
+// button_at and button_key give action, so a screen's table can be in any order
 struct gui_button {
+    uint8_t action;
     uint8_t col;
     uint8_t row;
     unsigned char shortcut;
@@ -93,6 +96,7 @@ struct modal {
 extern volatile uint16_t ptr_x;
 extern volatile uint16_t ptr_y;
 extern volatile uint8_t mouse_btn;
+extern volatile uint8_t ptr_hide;
 
 extern bool guiOpen;
 extern bool tilemapIn;

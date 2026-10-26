@@ -27,3 +27,6 @@ gui_next_release.c
 gui_release_at.c
 gui_clog.c
 gui_get.c
+gui_categories.c
+gui_next_category.c
+gui_category_at.c

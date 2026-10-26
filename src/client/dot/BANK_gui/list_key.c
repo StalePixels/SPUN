@@ -12,5 +12,5 @@ uint8_t list_key(unsigned char key) __z88dk_fastcall {
         return ACTION_NONE;
     }
     if(key == KEY_ENTER) return listCount ? ACTION_OPEN : ACTION_NONE;
-    return button_key(buttons, buttonCount, key);
+    return buttons_key(key);
 }

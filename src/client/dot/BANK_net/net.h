@@ -13,6 +13,10 @@ struct l2_target {
     uint16_t x;
 };
 
+extern unsigned char categorySlug[17];
+extern unsigned char entrySlug[17];
+extern unsigned char entryName[33];
+
 void net_open(void);
 void net_close(void);
 unsigned char *spun_find(char *text);
@@ -30,5 +34,8 @@ unsigned char *gui_next_release(void);
 unsigned char *gui_release_at(uint16_t index);
 unsigned char *gui_clog(void);
 unsigned char *gui_get(struct l2_target *target);
+unsigned char *gui_categories(unsigned char *text);
+unsigned char *gui_next_category(void);
+unsigned char *gui_category_at(uint16_t index);
 
 #endif

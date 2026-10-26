@@ -1,7 +1,7 @@
 #ifndef SPUN_REPLY_H
 #define SPUN_REPLY_H
 
-// The tagged fields of SPFIND, SPLIST, SPINFO and SPCLOG replies. Tags from
+// The tagged fields of SPFIND, SPLIST, SPCAT, SPCATS, SPINFO and SPCLOG replies. Tags from
 // REPLY_LONG_TAG have a u16 length, the others a u8 length.
 #define SPUN_FORMAT_VERSION 1
 
@@ -26,6 +26,8 @@
 #define TAG_INSTALL_DIR     0x1D
 #define TAG_THUMB_CRC       0x1E
 #define TAG_NXI_CRC         0x1F
+#define TAG_CATEGORY_ENTRY  0x20
+#define TAG_SLUG            0x21
 #define TAG_DESCRIPTION     0x80
 #define TAG_CHANGELOG       0x81
 

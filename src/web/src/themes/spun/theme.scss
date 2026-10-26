@@ -130,6 +130,11 @@ pre code {
   --bs-navbar-active-color: #000;
   --bs-navbar-brand-color: #{$spun-blue};
   --bs-navbar-brand-hover-color: #000;
+  --bs-navbar-toggler-border-color: #{$spun-blue};
+
+  .navbar-toggler-icon {
+    --bs-navbar-toggler-icon-bg: #{escape-svg(url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'><path stroke='#{$spun-blue}' stroke-linecap='square' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/></svg>"))};
+  }
 }
 
 .card,
@@ -201,6 +206,11 @@ pre code {
 
 .form-control[type="file"] {
   font-size: 0.5rem;
+}
+
+.nav-pills {
+  --bs-nav-pills-link-active-bg: #fff;
+  --bs-nav-pills-link-active-color: #{$spun-blue};
 }
 
 .text-bg-secondary {

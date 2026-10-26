@@ -9,6 +9,7 @@ import {
   type Session,
 } from "../../vendor/NBNtools/server/src/index.js";
 import {
+  CATEGORY_PAGE_SIZE,
   FIND_PAGE_SIZE,
   INFO_CATEGORIES_MAX,
   INFO_PAGE_SIZE,
@@ -17,6 +18,7 @@ import {
   namedFile,
   pageCount,
   parseAppName,
+  parseCategorySlug,
   parseLog,
   parsePage,
   parseSerial,
@@ -24,7 +26,7 @@ import {
   type AppId,
   type Catalogue,
 } from "./catalogue.js";
-import { encodeChangelog, encodeError, encodeFind, encodeInfo } from "./codec.js";
+import { encodeCategories, encodeChangelog, encodeError, encodeFind, encodeInfo } from "./codec.js";
 
 export class SPUNServer extends Server {
   private readonly catalogue: Catalogue;
@@ -43,6 +45,10 @@ export class SPUNServer extends Server {
         return { bytes: await this.find(params) };
       case "SPLIST":
         return { bytes: await this.list(params) };
+      case "SPCATS":
+        return { bytes: await this.categories(params) };
+      case "SPCAT":
+        return { bytes: await this.inCategory(params) };
       case "SPINFO":
         return { bytes: await this.info(params) };
       case "SPCLOG":
@@ -129,6 +135,39 @@ export class SPUNServer extends Server {
       page,
       pages: pageCount(listed.total, LIST_PAGE_SIZE),
       apps: listed.items,
+    });
+  }
+
+  private async categories(params: readonly string[]): Promise<Uint8Array> {
+    const page = parsePage(params[0]);
+    if (page === null) {
+      return encodeError("BadQuery_ERROR");
+    }
+    const listed = await this.catalogue.categories((page - 1) * CATEGORY_PAGE_SIZE, CATEGORY_PAGE_SIZE);
+    return encodeCategories({
+      total: listed.total,
+      page,
+      pages: pageCount(listed.total, CATEGORY_PAGE_SIZE),
+      categories: listed.items,
+    });
+  }
+
+  private async inCategory(params: readonly string[]): Promise<Uint8Array> {
+    const slug = parseCategorySlug(params[0]);
+    const page = params[1] === undefined ? null : parsePage(params[1]);
+    if (slug === null || page === null) {
+      return encodeError("BadQuery_ERROR");
+    }
+    const text = params.slice(2).join(" ");
+    const found = await this.catalogue.inCategory(slug, text, (page - 1) * FIND_PAGE_SIZE, FIND_PAGE_SIZE);
+    if (found === null) {
+      return encodeError("BadQuery_ERROR");
+    }
+    return encodeFind({
+      total: found.total,
+      page,
+      pages: pageCount(found.total, FIND_PAGE_SIZE),
+      apps: found.items,
     });
   }
 

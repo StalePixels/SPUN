@@ -7,5 +7,5 @@ void gui_draw(void) {
 
     title_draw();
     tm_blank(0, BUTTON_ROW, GUI_COLUMNS, ATTR_TEXT);
-    for(index = 0; index != buttonCount; index++) button_draw(&buttons[index]);
+    for(index = 0; index != listButtonCount; index++) button_draw(&listButtons[index]);
 }

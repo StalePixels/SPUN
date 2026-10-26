@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, test } from "node:test";
 import type { AppId, Catalogue } from "../src/catalogue.js";
-import { checksum, decodeChangelog, decodeFind, decodeInfo } from "../src/codec.js";
+import { checksum, decodeCategories, decodeChangelog, decodeFind, decodeInfo } from "../src/codec.js";
 import { fakeCatalogue, type AppRow, type FeatureRow, type ReleaseRow, type Tables } from "./fakeCatalogue.js";
 import { SpoofClient, startSpunServer } from "./harness.js";
 import { ascii, counts, field, le, reply } from "./golden.js";
@@ -41,6 +41,12 @@ const longReleases: ReleaseRow[] = Array.from({ length: 150 }, (_, i) => ({
   serial: i + 1,
   version: `1.${i + 1}`,
   releaseDate: "2026-09-26",
+}));
+
+const fillerCategories = Array.from({ length: 25 }, (_, i) => ({
+  id: 100 + i,
+  slug: `filler-${i + 1}`,
+  name: `Filler ${String(i + 1).padStart(2, "0")}`,
 }));
 
 const tables: Tables = {
@@ -103,6 +109,24 @@ const tables: Tables = {
     { appId: "gone01", serial: 1, version: "1.0", releaseDate: "2026-09-20" },
     ...longReleases,
     ...pagerReleases,
+  ],
+  categoryRows: [
+    { id: 1, slug: "games", name: "Games" },
+    { id: 2, slug: "tools", name: "Tools" },
+    { id: 3, slug: "old", name: "Old", deleted: true },
+    { id: 4, slug: "empty", name: "Empty" },
+    { id: 5, slug: "pager", name: "Pager" },
+    ...fillerCategories,
+  ],
+  appCategories: [
+    { appId: "tst001", categoryId: 1 },
+    { appId: "abc123", categoryId: 1 },
+    { appId: "desc01", categoryId: 1 },
+    { appId: "gone01", categoryId: 1 },
+    { appId: "empty1", categoryId: 1 },
+    { appId: "tst002", categoryId: 2 },
+    { appId: "tst002", categoryId: 3 },
+    ...pagerApps.map((app) => ({ appId: app.id, categoryId: 5 })),
   ],
   aliases: [
     { alias: "testapp", appId: "tst001" },
@@ -307,6 +331,99 @@ describe("SPLIST", () => {
     client.send("SPLIST\n");
     assert.equal((await client.reply(decodeFind)).page, 1);
     for (const command of ["SPLIST 0", "SPLIST x", "SPLIST 65536"]) {
+      await expectError(`${command}\n`, "BadQuery_ERROR");
+    }
+    await expectOpen();
+  });
+});
+
+describe("SPCATS", () => {
+  before(connect);
+  after(() => client.close());
+
+  test("lists the live categories by name, 20 to a page, empty ones too", async () => {
+    client.send("SPCATS 1\n");
+    const first = await client.reply(decodeCategories);
+    assert.deepEqual([first.total, first.page, first.pages], [29, 1, 2]);
+    assert.equal(first.categories.length, 20);
+    assert.deepEqual(first.categories.slice(0, 3), [
+      { slug: "empty", name: "Empty" },
+      { slug: "filler-1", name: "Filler 01" },
+      { slug: "filler-2", name: "Filler 02" },
+    ]);
+    client.send("SPCATS 2\n");
+    const second = await client.reply(decodeCategories);
+    assert.equal(second.categories.length, 9);
+    assert.deepEqual(second.categories.slice(-3).map((row) => row.slug), ["games", "pager", "tools"]);
+    assert.equal(second.categories.some((row) => row.slug === "old"), false);
+  });
+
+  test("a page past the end is empty", async () => {
+    client.send("SPCATS 3\n");
+    const reply = await client.reply(decodeCategories);
+    assert.deepEqual([reply.total, reply.page, reply.pages, reply.categories.length], [29, 3, 2, 0]);
+  });
+
+  test("with no page number sends page 1; a bad page number gives BadQuery_ERROR", async () => {
+    client.send("SPCATS\n");
+    assert.equal((await client.reply(decodeCategories)).page, 1);
+    for (const command of ["SPCATS 0", "SPCATS x", "SPCATS 65536"]) {
+      await expectError(`${command}\n`, "BadQuery_ERROR");
+    }
+    await expectOpen();
+  });
+});
+
+describe("SPCAT", () => {
+  before(connect);
+  after(() => client.close());
+
+  const ids = async (command: string): Promise<string[]> => {
+    client.send(command);
+    return (await client.reply(decodeFind)).apps.map((app) => app.id);
+  };
+
+  test("lists the public apps of the category, newest update first", async () => {
+    client.send("SPCAT games 1\n");
+    const reply = await client.reply(decodeFind);
+    assert.deepEqual([reply.total, reply.page, reply.pages], [3, 1, 1]);
+    assert.deepEqual(reply.apps.map((app) => app.id), ["tst001", "abc123", "desc01"]);
+    client.send("SPFIND 1 test app\n");
+    const found = (await client.reply(decodeFind)).apps.find((app) => app.id === "tst001");
+    assert.deepEqual(reply.apps[0], found);
+  });
+
+  test("pages 20 to a page", async () => {
+    const first = await ids("SPCAT pager 1\n");
+    const last = await ids("SPCAT pager 3\n");
+    assert.equal(first.length, 20);
+    assert.equal(last.length, 5);
+    assert.equal(new Set([...first, ...(await ids("SPCAT pager 2\n")), ...last]).size, 45);
+  });
+
+  test("a category with no apps, or a page past the end, is an empty page", async () => {
+    client.send("SPCAT empty 1\n");
+    const reply = await client.reply(decodeFind);
+    assert.deepEqual([reply.total, reply.page, reply.pages, reply.apps.length], [0, 1, 0, 0]);
+    client.send("SPCAT games 2\n");
+    assert.deepEqual((await client.reply(decodeFind)).apps, []);
+  });
+
+  test("text searches title and description inside the category, by title", async () => {
+    assert.deepEqual(await ids("SPCAT games 1 test app\n"), ["desc01", "tst001"]);
+    assert.deepEqual(await ids("SPCAT tools 1 test app\n"), []);
+    assert.deepEqual(await ids("SPCAT tools 1 ZEBRA\n"), ["tst002"]);
+  });
+
+  test("a deleted category, an unknown slug or a malformed slug gives BadQuery_ERROR", async () => {
+    for (const slug of ["old", "nosuch", "Games", "GAMES", "ga_mes", "a".repeat(17), "ga%20", "-"]) {
+      await expectError(`SPCAT ${slug} 1\n`, "BadQuery_ERROR");
+    }
+    await expectOpen();
+  });
+
+  test("a bad or missing page gives BadQuery_ERROR", async () => {
+    for (const command of ["SPCAT games", "SPCAT games 0", "SPCAT games x", "SPCAT games 65536", "SPCAT games 0 test", "SPCAT"]) {
       await expectError(`${command}\n`, "BadQuery_ERROR");
     }
     await expectOpen();
@@ -779,6 +896,8 @@ describe("a database failure", () => {
       resolve: (name) => Promise.resolve(name as string as AppId),
       find: () => Promise.reject(new Error("database down")),
       list: () => Promise.reject(new Error("database down")),
+      categories: () => Promise.reject(new Error("database down")),
+      inCategory: () => Promise.reject(new Error("database down")),
       app: () => Promise.reject(new Error("database down")),
       releases: () => Promise.reject(new Error("database down")),
       changelog: () => Promise.reject(new Error("database down")),
@@ -827,6 +946,8 @@ describe("lines sent together", () => {
       resolve: (...args) => later(fast.resolve(...args)),
       find: (...args) => later(fast.find(...args)),
       list: (...args) => later(fast.list(...args)),
+      categories: (...args) => later(fast.categories(...args)),
+      inCategory: (...args) => later(fast.inCategory(...args)),
       app: (...args) => later(fast.app(...args)),
       releases: (...args) => later(fast.releases(...args)),
       changelog: (...args) => later(fast.changelog(...args)),

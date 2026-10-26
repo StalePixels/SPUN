@@ -31,9 +31,9 @@ export async function Catalogue({ slug, page, query }: { slug: string | null; pa
           placeholder="e.g. tetris"
           data-testid="catalogue-search-input"
         />
-        <button type="submit" className="btn btn-primary" data-testid="catalogue-search-submit">
-          <i className="bi bi-search me-1" />
-          Search
+        <button type="submit" className="btn btn-primary text-nowrap" aria-label="Search" data-testid="catalogue-search-submit">
+          <i className="bi bi-search me-sm-1" />
+          <span className="d-none d-sm-inline">Search</span>
         </button>
       </form>
       {categories.length > 0 && (
@@ -41,7 +41,8 @@ export async function Catalogue({ slug, page, query }: { slug: string | null; pa
           id="category-links"
           item="category-link"
           label="Categories"
-          className="mb-3"
+          variant="pills"
+          className="gap-2 mb-3"
           sections={[
             { href: "/catalogue", key: "", label: "All", testId: "category-all" },
             ...categories.map((item) => ({ href: `/catalogue/${item.slug}`, key: item.slug, label: item.name })),
@@ -109,26 +110,26 @@ export async function CatalogueRows({ rows }: { rows: CatalogueRow[] }) {
               )}
             </span>
             <span className="flex-grow-1">
-              <span className="fw-medium" data-testid="catalogue-title">{app.title}</span>
-              <i className="bi bi-dot" aria-hidden="true" />
-              <span className="text-body-secondary" data-testid="catalogue-publisher">{app.username}</span>
-              {app.categories.map((item) => (
-                <span
-                  key={item.id}
-                  className="badge text-bg-secondary ms-2"
-                  data-testid={`catalogue-category-${item.slug}`}
-                >
-                  {item.name}
+              <span className="d-block">
+                <span className="fw-medium" data-testid="catalogue-title">{app.title}</span>
+                <i className="bi bi-dot" aria-hidden="true" />
+                <span className="text-body-secondary" data-testid="catalogue-publisher">{app.username}</span>
+              </span>
+              <span className="d-flex flex-wrap align-items-center gap-2 mt-1">
+                {app.categories.map((item) => (
+                  <span key={item.id} className="badge text-bg-secondary" data-testid={`catalogue-category-${item.slug}`}>
+                    {item.name}
+                  </span>
+                ))}
+                <span className="small text-body-secondary text-nowrap">
+                  <span data-testid="catalogue-version">{app.version}</span>
+                  <i className="bi bi-dot" aria-hidden="true" />
+                  <span data-testid="catalogue-date">{formatDay(app.releaseDate)}</span>
                 </span>
-              ))}
-            </span>
-            <span className="small text-body-secondary">
-              <span data-testid="catalogue-version">{app.version}</span>
-              <i className="bi bi-dot" aria-hidden="true" />
-              <span data-testid="catalogue-date">{formatDay(app.releaseDate)}</span>
-              <span className="ms-2" title="Downloads">
-                <i className="bi bi-download me-1" aria-hidden="true" />
-                <span data-testid="catalogue-downloads">{app.downloads}</span>
+                <span className="small text-body-secondary text-nowrap" title="Downloads">
+                  <i className="bi bi-download me-1" aria-hidden="true" />
+                  <span data-testid="catalogue-downloads">{app.downloads}</span>
+                </span>
               </span>
             </span>
           </Link>

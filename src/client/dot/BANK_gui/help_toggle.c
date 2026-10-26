@@ -21,4 +21,5 @@ void help_toggle(void) {
         line = tm_text(2, row++, line, ATTR_TEXT);
         if(*line) line++;
     }
+    buttons_show();
 }

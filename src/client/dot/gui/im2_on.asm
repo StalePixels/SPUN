@@ -12,6 +12,7 @@ EXTERN _mouse_last_y
 EXTERN _ptr_x
 EXTERN _ptr_y
 EXTERN _mouse_btn
+EXTERN _ptr_hide
 EXTERN _saved_c0
 
 defc VECTOR_ULA = 11
@@ -41,6 +42,8 @@ fill:
    ld (_ptr_x),hl
    ld hl,128
    ld (_ptr_y),hl
+   xor a
+   ld (_ptr_hide),a
    ld a,$FF
    ld (_mouse_btn),a
    ld bc,$FBDF

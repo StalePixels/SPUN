@@ -1,4 +1,4 @@
-import type { AppId, AppInfo, Changelog, FoundApp, Release, Screenshot } from "./catalogue.js";
+import type { AppId, AppInfo, Category, Changelog, FoundApp, Release, Screenshot } from "./catalogue.js";
 
 export const PROTOCOL_VERSION = 2;
 export const FORMAT_VERSION = 1;
@@ -28,6 +28,8 @@ export const Tag = {
   installDir: 0x1d,
   thumbCrc: 0x1e,
   nxiCrc: 0x1f,
+  categoryEntry: 0x20,
+  slug: 0x21,
   description: 0x80,
   changelog: 0x81,
 } as const;
@@ -37,6 +39,13 @@ export interface FindPage {
   page: number;
   pages: number;
   apps: FoundApp[];
+}
+
+export interface CategoriesPage {
+  total: number;
+  page: number;
+  pages: number;
+  categories: Category[];
 }
 
 export interface InfoPage {
@@ -127,6 +136,18 @@ export function encodeFind(page: FindPage): Uint8Array {
       entry.u16(Tag.serial, app.latest.serial);
       entry.text(Tag.version, app.latest.version);
       entry.u32(Tag.downloads, app.downloads);
+    });
+  }
+  return out.reply();
+}
+
+export function encodeCategories(page: CategoriesPage): Uint8Array {
+  const out = new Writer();
+  counts(out, page);
+  for (const category of page.categories) {
+    out.group(Tag.categoryEntry, (entry) => {
+      entry.text(Tag.slug, category.slug);
+      entry.text(Tag.category, category.name);
     });
   }
   return out.reply();
@@ -276,6 +297,20 @@ export function decodeFind(bytes: Uint8Array): FindPage {
     apps.push(app);
   }
   return { ...readCounts(fields), apps };
+}
+
+export function decodeCategories(bytes: Uint8Array): CategoriesPage {
+  const fields = readReply(bytes);
+  const categories: Category[] = [];
+  for (const entry of fields.filter((field) => field.tag === Tag.categoryEntry)) {
+    const category: Category = { slug: "", name: "" };
+    for (const { tag, value } of readFields(entry.value)) {
+      if (tag === Tag.slug) category.slug = fieldText(value);
+      if (tag === Tag.category) category.name = fieldText(value);
+    }
+    categories.push(category);
+  }
+  return { ...readCounts(fields), categories };
 }
 
 export function decodeInfo(bytes: Uint8Array): InfoPage {

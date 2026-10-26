@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  CATEGORY_PAGE_SIZE,
   FIND_PAGE_SIZE,
   INFO_CATEGORIES_MAX,
   INFO_PAGE_SIZE,
@@ -9,9 +10,11 @@ import {
   type Changelog,
 } from "../src/catalogue.js";
 import {
+  decodeCategories,
   decodeChangelog,
   decodeFind,
   decodeInfo,
+  encodeCategories,
   encodeChangelog,
   encodeError,
   encodeFind,
@@ -305,4 +308,32 @@ test("the largest SPCLOG reply fits in one block", () => {
   });
   assert.equal(page.length - 5, 4 + 18 + 12 + 3 + MAX.changelog);
   assert.ok(page.length - 5 <= MAX_BLOCK_SIZE);
+});
+
+test("the largest SPCATS page fits in one block", () => {
+  const page = encodeCategories({
+    total: 0xffff,
+    page: 0xffff,
+    pages: 0xffff,
+    categories: Array.from({ length: CATEGORY_PAGE_SIZE }, () => ({
+      slug: "s".repeat(16),
+      name: "n".repeat(MAX.category),
+    })),
+  });
+  // 12 bytes of counts, then a group of 2 + 18 + 34 bytes for each entry.
+  assert.equal(page.length - 5, 12 + CATEGORY_PAGE_SIZE * 54);
+  assert.ok(page.length - 5 <= MAX_BLOCK_SIZE);
+});
+
+test("an SPCATS page has the agreed bytes and decodes back", () => {
+  const categories = [
+    { slug: "games", name: "Games" },
+    { slug: "tools", name: "Tools" },
+  ];
+  const entry = (slug: string, name: string): string =>
+    field(0x20, field(0x21, ascii(slug)) + field(0x19, ascii(name)));
+  const golden = reply(counts(2, 1, 1) + entry("games", "Games") + entry("tools", "Tools"));
+  const page = encodeCategories({ total: 2, page: 1, pages: 1, categories });
+  assert.equal(toHex(page), golden);
+  assert.deepEqual(decodeCategories(page), { total: 2, page: 1, pages: 1, categories });
 });

@@ -1,12 +1,22 @@
 #include "../common/spun.h"
 #include "../gui/gui.h"
+#include "../BANK_net/net.h"
 #include "run.h"
 
+// A search in a category can be longer than the screen is wide, so the line is cut
 void status_show(void) {
-    unsigned char line[GUI_COLUMNS];
+    unsigned char line[GUI_COLUMNS + SEARCH_LENGTH];
+    unsigned char *at = line;
 
-    if(*searchText && !totalItems) sprintf(line, "Search \"%s\": 0 found", searchText);
-    else if(*searchText) sprintf(line, "Search \"%s\": %u found, page %u of %u", searchText, totalItems, page, totalPages);
-    else sprintf(line, "Catalogue: %u apps, page %u of %u", totalItems, page, totalPages);
-    tm_text(1, STATUS_ROW, line, ATTR_TEXT);
+    if(categoriesShown) {
+        at += sprintf(at, "Categories: %u", totalItems);
+    } else if(*searchText) {
+        at += sprintf(at, "Search \"%s\"", searchText);
+        if(*categorySlug) at += sprintf(at, " in %s", categoryName);
+        at += sprintf(at, ": %u found", totalItems);
+    } else {
+        at += sprintf(at, "%s: %u apps", *categorySlug ? categoryName : (unsigned char *)"Catalogue", totalItems);
+    }
+    if(totalItems || !*searchText || categoriesShown) sprintf(at, ", page %u of %u", page, totalPages);
+    tm_cut(1, STATUS_ROW, line, GUI_COLUMNS - 2, ATTR_TEXT);
 }
