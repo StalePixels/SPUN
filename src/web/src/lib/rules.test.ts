@@ -29,6 +29,8 @@ import {
   checkReleaseDate,
   parseLimit,
   checkDescription,
+  DESCRIPTION_MAX,
+  lineFeeds,
   checkKeyName,
   checkTitle,
   checkUsernameInput,
@@ -263,6 +265,19 @@ describe("version already used", () => {
   it("accepts a new version", () => {
     expect(checkVersionUnused("1.1", ["0.9", "1.0"])).toBeNull();
     expect(checkVersionUnused("1.0", [])).toBeNull();
+  });
+});
+
+describe("checkDescription", () => {
+  it("accepts line breaks, counted as one character after lineFeeds", () => {
+    const lines = "a\r\n".repeat(DESCRIPTION_MAX / 2);
+    expect(lines.length).toBe(DESCRIPTION_MAX * 1.5);
+    expect(lineFeeds(lines)).toBe("a\n".repeat(DESCRIPTION_MAX / 2));
+    expect(checkDescription(lineFeeds(lines))).toBeNull();
+  });
+
+  it("rejects a CR that lineFeeds did not remove", () => {
+    expect(checkDescription("a\rb")).toEqual({ code: "description.invalidCharacters", chars: ["\r"] });
   });
 });
 

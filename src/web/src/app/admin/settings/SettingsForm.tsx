@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionForm } from "../../ActionForm";
 import { FormError } from "../../FormError";
 import { useActionState } from "react";
 import Alert from "react-bootstrap/Alert";
@@ -12,7 +13,7 @@ import { saveSettings } from "../actions";
 export function SettingsForm({ appLimit, appLimitHelp }: { appLimit: string; appLimitHelp: string }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(saveSettings, {});
   return (
-    <Form action={formAction}>
+    <ActionForm action={formAction} state={state}>
       <FormError problem={state.error} />
       {state.saved && <Alert variant="success" data-testid="form-saved">Saved.</Alert>}
       <Field controlId="default_app_limit" label="Default app limit" help={appLimitHelp}>
@@ -29,6 +30,6 @@ export function SettingsForm({ appLimit, appLimitHelp }: { appLimit: string; app
           Save
         </Button>
       </FieldRow>
-    </Form>
+    </ActionForm>
   );
 }

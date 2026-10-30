@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionForm } from "../../../ActionForm";
 import { useActionState } from "react";
 import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
@@ -16,7 +17,7 @@ export function UsernameForm({ userId, username }: { userId: string; username: s
     {},
   );
   return (
-    <Form action={formAction}>
+    <ActionForm action={formAction} state={state}>
       <FormError problem={state.error} />
       {state.saved && <Alert variant="success" data-testid="form-saved">Saved.</Alert>}
       <Field
@@ -31,6 +32,6 @@ export function UsernameForm({ userId, username }: { userId: string; username: s
           Rename
         </Button>
       </FieldRow>
-    </Form>
+    </ActionForm>
   );
 }

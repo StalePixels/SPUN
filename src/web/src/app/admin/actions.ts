@@ -65,6 +65,7 @@ import {
   checkTitle,
   checkUsernameInput,
   checkVersion,
+  lineFeeds,
   parseLimit,
   parseSerial,
   parseSlot,
@@ -130,7 +131,7 @@ export async function saveAdminApp(rawId: string, _prev: FormState, formData: Fo
     return { error: { code: "app.notFound" } };
   }
   const title = text(formData, "title");
-  const description = text(formData, "description");
+  const description = lineFeeds(text(formData, "description"));
   const error = checkTitle(title) ?? checkDescription(description);
   if (error) {
     return { error };

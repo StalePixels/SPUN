@@ -84,7 +84,8 @@ async function withDetails(rows: Omit<CatalogueRow, "categories" | "screenshot">
   }));
 }
 
-// One row more than a page, so the caller knows if there is a next page.
+// One row more than a page, so the caller knows if there is a next page. Newest release
+// first, as on the Next; a search is in title order.
 export async function cataloguePage(
   page: number,
   categoryId: number | null,
@@ -109,7 +110,11 @@ export async function cataloguePage(
         query === "" ? undefined : matches(query),
       ),
     )
-    .orderBy(asc(apps.title), asc(apps.id))
+    .orderBy(
+      ...(query === "" ? [desc(releases.releaseDate)] : []),
+      asc(apps.title),
+      asc(apps.id),
+    )
     .limit(CATALOGUE_PAGE_SIZE + 1)
     .offset((page - 1) * CATALOGUE_PAGE_SIZE);
   const shown = rows.slice(0, CATALOGUE_PAGE_SIZE);

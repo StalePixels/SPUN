@@ -1,9 +1,9 @@
 "use client";
 
+import { ActionForm } from "../../../../../ActionForm";
 import { useActionState } from "react";
 import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
-import Form from "react-bootstrap/Form";
 import { saveChangelog, type FormState } from "../../../../../actions";
 import { ChangelogField } from "../../../../../ChangelogField";
 import { FieldRow } from "../../../../../Field";
@@ -15,7 +15,7 @@ export function ChangelogForm({ appId, serial, changelog }: { appId: string; ser
     {},
   );
   return (
-    <Form action={formAction}>
+    <ActionForm action={formAction} state={state}>
       <FormError problem={state.error} />
       {state.saved && <Alert variant="success" data-testid="form-saved">Saved.</Alert>}
       <ChangelogField testId="changelog-edit" defaultValue={changelog} />
@@ -24,6 +24,6 @@ export function ChangelogForm({ appId, serial, changelog }: { appId: string; ser
           Save
         </Button>
       </FieldRow>
-    </Form>
+    </ActionForm>
   );
 }

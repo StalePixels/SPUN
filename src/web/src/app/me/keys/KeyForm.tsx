@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionForm } from "../../ActionForm";
 import { useActionState } from "react";
 import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
@@ -12,7 +13,7 @@ import { makeKey, type KeyFormState } from "./actions";
 export function KeyForm() {
   const [state, formAction, pending] = useActionState<KeyFormState, FormData>(makeKey, {});
   return (
-    <Form action={formAction}>
+    <ActionForm action={formAction} state={state}>
       <FormError problem={state.error} />
       {state.key && (
         <Alert variant="warning" data-testid="key-made">
@@ -30,6 +31,6 @@ export function KeyForm() {
           Make key
         </Button>
       </FieldRow>
-    </Form>
+    </ActionForm>
   );
 }

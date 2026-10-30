@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionForm } from "../../../ActionForm";
 import { useActionState } from "react";
 import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
@@ -20,7 +21,7 @@ function AliasRow({ appId, alias }: { appId: string; alias: string }) {
       <FormError problem={state.error} />
       <div className="d-flex flex-wrap align-items-center gap-2">
         <code className="me-auto" data-testid="alias-name">{alias}</code>
-        <Form action={formAction} className="d-flex gap-2">
+        <ActionForm action={formAction} state={state} className="d-flex gap-2">
           <Form.Control
             data-testid="alias-move-target"
             name="target"
@@ -31,7 +32,7 @@ function AliasRow({ appId, alias }: { appId: string; alias: string }) {
           <Button data-testid="alias-move-submit" type="submit" variant="outline-primary" disabled={pending}>
             Move
           </Button>
-        </Form>
+        </ActionForm>
         <form action={removeAdminAlias.bind(null, appId, alias)}>
           <Button data-testid="alias-remove" type="submit" variant="outline-danger">
             Remove
@@ -55,7 +56,7 @@ export function Aliases({ appId, aliases }: { appId: string; aliases: string[] }
           ))}
         </ul>
       )}
-      <Form action={formAction} data-testid="alias-add">
+      <ActionForm action={formAction} state={state} data-testid="alias-add">
         <FormError problem={state.error} />
         {state.saved && <Alert variant="success" data-testid="form-saved">Added.</Alert>}
         <Field controlId="alias" label="New alias" help={`a-z, 0-9, - and _, up to ${ALIAS_MAX} characters.`}>
@@ -66,7 +67,7 @@ export function Aliases({ appId, aliases }: { appId: string; aliases: string[] }
             Add alias
           </Button>
         </FieldRow>
-      </Form>
+      </ActionForm>
     </>
   );
 }

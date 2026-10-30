@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionForm } from "../../../ActionForm";
 import { FormError } from "../../../FormError";
 import { useActionState, useState } from "react";
 import Button from "react-bootstrap/Button";
@@ -9,7 +10,7 @@ import { uploadRelease, type UploadState } from "../../../actions";
 import { ChangelogField } from "../../../ChangelogField";
 import { Field, FieldRow, RequiredNote } from "../../../Field";
 
-// React resets the form after each action. The box is uncontrolled, so it and historic go
+// The form resets after a successful upload. The box is uncontrolled, so it and historic go
 // back to unticked together.
 export function UploadForm({
   appId,
@@ -25,7 +26,7 @@ export function UploadForm({
   const [tooLarge, setTooLarge] = useState(false);
   const [historic, setHistoric] = useState(false);
   return (
-    <Form action={formAction} onReset={() => setHistoric(false)}>
+    <ActionForm action={formAction} state={state} onReset={() => setHistoric(false)}>
       <FormError problem={state.error} />
       <RequiredNote />
       <Field
@@ -78,6 +79,6 @@ export function UploadForm({
           Upload
         </Button>
       </FieldRow>
-    </Form>
+    </ActionForm>
   );
 }

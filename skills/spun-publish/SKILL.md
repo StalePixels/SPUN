@@ -49,7 +49,7 @@ Each run makes a new timestamp and nonce, so you can run the same command again.
 
 1. **Categories.** Get the categories and choose the ids that fit the software. An app needs at least one.
 2. **Create the app.** Give it a title, a description and its categories, and a suggested install directory (`installDir`, see below). Keep the app id the answer gives you. If the app already exists, list the user's apps and use its id. A change to an existing app sends all its fields again: a field left out is made empty.
-3. **Upload a release.** Upload the zip with its version, and a changelog if there is one. The app becomes public when it has a release.
+3. **Upload a release.** Upload the zip with its version, and a changelog written for the Next (see below). The app becomes public when it has a release.
 4. **Add screenshots.** Slot 1 is the main screenshot. Add more in the other slots if the user has them. An image may have at most 4 megapixels, width times height (`screenshot.tooManyPixels`); the Next shows 320×256 at most, so scale a larger image down first.
 5. **Save apps.** If the user asks, save apps to their list, or remove them from it.
 
@@ -65,6 +65,15 @@ The CMS stores it in one form: `\` becomes `/`, it starts with `/`, repeated sla
 - No `.` or `..` part (`installDir.dots`).
 - No part that ends with a dot or a space, such as `/games./x` (`installDir.partEnd`).
 - Not `/`, and not `/nextzxos`, `/sys`, `/dot` or `/machines` or anything under them, in any case (`installDir.banned`).
+
+## The changelog
+
+People read the changelog on the Next, an 8-bit machine, so write it for the Next:
+
+- Short: the new features and fixes a user will notice, not internal work. A longer project changelog is a source, not the text to upload.
+- Plain ASCII only, no UTF-8. The CMS takes printable ASCII and line feeds, up to 1024 characters.
+- No markdown.
+- No links.
 
 ## What the CMS checks before it accepts a release
 

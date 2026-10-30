@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionForm } from "./ActionForm";
 import { FormError } from "./FormError";
 import { useActionState, useState } from "react";
 import Alert from "react-bootstrap/Alert";
@@ -35,7 +36,7 @@ export function AppForm({ app, categories, selected = [], save }: Props) {
     suggest(ids, title);
   };
   return (
-    <Form action={formAction}>
+    <ActionForm action={formAction} state={state}>
       <FormError problem={state.error} />
       {state.saved && <Alert variant="success" data-testid="form-saved">Saved.</Alert>}
       <RequiredNote />
@@ -98,6 +99,6 @@ export function AppForm({ app, categories, selected = [], save }: Props) {
           {app ? "Save" : "Create app"}
         </Button>
       </FieldRow>
-    </Form>
+    </ActionForm>
   );
 }

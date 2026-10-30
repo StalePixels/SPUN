@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionForm } from "../ActionForm";
 import { FormError } from "../FormError";
 import { useActionState } from "react";
 import Button from "react-bootstrap/Button";
@@ -11,7 +12,7 @@ import { Field, FieldRow } from "../Field";
 export function UsernameForm({ termsId }: { termsId: number | null }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(chooseUsername, {});
   return (
-    <Form action={formAction}>
+    <ActionForm action={formAction} state={state}>
       <FormError problem={state.error} />
       <Field
         controlId="username"
@@ -45,6 +46,6 @@ export function UsernameForm({ termsId }: { termsId: number | null }) {
           Save username
         </Button>
       </FieldRow>
-    </Form>
+    </ActionForm>
   );
 }

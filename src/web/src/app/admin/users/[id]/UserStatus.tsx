@@ -1,8 +1,8 @@
 "use client";
 
+import { ActionForm } from "../../../ActionForm";
 import { useActionState } from "react";
 import Button from "react-bootstrap/Button";
-import Form from "react-bootstrap/Form";
 import type { FormState } from "../../../actions";
 import { FormError } from "../../../FormError";
 import { disableAdminUser, enableAdminUser } from "../../actions";
@@ -13,7 +13,7 @@ export function UserStatus({ userId, disabled }: { userId: string; disabled: boo
     {},
   );
   return (
-    <Form action={formAction}>
+    <ActionForm action={formAction} state={state}>
       <FormError problem={state.error} />
       {disabled ? (
         <Button data-testid="user-enable" type="submit" variant="outline-primary" disabled={pending}>
@@ -26,6 +26,6 @@ export function UserStatus({ userId, disabled }: { userId: string; disabled: boo
           Disable
         </Button>
       )}
-    </Form>
+    </ActionForm>
   );
 }

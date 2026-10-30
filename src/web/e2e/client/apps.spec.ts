@@ -137,6 +137,34 @@ test("a title with an emoji is refused", async ({ page }) => {
   expect(pathname(page)).toBe("/publish/new");
 });
 
+test("a refused app keeps everything typed, and a description of line breaks up to the limit saves", async ({ page }) => {
+  // The browser sends each line break as CR LF, which used to push this past the limit.
+  const description = `${"x".repeat(63)}\n`.repeat(4);
+  expect(description.length).toBe(256);
+  const title = uniqueTitle("Kept");
+  await page.goto("/publish/new");
+  await waitForHydration(page.getByTestId("app-submit"));
+  await page.getByTestId("app-title").fill(`${title} 🚀`);
+  await page.getByTestId("app-description").fill(description);
+  const category = page.getByTestId(/^app-category-/).first();
+  await category.check();
+  await clickHydrated(page.getByTestId("app-submit"));
+  await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "title.invalidCharacters");
+  await expect(page.getByTestId("app-title")).toHaveValue(`${title} 🚀`);
+  await expect(page.getByTestId("app-description")).toHaveValue(description);
+  await expect(category).toBeChecked();
+
+  await page.getByTestId("app-title").fill(title);
+  await clickHydrated(page.getByTestId("app-submit"));
+  await page.waitForURL(/\/publish\/apps\/[0-9a-z]{6}$/);
+  const id = pathname(page).split("/").pop()!;
+  try {
+    expect(await appRow(id)).toMatchObject({ title, description });
+  } finally {
+    await removeApps([id]);
+  }
+});
+
 test("delete an app: files go, the database row stays marked deleted", async ({ page, apps }) => {
   const id = await apps.create("Delete");
   const files = tempFiles();

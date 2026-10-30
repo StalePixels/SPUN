@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionForm } from "../../ActionForm";
 import { useActionState } from "react";
 import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
@@ -21,7 +22,7 @@ export function CategoryForm({ category }: Props) {
   );
   const prefix = category ? `category-${category.id}` : "category-new";
   return (
-    <Form action={formAction}>
+    <ActionForm action={formAction} state={state}>
       <FormError problem={state.error} />
       {state.saved && <Alert variant="success" data-testid="form-saved">Saved.</Alert>}
       <Field
@@ -64,6 +65,6 @@ export function CategoryForm({ category }: Props) {
           {category ? "Save" : "Add category"}
         </Button>
       </FieldRow>
-    </Form>
+    </ActionForm>
   );
 }

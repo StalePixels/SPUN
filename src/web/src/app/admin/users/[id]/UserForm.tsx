@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionForm } from "../../../ActionForm";
 import { FormError } from "../../../FormError";
 import { useActionState, useRef, useState } from "react";
 import Alert from "react-bootstrap/Alert";
@@ -9,7 +10,7 @@ import type { FormState } from "../../../actions";
 import { FieldRow } from "../../../Field";
 import { saveUser } from "../../actions";
 
-// React resets the form after each action. The box is uncontrolled, so the reset shows the
+// The form resets after a successful save. The box is uncontrolled, so the reset shows the
 // stored state, and ownLimit follows the reset for the number field.
 export function UserForm({
   userId,
@@ -29,7 +30,7 @@ export function UserForm({
   const [ownLimit, setOwnLimit] = useState(appLimit !== "");
   const toggle = useRef<HTMLInputElement>(null);
   return (
-    <Form action={formAction} onReset={() => setOwnLimit(toggle.current?.defaultChecked ?? false)}>
+    <ActionForm action={formAction} state={state} onReset={() => setOwnLimit(toggle.current?.defaultChecked ?? false)}>
       <FormError problem={state.error} />
       {state.saved && <Alert variant="success" data-testid="form-saved">Saved.</Alert>}
       <FieldRow>
@@ -68,6 +69,6 @@ export function UserForm({
           Save
         </Button>
       </FieldRow>
-    </Form>
+    </ActionForm>
   );
 }

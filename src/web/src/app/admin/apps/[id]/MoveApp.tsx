@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionForm } from "../../../ActionForm";
 import { useActionState } from "react";
 import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
@@ -23,7 +24,7 @@ export function MoveApp({
     {},
   );
   return (
-    <Form action={formAction}>
+    <ActionForm action={formAction} state={state}>
       <FormError problem={state.error} />
       {state.saved && <Alert variant="success" data-testid="form-saved">Moved.</Alert>}
       <Field controlId="userId" label="New owner">
@@ -40,6 +41,6 @@ export function MoveApp({
           Move
         </Button>
       </FieldRow>
-    </Form>
+    </ActionForm>
   );
 }

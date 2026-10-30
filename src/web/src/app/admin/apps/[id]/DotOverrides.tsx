@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionForm } from "../../../ActionForm";
 import { useActionState } from "react";
 import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
@@ -29,7 +30,7 @@ export function DotOverrides({ appId, names }: { appId: string; names: string[] 
           ))}
         </ul>
       )}
-      <Form action={formAction} data-testid="dot-override-add">
+      <ActionForm action={formAction} state={state} data-testid="dot-override-add">
         <FormError problem={state.error} />
         {state.saved && <Alert variant="success" data-testid="form-saved">Added.</Alert>}
         <Field
@@ -44,7 +45,7 @@ export function DotOverrides({ appId, names }: { appId: string; names: string[] 
             Add override
           </Button>
         </FieldRow>
-      </Form>
+      </ActionForm>
     </>
   );
 }

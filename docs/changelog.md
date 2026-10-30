@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.3 - Unreleased
+
+### CMS
+
+- Newest releases now come first in the catalogue, same as in `.spun`.
+  Searches still sort by title.
+- Forms keep what you typed when validation fails.
+- Line breaks are allowed in app descriptions, from the form or the API,
+  and each one counts as a single character.
+
 ## 0.8.2 - 20261026
 
 ### `.spun`

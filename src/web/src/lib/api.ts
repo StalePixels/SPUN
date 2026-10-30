@@ -5,7 +5,7 @@ import { apiKeyUser, serverKey } from "./apikeys";
 import { parseAppId, type AppFields, type AppId } from "./apps";
 import type { Problem } from "./problems";
 import { claimOnce, countHit } from "./redis";
-import { parseSerial, parseSlot } from "./rules";
+import { lineFeeds, parseSerial, parseSlot } from "./rules";
 import { currentTermsId } from "./terms";
 
 export type ApiContext<P> = { request: NextRequest; user: ApiUser; params: P };
@@ -81,7 +81,7 @@ export function apiAppFields(body: Record<string, unknown>): AppFields {
   const text = (value: unknown) => (typeof value === "string" ? value : "");
   return {
     title: text(body.title),
-    description: text(body.description),
+    description: lineFeeds(text(body.description)),
     installDir: text(body.installDir),
     categories: Array.isArray(body.categories) ? body.categories.filter((value) => Number.isInteger(value)) : [],
   };

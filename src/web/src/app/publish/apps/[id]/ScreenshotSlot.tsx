@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionForm } from "../../../ActionForm";
 import { useActionState, useState } from "react";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
@@ -45,7 +46,7 @@ export function ScreenshotSlot({
             Empty
           </p>
         )}
-        <Form action={formAction}>
+        <ActionForm action={formAction} state={state}>
           <FormError problem={state.error} />
           <Form.Control
             data-testid={`screenshot-file-${slot}`}
@@ -65,7 +66,7 @@ export function ScreenshotSlot({
             <i className="bi bi-upload me-1" />
             {shot ? "Replace" : "Upload"}
           </Button>
-        </Form>
+        </ActionForm>
         {shot && (
           <form action={clear ?? removeScreenshot.bind(null, appId, slot)} className="mt-2">
             <Button data-testid={`screenshot-clear-${slot}`} type="submit" size="sm" variant="outline-danger">

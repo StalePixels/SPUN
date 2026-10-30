@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionForm } from "../../ActionForm";
 import { useActionState, useState, useSyncExternalStore } from "react";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
@@ -40,7 +41,7 @@ export function FeatureForm({
   const [utc, setUtc] = useState(publishAt ?? "");
   const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
   return (
-    <Form action={formAction}>
+    <ActionForm action={formAction} state={state}>
       <FormError problem={state.error} />
       <Field
         controlId="article"
@@ -95,6 +96,6 @@ export function FeatureForm({
           </div>
         )}
       </FieldRow>
-    </Form>
+    </ActionForm>
   );
 }

@@ -155,7 +155,7 @@ test("the API refuses each bad title, description, install directory and categor
     [{ ...good, title: "x".repeat(33) }, "title.length"],
     [{ ...good, title: "Rocket 🚀" }, "title.invalidCharacters"],
     [{ ...good, description: "x".repeat(257) }, "description.length"],
-    [{ ...good, description: "two\nlines" }, "description.invalidCharacters"],
+    [{ ...good, description: "a\ttab" }, "description.invalidCharacters"],
     [{ ...good, installDir: "C:\\apps" }, "installDir.drive"],
     [{ ...good, installDir: "/apps/a|b" }, "installDir.invalidCharacters"],
     [{ ...good, installDir: "/apps/café" }, "installDir.invalidCharacters"],

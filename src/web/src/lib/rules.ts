@@ -30,7 +30,7 @@ export const KEY_NAME_MAX = TITLE_MAX;
 const SLUG_CHAR = /[A-Za-z0-9_-]/;
 const VERSION_CHAR = /[A-Za-z0-9_.,#-]/;
 const PRINTABLE_ASCII_CHAR = /[\x20-\x7e]/;
-const CHANGELOG_CHAR = /[\x20-\x7e\n]/;
+const TEXT_CHAR = /[\x20-\x7e\n]/;
 const SLUG_RE = /^[A-Za-z0-9_-]+$/;
 
 export function invalidCharacters(value: string, allowed: RegExp): string[] {
@@ -94,23 +94,27 @@ export function checkKeyName(value: string): Problem | null {
   return { ...error, code: error.code === "title.length" ? "keyName.length" : "keyName.invalidCharacters" };
 }
 
+// A browser sends CR LF from a textarea; the stored text uses LF only.
+export function lineFeeds(value: string): string {
+  return value.replace(/\r\n/g, "\n");
+}
+
 export function checkDescription(value: string): Problem | null {
-  if (value.length > DESCRIPTION_MAX) {
-    return { code: "description.length", max: DESCRIPTION_MAX };
-  }
-  const bad = invalidCharacters(value, PRINTABLE_ASCII_CHAR);
+  const bad = invalidCharacters(value, TEXT_CHAR);
   if (bad.length > 0) {
     return { code: "description.invalidCharacters", chars: bad };
+  }
+  if (value.length > DESCRIPTION_MAX) {
+    return { code: "description.length", max: DESCRIPTION_MAX };
   }
   return null;
 }
 
 export type ChangelogCheck = { ok: true; changelog: string | null } | { ok: false; error: Problem };
 
-// A browser sends CR LF from a textarea; the stored text uses LF only.
 export function checkChangelog(input: string): ChangelogCheck {
-  const value = input.replace(/\r\n/g, "\n");
-  const bad = invalidCharacters(value, CHANGELOG_CHAR);
+  const value = lineFeeds(input);
+  const bad = invalidCharacters(value, TEXT_CHAR);
   if (bad.length > 0) {
     return { ok: false, error: { code: "changelog.invalidCharacters", chars: bad } };
   }

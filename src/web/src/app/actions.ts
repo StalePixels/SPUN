@@ -4,7 +4,7 @@ import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 import { addApp, deleteOwnApp, editApp, parseAppId, type AppFields } from "@/lib/apps";
-import { parseSerial, parseSlot, parseTermsId } from "@/lib/rules";
+import { lineFeeds, parseSerial, parseSlot, parseTermsId } from "@/lib/rules";
 import { deleteOwnRelease, editChangelog, uploadOwnRelease } from "@/lib/releases";
 import { saveApp, unsaveApp } from "@/lib/saved";
 import { clearOwnScreenshot, uploadOwnScreenshot } from "@/lib/screenshots";
@@ -25,7 +25,7 @@ function text(formData: FormData, name: string): string {
 function appFields(formData: FormData): AppFields {
   return {
     title: text(formData, "title"),
-    description: text(formData, "description"),
+    description: lineFeeds(text(formData, "description")),
     installDir: text(formData, "installDir"),
     categories: formData
       .getAll("categories")

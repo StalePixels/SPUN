@@ -25,10 +25,11 @@ export async function appRow(appId: string) {
     id: string;
     user_id: string;
     title: string;
+    description: string;
     install_dir: string | null;
     deleted_at: Date | null;
   }>(
-    "select id, user_id, title, install_dir, deleted_at from apps where id = ?",
+    "select id, user_id, title, description, install_dir, deleted_at from apps where id = ?",
     [appId],
   );
   return row;
