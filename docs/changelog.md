@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.3 - Unreleased
+## 0.8.3 - 20261106
 
 ### `.spun`
 
