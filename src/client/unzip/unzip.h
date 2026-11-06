@@ -1,6 +1,8 @@
 #ifndef _UNZIP_H
 #define _UNZIP_H
 
+#include <stdbool.h>
+
 #define UNZIP_OK            0
 #define UNZIP_E_NOMEM       1
 #define UNZIP_E_READ        2
@@ -24,6 +26,6 @@ extern void progress(unsigned char stage, unsigned int done, unsigned int total,
 
 extern unsigned char overwrite_ask(const char *name);
 
-extern unsigned char unzip(const char *zip_path, const char *dir_path);
+extern unsigned char unzip(const char *zip_path, const char *dir_path, bool yes);
 
 #endif

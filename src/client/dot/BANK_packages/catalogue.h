@@ -5,6 +5,7 @@ extern unsigned char catalogue[];
 extern unsigned char catalogueTemp[];
 extern unsigned char entry[32 + 256];
 extern unsigned char entryApp[7];
+extern unsigned char entryVersion[17];
 extern uint16_t entrySerial;
 extern bool installed;
 extern uint16_t installedSerial;

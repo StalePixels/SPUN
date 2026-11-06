@@ -2,6 +2,10 @@
 
 ## 0.8.3 - Unreleased
 
+### `.spun`
+
+- `.spun` now ensures it's up to date before doing anyting else.
+
 ### CMS
 
 - Newest releases now come first in the catalogue, same as in `.spun`.

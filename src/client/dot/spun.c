@@ -38,6 +38,7 @@ unsigned char *updateError;
 
 static unsigned char defaultServer[] = SPUN_SERVER;
 static unsigned char defaultPort[] = SPUN_PORT;
+static unsigned char spunName[] = SPUN_NAME;
 static uint8_t customServer = 0;
 static uint8_t customPort = 0;
 static uint8_t commandArg = 0;
@@ -260,8 +261,6 @@ int main(int argc, char** argv) {
             if(!quiet) printf("No updates\n");
             exit(0);
         }
-    } else if (commandArg && stricmp(argv[commandArg], "get") == 0) {
-        _farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)check_catalogue, argv[valueArg]);
     }
 
     atexit(shutdown);
@@ -274,6 +273,11 @@ int main(int argc, char** argv) {
     netServer = customServer ? argv[customServer] : (char *)defaultServer;
     netPort = customPort ? argv[customPort] : (char *)defaultPort;
     _far(BANK_NET, (far_fn_t)net_open);
+    _farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)self_update, spunName);
+
+    if (commandArg && stricmp(argv[commandArg], "get") == 0) {
+        _farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)check_catalogue, argv[valueArg]);
+    }
 
 #ifdef __ZXNEXT
     if(!commandArg) {

@@ -6,6 +6,7 @@ unsigned char catalogue[] = "C:/sys/" SPUN_NAME ".cat";
 unsigned char catalogueTemp[] = "C:/sys/SPUNTEMP.$$$";
 unsigned char entry[32 + 256];
 unsigned char entryApp[7];
+unsigned char entryVersion[17];
 uint16_t entrySerial;
 bool installed;
 uint16_t installedSerial;
@@ -71,11 +72,11 @@ uint8_t parse_entry(void) {
     if(entry[11] != ' ') return 0;
 
     for(at = 12; entry[at] && entry[at] != ' '; at++) {
-        if(at - 12 == sizeof(version) - 1) return 0;
-        version[at - 12] = entry[at];
+        if(at - 12 == sizeof(entryVersion) - 1) return 0;
+        entryVersion[at - 12] = entry[at];
     }
     if(at == 12) return 0;
-    version[at - 12] = 0;
+    entryVersion[at - 12] = 0;
     if(entry[at] != ' ' || !entry[at + 1]) return 0;
 
     return at + 1;

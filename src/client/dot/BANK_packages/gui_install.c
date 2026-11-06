@@ -10,6 +10,6 @@ unsigned char *gui_install(char *id) {
 
     if((error = _farWithPointer(BANK_NET, (far_ptr_fn_t)latest, id))) return error;
     check_install_drive();
-    if((result = install(id))) return unzipErrors[result - 1];
+    if((result = install(id, false))) return unzipErrors[result - 1];
     return NULL;
 }

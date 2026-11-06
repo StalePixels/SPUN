@@ -115,7 +115,7 @@ static bool use_suggested(void) {
     return ask("yn") == 'y';
 }
 
-unsigned char install(char *id) __z88dk_fastcall {
+unsigned char install(char *id, bool yes) {
     unsigned char *error;
     unsigned char result;
     int code;
@@ -124,7 +124,7 @@ unsigned char install(char *id) __z88dk_fastcall {
     if((error = _farWithPointer(BANK_NET, (far_ptr_fn_t)download, id))) NBN_Fail(error);
 
     if(!quiet) printf("Installing to %s\n", installDir);
-    result = unzip(zipPath, installDir);
+    result = unzip(zipPath, installDir, yes);
     if(result == UNZIP_E_NOMEM) NBN_Fail(err_no_memory);
     if(result == UNZIP_E_READ || result == UNZIP_E_CREATE || result == UNZIP_E_WRITE) {
         code = errno ? errno : IO_ERROR;
@@ -169,7 +169,7 @@ unsigned char *spun_get(char *id) {
     }
 
     check_install_drive();
-    if((result = install(id))) return unzipErrors[result - 1];
+    if((result = install(id, false))) return unzipErrors[result - 1];
     getInstalled = true;
     return NULL;
 }
@@ -209,7 +209,7 @@ unsigned char *spun_update(void) {
         name_print();
         updates++;
         check_install_drive();
-        if((result = install(appid))) {
+        if((result = install(appid, false))) {
             updateError = unzipErrors[result - 1];
             if(guiOpen) continue;
             printf("%s ", appid);
@@ -219,4 +219,28 @@ unsigned char *spun_update(void) {
 
     if(!updates && !quiet) printf("No updates\n");
     return NULL;
+}
+
+// An old .spun may misread a newer server, so a newer SPUN goes in before any other request.
+// name is in main memory, where BANK_NET can read it; the new file runs only from a fresh start
+void self_update(char *name) {
+    unsigned char *error;
+    unsigned char result;
+    uint16_t askedPage = page;
+
+    *appid = 0;
+    page = 1;
+    error = _farWithPointer(BANK_NET, (far_ptr_fn_t)latest, name);
+    page = askedPage;
+    if(error == err_no_app) return;
+    if(error) NBN_Fail(error);
+
+    check_catalogue(appid);
+    if(!installed || serial <= installedSerial) return;
+
+    gui_end();
+    check_install_drive();
+    if((result = install(appid, true))) NBN_Fail(unzipErrors[result - 1]);
+    printf("SPUN was updated, please restart SPUN to resume\n");
+    exit(0);
 }

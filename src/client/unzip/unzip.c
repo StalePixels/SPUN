@@ -232,13 +232,13 @@ static unsigned char extract_entry(void) {
     return r;
 }
 
-unsigned char unzip(const char *zip_path, const char *dir_path) {
+unsigned char unzip(const char *zip_path, const char *dir_path, bool yes) {
     unsigned char r;
     unsigned char pages = 0;
     uint16_t e;
     int error;
 
-    overwrite_all = false;
+    overwrite_all = yes;
     dir_len = strlen(dir_path);
     while (dir_len && dir_path[dir_len - 1] == '/') dir_len--;
     if (dir_len + 2 >= sizeof(path)) return UNZIP_E_PATH;
