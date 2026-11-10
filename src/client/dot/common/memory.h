@@ -5,6 +5,7 @@
 
 // Logical pages of the 16K banks, as the dotn page table counts them
 #define BANK_PACKAGES   (46<<1)
+#define BANK_DEPS       (45<<1)
 #define BANK_GUI        (44<<1)
 #define BANK_SPRITES    (43<<1)
 #define BANK_APP        (42<<1)

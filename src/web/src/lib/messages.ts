@@ -178,6 +178,12 @@ export function problemMessage(problem: Problem): string {
       return `This app has reached the maximum of ${max} releases.`;
     case "release.notFound":
       return "Release not found.";
+    case "depends.self":
+      return "An app cannot depend on itself.";
+    case "depends.unknown":
+      return `These are not app ids of apps on SPUN: ${(problem.names ?? []).join(", ")}`;
+    case "depends.tooMany":
+      return `An app can have at most ${max} dependencies.`;
     case "limit.notNumber":
       return "Enter a whole number.";
     case "limit.missing":

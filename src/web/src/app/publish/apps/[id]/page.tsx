@@ -7,6 +7,8 @@ import { requirePublisher } from "@/lib/session";
 import { AppForm } from "../../../AppForm";
 import { Breadcrumbs } from "../../../Breadcrumbs";
 import { DeleteApp } from "./DeleteApp";
+import { DependsForm } from "./DependsForm";
+import { RepublishForm } from "./RepublishForm";
 import { ScreenshotSlots } from "./ScreenshotSlots";
 import { UploadForm } from "./UploadForm";
 
@@ -21,6 +23,7 @@ export default async function AppPage({ params }: { params: Promise<{ id: string
     notFound();
   }
   const categories = await liveCategories();
+  const latest = app.releases.find((release) => !release.deletedDay);
   return (
     <>
       <Breadcrumbs items={[{ label: "Your apps", href: "/publish" }, { label: app.title }]} />
@@ -61,6 +64,28 @@ export default async function AppPage({ params }: { params: Promise<{ id: string
         </div>
         <div className="card-body">
           <UploadForm appId={app.id} />
+        </div>
+      </div>
+
+      {latest && (
+        <div className="card mb-4" data-testid="republish">
+          <div className="card-header">
+            <i className="bi bi-arrow-repeat me-1" />
+            Republish
+          </div>
+          <div className="card-body">
+            <RepublishForm appId={app.id} version={latest.version} />
+          </div>
+        </div>
+      )}
+
+      <div className="card mb-4" data-testid="depends">
+        <div className="card-header">
+          <i className="bi bi-diagram-3 me-1" />
+          Dependencies
+        </div>
+        <div className="card-body">
+          <DependsForm appId={app.id} depends={app.depends} />
         </div>
       </div>
 

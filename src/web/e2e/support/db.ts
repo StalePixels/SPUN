@@ -8,7 +8,8 @@ import { settings } from "./settings";
 // restores of settings a test changed, the users and apps that the admin
 // tests make for themselves (so no real account is renamed or disabled), the
 // app row and the feature of the setup's test app, the T&C versions that the
-// terms tests add and the acceptances they change, and the client_log rows of the client statistics tests.
+// terms tests add and the acceptances they change, the client_log rows of the client statistics tests,
+// and the dependency rows of the admin's dependency tests.
 
 async function query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
   const connection = await mysql.createConnection(settings.databaseUrl);
@@ -41,6 +42,26 @@ export async function releaseRow(appId: string, serial: number) {
     [appId, serial],
   );
   return row;
+}
+
+export async function releaseDepends(appId: string, serial: number) {
+  const [row] = await query<{ depends: string; depends_count: number }>(
+    "select depends, depends_count from releases where app_id = ? and serial = ?",
+    [appId, serial],
+  );
+  return row;
+}
+
+export async function dependsOf(appId: string): Promise<string[]> {
+  const rows = await query<{ depends_on: string }>(
+    "select depends_on from app_depends where app_id = ? order by depends_on",
+    [appId],
+  );
+  return rows.map((row) => row.depends_on);
+}
+
+export async function insertDepends(appId: string, dependsOn: string): Promise<void> {
+  await query("insert into app_depends (app_id, depends_on) values (?, ?)", [appId, dependsOn]);
 }
 
 export async function userByUsername(username: string) {
@@ -285,6 +306,7 @@ export async function removeApps(appIds: string[]): Promise<void> {
     "select apps.id, users.username from apps join users on users.id = apps.user_id where apps.id in (?)",
     [appIds],
   );
+  await query("delete from app_depends where app_id in (?) or depends_on in (?)", [appIds, appIds]);
   for (const table of ["aliases", "dot_overrides", "app_categories", "saved_apps", "screenshots", "releases", "features"]) {
     await query(`delete from ${table} where app_id in (?)`, [appIds]);
   }

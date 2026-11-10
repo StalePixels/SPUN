@@ -65,6 +65,14 @@ extern bool downloading;
 // The GUI's screen is not the ULA's, so .spun's lines of progress are not printed
 extern bool quiet;
 extern unsigned char *updateError;
+// The dependency count of the app's latest release, from SPINFO
+extern uint8_t dependsCount;
+// The overwrite answer "All" holds for the rest of a get, an install in the browser, or an update run
+extern bool overwriteAll;
+// Set when a dependency is not on SPUN; the browser shows it after the install or the update
+extern unsigned char *depWarning;
+// Where a new dependency with no suggested directory goes: the directory of the app that names it
+extern unsigned char parentDir[256];
 
 bool choose_dir(void);
 

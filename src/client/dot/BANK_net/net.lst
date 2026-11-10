@@ -30,3 +30,5 @@ gui_get.c
 gui_categories.c
 gui_next_category.c
 gui_category_at.c
+deps_next.c
+line_send.c

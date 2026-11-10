@@ -6,6 +6,7 @@ import { appIdStore, checkAliasFree, deleteApp, moveApp, notifyAppEdit, parseApp
 import { isPublic, matches } from "./catalogue";
 import { setAppCategories } from "./categories";
 import { shapeStats, statsDays, type StatsMeasure } from "./clientstats";
+import { appDependsList, neededBy, setDepends } from "./depends";
 import { checkDotOverride } from "./dotcommands";
 import { db } from "./db";
 import { isDuplicateEntry } from "./dberrors";
@@ -296,6 +297,24 @@ export async function adminMoveAlias(appId: AppId, alias: string, rawTarget: str
 export async function adminRemoveAlias(appId: AppId, alias: string): Promise<void> {
   await requireAdmin();
   await db().delete(aliases).where(and(eq(aliases.alias, alias), eq(aliases.appId, appId)));
+}
+
+export async function adminListDepends(appId: AppId): Promise<AppId[]> {
+  await requireAdmin();
+  return appDependsList(appId);
+}
+
+export async function adminSetDepends(appId: AppId, input: string[]): Promise<{ error?: Problem }> {
+  const admin = await requireAdmin();
+  if (!(await adminGetApp(appId))) {
+    return { error: { code: "app.notFound" } };
+  }
+  return setDepends(admin.id, appId, input);
+}
+
+export async function adminListNeededBy(appId: AppId) {
+  await requireAdmin();
+  return neededBy(appId);
 }
 
 export async function adminListDotOverrides(appId: AppId): Promise<string[]> {

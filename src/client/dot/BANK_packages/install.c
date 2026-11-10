@@ -2,6 +2,7 @@
 #include "../BANK_net/net.h"
 #include "catalogue.h"
 #include "install.h"
+#include "../BANK_deps/deps.h"
 #ifdef __ZXNEXT
 #include "../gui/gui.h"
 #else
@@ -56,6 +57,7 @@ static unsigned char ask(const char *keys) {
 
 // unzip calls it inside the GUI's os_call, with interrupts off, and the dialog waits for them
 unsigned char overwrite_ask(const char *name) {
+    unsigned char answer;
 #ifdef __ZXNEXT
     unsigned char *line = (unsigned char *)name;
     uint8_t choice;
@@ -65,11 +67,15 @@ unsigned char overwrite_ask(const char *name) {
         choice = modal_ask((const unsigned char *)"Overwrite", &line, 1, overwriteButtons, 3);
         intrinsic_di();
         pointer_hide();
-        return overwriteButtons[choice].shortcut;
-    }
+        answer = overwriteButtons[choice].shortcut;
+    } else
 #endif
-    printf("Overwrite %s? (o)nce (a)ll (c)ancel ", name);
-    return ask("oac");
+    {
+        printf("Overwrite %s? (o)nce (a)ll (c)ancel ", name);
+        answer = ask("oac");
+    }
+    if(answer == OVERWRITE_ALL) overwriteAll = true;
+    return answer;
 }
 
 static bool make_dir(void) {
@@ -124,7 +130,7 @@ unsigned char install(char *id, bool yes) {
     if((error = _farWithPointer(BANK_NET, (far_ptr_fn_t)download, id))) NBN_Fail(error);
 
     if(!quiet) printf("Installing to %s\n", installDir);
-    result = unzip(zipPath, installDir, yes);
+    result = unzip(zipPath, installDir, yes || overwriteAll);
     if(result == UNZIP_E_NOMEM) NBN_Fail(err_no_memory);
     if(result == UNZIP_E_READ || result == UNZIP_E_CREATE || result == UNZIP_E_WRITE) {
         code = errno ? errno : IO_ERROR;
@@ -140,12 +146,66 @@ unsigned char install(char *id, bool yes) {
     return UNZIP_OK;
 }
 
+static bool walking;
+
+// A get, an install in the browser and an update each start with no "All" answer and no warning
+void install_start(void) {
+    overwriteAll = false;
+    depWarning = NULL;
+    walking = false;
+}
+
+// The dependencies go in before the app. The tree is walked in BANK_DEPS, which comes back here
+// for each one, so a dependency's own install never walks it again
+unsigned char *deps_first(void) {
+    unsigned char *error;
+
+    if(!dependsCount || walking) return NULL;
+    walking = true;
+    error = _far(BANK_DEPS, (far_fn_t)deps_install);
+    walking = false;
+    return error;
+}
+
+// The directory a dependency has of its own: where it is installed, or the one its publisher
+// suggests. NULL when it has neither. The result is installDir, in main memory
+unsigned char *dep_dir(char *id) {
+    check_catalogue(id);
+    if(installed) return installDir;
+    if(_farWithPointer(BANK_NET, (far_ptr_fn_t)latest, id) || !*suggestDir) return NULL;
+    sprintf(installDir, "C:%s", suggestDir);
+    return installDir;
+}
+
+// A dependency is installed or updated to its latest release without a question. It goes where
+// it is installed, to the directory its publisher suggests, or else to parentDir
+unsigned char *dep_install(char *id) {
+    unsigned char *error;
+    unsigned char result;
+
+    check_catalogue(id);
+    if((error = _farWithPointer(BANK_NET, (far_ptr_fn_t)latest, id))) return error;
+    if(installed && installedSerial >= serial) return NULL;
+
+    if(!quiet) printf("Dependency: %s %s\n", title, version);
+    if(!installed) {
+        if(*suggestDir) sprintf(installDir, "C:%s", suggestDir);
+        else strcpy(installDir, parentDir);
+        dir_make();
+    }
+
+    check_install_drive();
+    if((result = install(id, false))) return unzipErrors[result - 1];
+    return NULL;
+}
+
 // id may be an alias. The reply names the app's real id, which alone goes on: to the catalogue,
 // the zip's path and the directory choice. An old server sends no id, and the typed name stays
 unsigned char *spun_get(char *id) {
     unsigned char *error;
     unsigned char result;
 
+    install_start();
     *appid = 0;
     if((error = _farWithPointer(BANK_NET, (far_ptr_fn_t)latest, id))) return error;
     if(*appid && strcmp(appid, id)) {
@@ -168,6 +228,7 @@ unsigned char *spun_get(char *id) {
         if(ask("yn") != 'y') return NULL;
     }
 
+    if((error = deps_first())) return error;
     check_install_drive();
     if((result = install(id, false))) return unzipErrors[result - 1];
     getInstalled = true;
@@ -180,6 +241,7 @@ unsigned char *spun_update(void) {
     uint16_t done = 0;
     uint16_t skip;
 
+    install_start();
     updates = 0;
     updateError = NULL;
     while(open_in(catalogue)) {
@@ -208,8 +270,17 @@ unsigned char *spun_update(void) {
 
         name_print();
         updates++;
+        if((error = deps_first())) {
+            if(error == unzipErrors[UNZIP_E_ABORT - 1]) return error;
+            updateError = error;
+            if(guiOpen) continue;
+            printf("%s ", appid);
+            print_error(error);
+            continue;
+        }
         check_install_drive();
         if((result = install(appid, false))) {
+            if(result == UNZIP_E_ABORT) return unzipErrors[result - 1];
             updateError = unzipErrors[result - 1];
             if(guiOpen) continue;
             printf("%s ", appid);
@@ -217,6 +288,7 @@ unsigned char *spun_update(void) {
         }
     }
 
+    if(!updateError) updateError = depWarning;
     if(!updates && !quiet) printf("No updates\n");
     return NULL;
 }

@@ -5,6 +5,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  adminSetDepends,
   adminAddAlias,
   adminAddCategory,
   adminAddDotOverride,
@@ -52,6 +53,7 @@ import { liveCategories } from "@/lib/categories";
 import { appDotOverrides, checkUpload, formFile } from "@/lib/releases";
 import { checkScreenshot } from "@/lib/screenshots";
 import {
+  dependsFromText,
   checkArticle,
   checkCategoryChoice,
   checkCategoryName,
@@ -249,6 +251,20 @@ export async function moveAdminApp(rawId: string, _prev: FormState, formData: Fo
   const result = await adminMoveApp(appId, text(formData, "userId"));
   if (result.error) {
     return { error: result.error };
+  }
+  revalidatePath(appPath(appId));
+  return { saved: true };
+}
+
+export async function saveAdminDepends(rawId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const appId = parseAppId(rawId);
+  if (!appId) {
+    return { error: { code: "app.notFound" } };
+  }
+  const { error } = await adminSetDepends(appId, dependsFromText(text(formData, "depends")));
+  if (error) {
+    return { error };
   }
   revalidatePath(appPath(appId));
   return { saved: true };

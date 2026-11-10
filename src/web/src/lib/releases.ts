@@ -1,6 +1,6 @@
 import "server-only";
-import { and, eq, isNull, max } from "drizzle-orm";
-import { apps, dotOverrides, releases, users } from "@/db/schema";
+import { and, asc, desc, eq, isNull, max } from "drizzle-orm";
+import { appDepends, apps, dotOverrides, releases, users } from "@/db/schema";
 import { ownedApp, type AppBinStore, type AppId } from "./apps";
 import { db } from "./db";
 import { checkDotMoves, dotMoves, type DotMove } from "./dotcommands";
@@ -45,6 +45,7 @@ export type OwnReleaseView = {
   path: string;
   files: string[] | null;
   dotMoves: DotMove[];
+  depends: string[];
 };
 
 export type UploadCheck = { ok: true; upload: Upload } | { ok: false; error: Problem };
@@ -139,6 +140,50 @@ export async function uploadOwnRelease(
   return { serial: result.serial, dotMoves: checked.upload.dotMoves };
 }
 
+// A new release from the zip of the latest live release, with today's date. It is checked as an upload is.
+export async function republishOwnRelease(
+  userId: string,
+  appId: AppId,
+  readFields: () => Promise<{ version: string; changelog: string }>,
+): Promise<{ error: Problem } | { serial: number; dotMoves: DotMove[] }> {
+  if (!(await ownedApp(userId, appId))) {
+    return { error: { code: "app.notFound" } };
+  }
+  const limited = await uploadRate(userId);
+  if (limited) {
+    return { error: limited };
+  }
+  const [latest] = await db()
+    .select({ serial: releases.serial, username: users.username })
+    .from(releases)
+    .innerJoin(apps, eq(apps.id, releases.appId))
+    .innerJoin(users, eq(users.id, apps.userId))
+    .where(and(eq(releases.appId, appId), isNull(releases.deletedAt)))
+    .orderBy(desc(releases.serial))
+    .limit(1);
+  const data = latest?.username ? await readRelease(releasePath(latest.username, appId, latest.serial)) : null;
+  if (!data) {
+    return { error: { code: "release.notFound" } };
+  }
+  const fields = await readFields();
+  const checked = await checkUpload(
+    fields.version,
+    "",
+    fields.changelog,
+    { name: releaseFileName(appId, latest.serial), data },
+    await appDotOverrides(appId),
+  );
+  if (!checked.ok) {
+    return { error: checked.error };
+  }
+  const result = await addRelease(appId, userId, checked.upload);
+  if ("error" in result) {
+    return result;
+  }
+  notifyRelease(userId, appId, result.serial, checked.upload);
+  return { serial: result.serial, dotMoves: checked.upload.dotMoves };
+}
+
 export function notifyRelease(actorId: string, appId: AppId, serial: number, upload: Upload): void {
   notify({
     kind: "releaseUploaded",
@@ -207,12 +252,23 @@ export async function addRelease(
     if (serial > SERIAL_MAX) {
       return { error: { code: "app.releasesFull", max: SERIAL_MAX } };
     }
+    const depends = await tx
+      .select({ id: appDepends.dependsOn })
+      .from(appDepends)
+      .where(eq(appDepends.appId, appId))
+      .orderBy(asc(appDepends.dependsOn));
     const filePath = releasePath(app.username, appId, serial);
     await writeRelease(filePath, upload.data);
     try {
-      await tx
-        .insert(releases)
-        .values({ appId, serial, version: upload.version, releaseDate: upload.day, changelog: upload.changelog });
+      await tx.insert(releases).values({
+        appId,
+        serial,
+        version: upload.version,
+        releaseDate: upload.day,
+        changelog: upload.changelog,
+        depends: depends.map((row) => row.id).join(" "),
+        dependsCount: depends.length,
+      });
     } catch (err) {
       await removeFile(filePath);
       throw err;
@@ -308,8 +364,13 @@ export async function ownReleaseView(
       path: `/${user.username}/${releaseFileName(appId, serial)}`,
       files: zip?.ok ? zip.entries : null,
       dotMoves: zip?.ok ? dotMoves(zip.entries) : [],
+      depends: dependsOf(release.depends),
     },
   };
+}
+
+export function dependsOf(text: string): string[] {
+  return text === "" ? [] : text.split(" ");
 }
 
 export function appBinStore(username: string): AppBinStore {

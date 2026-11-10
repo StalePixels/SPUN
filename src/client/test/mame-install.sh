@@ -156,12 +156,14 @@ info_app="SPINFO $SPUN_TEST_APP 1"
 info_gui="SPINFO gui024 1"
 get_app="GET $APP_USER/$SPUN_TEST_APP-$APP_SERIAL.zip"
 get_gui="GET $GUI_USER/gui024-$GUI_SERIAL.zip"
+# Each start of .spun first asks for its own latest release (self_update)
+info_self="SPINFO spun 1"
 app_zip=$storage/public/$APP_USER/$SPUN_TEST_APP-$APP_SERIAL.zip
 
 # Install: the app page, install_check, the page after the browser, gui_install, the page after it
 scenario spun-install
 install_run=$run
-check "commands  install" "$(printf '%s\n' "SPLIST 1" "$info_gui" "$info_gui" "$info_gui" "$info_gui" "$get_gui" "$info_gui")" "$got"
+check "commands  install" "$(printf '%s\n' "$info_self" "SPLIST 1" "$info_gui" "$info_gui" "$info_gui" "$info_gui" "$get_gui" "$info_gui")" "$got"
 check "spun.cat  install" "gui024 $GUI_SERIAL $GUI_VERSION C:/APPS/" "$(cat "$work/spun.cat")"
 installed "$gui_zip"
 basic_screen 3 SPUNBEFORE1 SPUNBEFORE2 SPUNINSTALLDONE
@@ -172,7 +174,7 @@ echo "screen    NextRegs at start: $(cat "$run/dump-start-regs.txt"); at the end
 # start checks again, and Update installs both
 scenario spun-update
 update_run=$run
-check "commands  update" "$(printf '%s\n' "$info_app" "$info_gui" "SPLIST 1" "$info_app" "$info_gui" \
+check "commands  update" "$(printf '%s\n' "$info_self" "$info_app" "$info_gui" "SPLIST 1" "$info_self" "$info_app" "$info_gui" \
     "$info_app" "$get_app" "$info_gui" "$get_gui" "SPLIST 1")" "$got"
 check "spun.cat  update" "$(printf '%s\n' "$SPUN_TEST_APP $APP_SERIAL $APP_VERSION C:/APPS/" "gui024 $GUI_SERIAL $GUI_VERSION C:/APPS/")" "$(cat "$work/spun.cat")"
 installed "$app_zip"

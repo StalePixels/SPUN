@@ -56,6 +56,7 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
         description: "Made by the API",
         installDir: "/apps/myapp",
         categories: [first],
+        depends: [],
         releases: [],
         screenshots: [],
       },

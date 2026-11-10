@@ -10,6 +10,7 @@ unsigned char *send_info(char *id) __z88dk_fastcall {
 
     *username = *title = *description = *suggestDir = 0;
     downloads = 0;
+    dependsCount = 0;
 
     reply_counts();
     while(reply_field()) {
@@ -19,6 +20,7 @@ unsigned char *send_info(char *id) __z88dk_fastcall {
         else if(replyTag == TAG_DOWNLOADS) downloads = reply_number();
         else if(replyTag == TAG_APP_ID) reply_text(appid, sizeof(appid));
         else if(replyTag == TAG_INSTALL_DIR) reply_text(suggestDir, sizeof(suggestDir));
+        else if(replyTag == TAG_DEPENDS_COUNT) dependsCount = reply_number();
     }
     reply_rewind();
     return NULL;

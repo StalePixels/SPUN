@@ -1,5 +1,6 @@
 import mysql, { type RowDataPacket } from "mysql2/promise";
 import {
+  dependsList,
   FEATURED,
   type AppId,
   type AppName,
@@ -136,7 +137,10 @@ export function mysqlCatalogue(uri: string): Catalogue {
 
     async app(id) {
       const [rows] = await pool.query<RowDataPacket[]>(
-        `SELECT u.username, a.title, a.description, a.downloads, a.install_dir
+        `SELECT u.username, a.title, a.description, a.downloads, a.install_dir,
+           (SELECT depends_count FROM releases
+            WHERE app_id = a.id AND deleted_at IS NULL
+            ORDER BY serial DESC LIMIT 1) AS depends_count
          FROM apps a
          JOIN users u ON u.id = a.user_id
          WHERE a.id = ? AND ${PUBLIC}`,
@@ -167,6 +171,7 @@ export function mysqlCatalogue(uri: string): Catalogue {
         categories: categories.map((row) => row.name as string),
         screenshots: screenshots as Screenshot[],
         installDir: app.install_dir,
+        dependsCount: Number(app.depends_count),
       };
     },
 
@@ -194,6 +199,17 @@ export function mysqlCatalogue(uri: string): Catalogue {
         [id, serial],
       );
       return rows.length === 0 ? null : (rows[0] as Changelog);
+    },
+
+    async depends(id, serial) {
+      const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT r.depends
+         FROM releases r
+         JOIN apps a ON a.id = r.app_id
+         WHERE r.app_id = ? AND r.serial = ? AND r.deleted_at IS NULL AND a.deleted_at IS NULL`,
+        [id, serial],
+      );
+      return rows.length === 0 ? null : dependsList(rows[0].depends as string);
     },
 
     async countDownload(id) {

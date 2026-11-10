@@ -231,6 +231,32 @@ export const RESERVED_PATHS = [
 // The form of an app id. A category slug may not have it: /catalogue/<x> is either.
 export const APP_ID_RE = /^[0-9a-z]{6}$/;
 
+// .spun reads the count of an app's dependencies as one byte.
+export const DEPENDS_MAX = 255;
+
+export type DependsCheck = { ok: true; ids: string[] } | { ok: false; error: Problem };
+
+// live: the ids of the apps that are not deleted. Repeats go, and the first order stays.
+export function checkDepends(appId: string, input: string[], live: ReadonlySet<string>): DependsCheck {
+  const ids = [...new Set(input.map((value) => value.trim().toLowerCase()).filter((value) => value !== ""))];
+  if (ids.includes(appId)) {
+    return { ok: false, error: { code: "depends.self" } };
+  }
+  const unknown = ids.filter((id) => !APP_ID_RE.test(id) || !live.has(id));
+  if (unknown.length > 0) {
+    return { ok: false, error: { code: "depends.unknown", names: unknown } };
+  }
+  if (ids.length > DEPENDS_MAX) {
+    return { ok: false, error: { code: "depends.tooMany", max: DEPENDS_MAX } };
+  }
+  return { ok: true, ids };
+}
+
+// The form field: app ids with spaces, commas or new lines between them.
+export function dependsFromText(value: string): string[] {
+  return value.split(/[\s,]+/).filter((id) => id !== "");
+}
+
 export function checkCategorySlug(value: string): Problem | null {
   if (RESERVED_PATHS.includes(value) || RESERVED_ALIASES.includes(value)) {
     return { code: "category.reserved" };

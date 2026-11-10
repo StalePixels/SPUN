@@ -112,7 +112,7 @@ test("users: set the client's own limit to 2, then clear it back to the default"
   await waitForHydration(toggle);
   await expect(page.getByTestId("user-is-admin")).not.toBeChecked();
 
-  // The box and the number show what is stored after each save, each error and each load.
+  // The box and the number show what is stored after each save and each load, and what was typed after an error.
   await toggle.check();
   await number.fill("2");
   await save.click();
@@ -133,10 +133,11 @@ test("users: set the client's own limit to 2, then clear it back to the default"
   await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "limit.missing");
   await expect(toggle, "after an error").toBeChecked();
   await expect(number).toBeEnabled();
-  await expect(number).toHaveValue("2");
+  await expect(number).toHaveValue("");
   expect(await userByUsername(client.username)).toMatchObject({ app_limit: 2, is_admin: 0 });
 
   // A save with nothing changed keeps the limit.
+  await number.fill("2");
   await save.click();
   await expect(page.getByTestId("form-saved")).toBeVisible();
   expect(await userByUsername(client.username)).toMatchObject({ app_limit: 2, is_admin: 0 });

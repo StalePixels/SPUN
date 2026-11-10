@@ -1,8 +1,8 @@
 import "server-only";
-import { and, count, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull } from "drizzle-orm";
 import { after } from "next/server";
 import { createTransport, type Transporter } from "nodemailer";
-import { apps, releases, users } from "@/db/schema";
+import { appDepends, apps, releases, users } from "@/db/schema";
 import type { AppId } from "./apps";
 import { appCategoryList } from "./categories";
 import { db } from "./db";
@@ -122,11 +122,17 @@ export async function appSnapshot(appId: AppId): Promise<Record<string, string>>
     .from(apps)
     .where(eq(apps.id, appId));
   const categories = await appCategoryList(appId);
+  const depends = await db()
+    .select({ id: appDepends.dependsOn })
+    .from(appDepends)
+    .where(eq(appDepends.appId, appId))
+    .orderBy(asc(appDepends.dependsOn));
   return {
     Title: row?.title ?? "",
     Description: row?.description ?? "",
     "Install directory": row?.installDir ?? "",
     Categories: categories.map((category) => category.name).join(", "),
+    Dependencies: depends.map((dep) => dep.id).join(" "),
   };
 }
 

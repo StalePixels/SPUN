@@ -58,6 +58,14 @@ SPUN remembers the directory. An update goes to the same place. If the installed
 
 If the app has dot commands, SPUN moves them to `C:/dot/` after the install.
 
+## Dependencies
+
+An app can depend on other apps. Before SPUN installs or updates an app, it installs each dependency that is not installed, and updates each one that has a newer release. The dependencies of a dependency go in first. SPUN asks no question for a dependency: an installed one stays where it is, and a new one goes to the directory that its publisher suggested. A new dependency with no suggested directory goes to the directory of the app that lists it.
+
+An answer to "Overwrite" holds for the rest of the install. All overwrites every file of the app and its dependencies without asking again, and in an update it holds for every app of the update. Cancel stops the app and all its dependencies, and in an update it stops the whole update. What was installed before the Cancel stays installed.
+
+When a dependency is no longer on SPUN, SPUN warns, installs the rest, and tells the server which one it was.
+
 ## The catalogue file
 
 SPUN keeps the list of what it installed in the text file `C:/sys/spun.cat`. Each line has the app id, the serial of the installed release in four hex digits, the version, and the install directory, separated by spaces:

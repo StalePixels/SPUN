@@ -27,6 +27,8 @@ unsigned char *download(char *id);
 void print_wrapped(unsigned char *text) __z88dk_fastcall;
 unsigned char *page_request(unsigned char *text);
 unsigned char *reply_next_app(void);
+unsigned char *deps_next(unsigned char *id);
+void line_send(void);
 
 unsigned char *gui_app_at(uint16_t index);
 unsigned char *gui_info(void);

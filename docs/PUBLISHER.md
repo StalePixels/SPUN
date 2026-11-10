@@ -49,11 +49,21 @@ What the site does with a release:
 - A release cannot be changed after the upload, except for its changelog. To fix a zip, upload a new release with a new version.
 - Deleting a release takes it out of the catalogue and out of the downloads. The site keeps the file, so an admin can restore the release. You cannot restore a release yourself; ask an admin.
 
-You can upload 20 files an hour, releases and screenshots together. This includes uploads through the API.
+"Republish" makes a new release from the zip of the latest release that is not deleted. It asks for a new version and a changelog, and the release date is the day you republish. Use it to send out a change to the dependencies without a new zip.
+
+You can upload 20 files an hour, releases and screenshots together. This includes uploads and republishes through the API.
 
 ### Dot commands
 
 A file at the root of the zip with a name ending `.dot` is a dot command. After the Next unpacks the app, `.spun` moves it to `C:/dot/` without the extension. The names of the dot commands the Next already has, and `spun`, are reserved. The site refuses a zip with a dot command of a reserved name. If your app needs one, ask an admin to give the app an override for that name.
+
+### Dependencies
+
+An app can depend on other apps on SPUN, yours or another publisher's. Before `.spun` installs or updates your app, it installs each dependency that is not installed, and updates each one that has a newer release. It does the same for the dependencies of a dependency. An app with no files of its own and only dependencies works as a group: one install gets them all. Give such an app a small zip, for example a text file that says what the group holds.
+
+Enter the dependencies under "Dependencies" on your app's page, as app ids with spaces between them. A dependency with no suggested install directory goes to the directory of the app that lists it. Aliases do not work here. An app cannot depend on itself or on a deleted app. An app can have up to 255 dependencies.
+
+Each release keeps the dependencies that the app has when you upload it, and they never change after that. A change to the list reaches the Next only with your next release. To send out a change without a new zip, use "Republish".
 
 ## Screenshots
 

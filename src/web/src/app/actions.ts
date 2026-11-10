@@ -4,8 +4,9 @@ import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 import { addApp, deleteOwnApp, editApp, parseAppId, type AppFields } from "@/lib/apps";
-import { lineFeeds, parseSerial, parseSlot, parseTermsId } from "@/lib/rules";
-import { deleteOwnRelease, editChangelog, uploadOwnRelease } from "@/lib/releases";
+import { setOwnDepends } from "@/lib/depends";
+import { dependsFromText, lineFeeds, parseSerial, parseSlot, parseTermsId } from "@/lib/rules";
+import { deleteOwnRelease, editChangelog, republishOwnRelease, uploadOwnRelease } from "@/lib/releases";
 import { saveApp, unsaveApp } from "@/lib/saved";
 import { clearOwnScreenshot, uploadOwnScreenshot } from "@/lib/screenshots";
 import { requirePublisher, requireUser } from "@/lib/session";
@@ -112,6 +113,37 @@ export async function uploadRelease(
     return { error: { code: "app.notFound" } };
   }
   const result = await uploadOwnRelease(user.id, appId, async () => formData);
+  if ("error" in result) {
+    return { error: result.error };
+  }
+  revalidatePath(`/publish/apps/${appId}`);
+  redirect(`/publish/apps/${appId}/releases/${result.serial}`);
+}
+
+export async function saveDepends(rawId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const appId = parseAppId(rawId);
+  const user = await requirePublisher();
+  if (!appId) {
+    return { error: { code: "app.notFound" } };
+  }
+  const { error } = await setOwnDepends(user.id, appId, async () => dependsFromText(text(formData, "depends")));
+  if (error) {
+    return { error };
+  }
+  revalidatePath(`/publish/apps/${appId}`);
+  return { saved: true };
+}
+
+export async function republishRelease(rawId: string, _prev: UploadState, formData: FormData): Promise<UploadState> {
+  const appId = parseAppId(rawId);
+  const user = await requirePublisher();
+  if (!appId) {
+    return { error: { code: "app.notFound" } };
+  }
+  const result = await republishOwnRelease(user.id, appId, async () => ({
+    version: text(formData, "version"),
+    changelog: text(formData, "changelog"),
+  }));
   if ("error" in result) {
     return { error: result.error };
   }

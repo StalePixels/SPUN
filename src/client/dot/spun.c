@@ -35,6 +35,10 @@ bool getInstalled;
 bool downloading;
 bool quiet;
 unsigned char *updateError;
+uint8_t dependsCount;
+bool overwriteAll;
+unsigned char *depWarning;
+unsigned char parentDir[256];
 
 static unsigned char defaultServer[] = SPUN_SERVER;
 static unsigned char defaultPort[] = SPUN_PORT;

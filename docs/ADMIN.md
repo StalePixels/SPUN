@@ -55,6 +55,8 @@ The site has no "restore user". "Enable" lets the user log in again, but the app
 - **Upload a release.** It works like the publisher's form, for any app.
 - **Screenshots.** Add, replace or clear a slot. This is not possible while the app is deleted.
 - **Title, description, install directory and categories.** The same fields as the publisher's form.
+- **Dependencies.** The same field and checks as the publisher's form. A change reaches the Next only with the app's next release.
+- **Needed by.** The apps that list this app as a dependency, deleted ones too. The list shows the dependencies as the publishers set them now, which can differ from those of their latest releases.
 - **Aliases.** See below.
 - **Reserved dot commands.** See below.
 - **Move to another user.** It gives the app to another user who has a username. The app limit does not apply to a move. The release zips and screenshots move to the new owner's directory, so the download paths change.

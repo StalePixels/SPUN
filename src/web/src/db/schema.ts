@@ -152,6 +152,10 @@ export const releases = mysqlTable(
     version: varchar("version", { length: 16 }).notNull(),
     releaseDate: date("release_date", { mode: "string" }).notNull(),
     changelog: varchar("changelog", { length: 1024 }),
+    // The app's dependencies when the release was made, as app ids with a space between them.
+    // Never changed afterwards: a change to the app's list goes out with its next release.
+    depends: varchar("depends", { length: 1784 }).notNull().default(""),
+    dependsCount: tinyint("depends_count", { unsigned: true }).notNull().default(0),
     // Soft delete: the serial is never reused; only the file goes.
     deletedAt: timestamp("deleted_at"),
   },
@@ -160,6 +164,22 @@ export const releases = mysqlTable(
     // Covers deleted releases too: a Next can have one installed.
     unique("releases_app_id_version_unique").on(t.appId, t.version),
   ],
+);
+
+// The apps an app needs installed. The publisher edits this list; each release copies it.
+export const appDepends = mysqlTable(
+  "app_depends",
+  {
+    appId: char("app_id", { length: 6 })
+      .$type<AppId>()
+      .notNull()
+      .references(() => apps.id),
+    dependsOn: char("depends_on", { length: 6 })
+      .$type<AppId>()
+      .notNull()
+      .references(() => apps.id),
+  },
+  (t) => [primaryKey({ columns: [t.appId, t.dependsOn] }), index("app_depends_depends_on_idx").on(t.dependsOn)],
 );
 
 export const categories = mysqlTable("categories", {

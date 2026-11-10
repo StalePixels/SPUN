@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.9.0 - Unreleased
+
+### `.spun`
+
+- Apps can depend on other apps. `get` and `update` install each
+  dependency that is missing or out of date first, then the app.
+- A dependency with no suggested install directory goes into the
+  directory of the app that needs it.
+- Overwrite "All" covers every dependency of an install, and every app in
+  an `update`. Cancel stops the whole install, or the whole `update`.
+  Apps installed before the Cancel stay installed.
+- A dependency that is no longer on SPUN gives a warning, and the install
+  goes on without it.
+
+### SPUNServer
+
+- `SPINFO` sends the number of dependencies of the latest release.
+- New command `SPDEPS <id> <serial>` lists the dependencies of a release.
+  A `.spun` with dependencies needs a server that has it.
+- `LOG baddep=<id>` records a dependency that `.spun` could not find.
+
+### CMS
+
+- Publishers set an app's dependencies on the app page or with
+  `PUT /api/apps/{id}/depends`. Each release keeps the list as it was
+  when the release was published, so a change reaches the Next with the
+  next release.
+- Republish makes a new release from the last zip, with a new version and
+  changelog, on the app page or with `POST /api/apps/{id}/republish`.
+- Admins can edit an app's dependencies, and see which apps need it.
+
 ## 0.8.3 - 20261106
 
 ### `.spun`

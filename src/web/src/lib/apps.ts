@@ -4,6 +4,7 @@ import { customAlphabet } from "nanoid";
 import { aliases, apps, releases } from "@/db/schema";
 import { appCategoryList, liveCategories, setAppCategories } from "./categories";
 import { db } from "./db";
+import { appDependsList } from "./depends";
 import { appCount, appLimit } from "./limits";
 import { fieldChanges } from "./notices";
 import { appSnapshot, notify } from "./notify";
@@ -155,6 +156,7 @@ export type OwnAppView = {
   description: string;
   installDir: string | null;
   categories: number[];
+  depends: AppId[];
   releases: OwnRelease[];
   screenshots: Screenshot[];
 };
@@ -268,6 +270,7 @@ export async function ownAppView(userId: string, appId: AppId): Promise<OwnAppVi
     description: app.description,
     installDir: app.installDir,
     categories: (await appCategoryList(appId)).map((category) => category.id),
+    depends: await appDependsList(appId),
     releases: rows.map((row) => ({
       serial: row.serial,
       version: row.version,

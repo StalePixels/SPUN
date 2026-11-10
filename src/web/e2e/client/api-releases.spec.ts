@@ -67,6 +67,7 @@ test("upload, read, edit the changelog of and delete a release through the API",
         path: `/${client.username}/${id}-0001.zip`,
         files: sampleEntries().map((entry) => entry.name),
         dotMoves: [],
+        depends: [],
       },
     });
 

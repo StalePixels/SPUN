@@ -4,7 +4,9 @@ import Button from "react-bootstrap/Button";
 import {
   adminGetApp,
   adminListAliases,
+  adminListDepends,
   adminListDotOverrides,
+  adminListNeededBy,
   adminListOwners,
   adminListReleases,
   requireAdmin,
@@ -15,6 +17,7 @@ import { formatDay, isoDay } from "@/lib/rules";
 import { appScreenshots } from "@/lib/screenshots";
 import { AppForm } from "../../../AppForm";
 import { DeleteApp } from "../../../publish/apps/[id]/DeleteApp";
+import { DependsForm } from "../../../publish/apps/[id]/DependsForm";
 import { ScreenshotSlots } from "../../../publish/apps/[id]/ScreenshotSlots";
 import { UploadForm } from "../../../publish/apps/[id]/UploadForm";
 import { Breadcrumbs } from "../../../Breadcrumbs";
@@ -23,6 +26,7 @@ import {
   deleteAdminApp,
   restoreAdminApp,
   saveAdminApp,
+  saveAdminDepends,
   uploadAdminRelease,
   uploadAdminScreenshot,
 } from "../../actions";
@@ -45,6 +49,8 @@ export default async function AdminAppPage({ params }: { params: Promise<{ id: s
   const owners = await adminListOwners();
   const aliases = await adminListAliases(id);
   const overrides = await adminListDotOverrides(id);
+  const dependants = await adminListNeededBy(id);
+  const depends = await adminListDepends(id);
   const categories = await liveCategories();
   const selected = (await appCategoryList(id)).map((category) => category.id);
   const screenshots = await appScreenshots(id);
@@ -170,6 +176,38 @@ export default async function AdminAppPage({ params }: { params: Promise<{ id: s
         </div>
         <div className="card-body">
           <Aliases appId={app.id} aliases={aliases} />
+        </div>
+      </div>
+
+      <div className="card mb-4" data-testid="depends">
+        <div className="card-header">
+          <i className="bi bi-diagram-3 me-1" />
+          Dependencies
+        </div>
+        <div className="card-body">
+          <DependsForm appId={app.id} depends={depends} save={saveAdminDepends.bind(null, app.id)} />
+        </div>
+      </div>
+
+      <div className="card mb-4" data-testid="needed-by">
+        <div className="card-header">
+          <i className="bi bi-diagram-3 me-1" />
+          Needed by
+        </div>
+        <div className="card-body">
+          {dependants.length === 0 ? (
+            <p className="text-body-secondary mb-0" data-testid="needed-by-none">No app lists this app as a dependency.</p>
+          ) : (
+            <ul className="list-group">
+              {dependants.map((dependant) => (
+                <li key={dependant.id} className="list-group-item" data-testid={`needed-by-${dependant.id}`}>
+                  <Link href={`/admin/apps/${dependant.id}`}>{dependant.title}</Link>{" "}
+                  <code className="ms-1">{dependant.id}</code>
+                  {dependant.deleted && <span className="text-body-secondary ms-2">Deleted</span>}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 

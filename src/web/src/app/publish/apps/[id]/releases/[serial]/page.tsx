@@ -53,6 +53,10 @@ export default async function ReleasePage({
             <dd className="col-sm-9" data-testid="release-version">{release.version}</dd>
             <dt className="col-sm-3">Original release date</dt>
             <dd className="col-sm-9" data-testid="release-date">{formatDay(release.releaseDate)}</dd>
+            <dt className="col-sm-3">Dependencies</dt>
+            <dd className="col-sm-9" data-testid="release-depends">
+              {release.depends.length === 0 ? "None" : <code>{release.depends.join(" ")}</code>}
+            </dd>
             <dt className="col-sm-3">File</dt>
             <dd className="col-sm-9 mb-0" data-testid="release-file">
               <code>{release.path}</code>

@@ -55,7 +55,7 @@ POSIX_DIR ?= ./BUILD-posix
 POSIX_CC ?= cc
 POSIX_CFLAGS ?= -O2 -Wall -Wno-pointer-sign
 POSIX_DEFINES='-DSPUN_SERVER="$(SERVER)"' '-DSPUN_PORT="$(PORT)"' '-DSPUN_VERSION="$(VERSION)"' '-DSPUN_NAME="$(NAME)"'
-POSIX_SRC := spun.c common/file.c $(filter-out BANK_net/gui_%.c,$(wildcard BANK_net/*.c)) BANK_packages/catalogue.c BANK_packages/install.c BANK_packages/usage.c \
+POSIX_SRC := spun.c common/file.c $(filter-out BANK_net/gui_%.c,$(wildcard BANK_net/*.c)) BANK_packages/catalogue.c BANK_packages/install.c BANK_packages/usage.c BANK_deps/deps.c \
 	unzip_posix.c $(COMMON)/nbn.c $(COMMON)/nbn_pages.c $(COMMON)/net_posix.c $(COMMON)/posix.c
 POSIX_LIBZIP := $(shell pkg-config --cflags --libs libzip)
 POSIX_GEN := $(POSIX_DIR)/messages.c $(POSIX_DIR)/spun_messages.c $(POSIX_DIR)/help.c
@@ -84,6 +84,13 @@ $(TMP_DIR)/BANK_packages.o: $(call lst_files,BANK_packages/packages.lst) $(DEPS)
 		--codesegBANK_46 --constsegBANK_46 \
 		--datasegBANK_46 --bsssegBANK_46   \
 		@BANK_packages/packages.lst -o$@
+
+# BANK_DEPS: the walk of an app's dependencies, with room for a whole tree
+$(TMP_DIR)/BANK_deps.o: $(call lst_files,BANK_deps/deps.lst) $(DEPS) | dirs
+	$(CC) $(CCFLAGS) -c \
+		--codesegBANK_45 --constsegBANK_45 \
+		--datasegBANK_45 --bsssegBANK_45   \
+		@BANK_deps/deps.lst -o$@
 
 # BANK_GUI: the GUI's own code, the screen set-up (layers, font, NextZXOS's back), the modal boxes
 # and the network code. The NBNtools code's BSS (nbnBuff) stays in main, where main and every bank reach it
@@ -117,13 +124,14 @@ $(TMP_DIR)/BANK_sprites.o: $(call lst_files,BANK_sprites/sprites.lst) BANK_sprit
 	$(CC) $(CCFLAGS) -c @BANK_sprites/sprites.lst -o$@
 
 bank_46: $(TMP_DIR)/BANK_packages.o
+bank_45: $(TMP_DIR)/BANK_deps.o
 bank_44: $(TMP_DIR)/BANK_gui.o $(TMP_DIR)/BANK_net.o $(TMP_DIR)/BANK_net_nbn.o
 bank_43: $(TMP_DIR)/BANK_sprites.o
 bank_42: $(TMP_DIR)/BANK_app.o
 
-banks: bank_46 bank_44 bank_43 bank_42
+banks: bank_46 bank_45 bank_44 bank_43 bank_42
 
-BANK_OBJS := $(addprefix $(TMP_DIR)/BANK_,net.o net_nbn.o packages.o gui.o sprites.o app.o)
+BANK_OBJS := $(addprefix $(TMP_DIR)/BANK_,net.o net_nbn.o packages.o deps.o gui.o sprites.o app.o)
 
 # Run inside $(UNZIP): INCLUDE resolves from the current directory
 $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin: $(UNZIP)/inflate.asm $(UNZIP)/inflate_job.inc
@@ -181,4 +189,4 @@ $(POSIX_DIR)/help.c: help.txt
 
 .DELETE_ON_ERROR:
 
-.PHONY: all clean dirs spunjane banks bank_46 bank_44 bank_43 bank_42 dotn binaries zip posix
+.PHONY: all clean dirs spunjane banks bank_46 bank_45 bank_44 bank_43 bank_42 dotn binaries zip posix

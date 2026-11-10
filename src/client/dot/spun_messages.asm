@@ -23,6 +23,8 @@ PUBLIC _err_unzip_write
 PUBLIC _err_unzip_data
 PUBLIC _err_unzip_check
 PUBLIC _err_unzip_abort
+PUBLIC _err_dep_missing
+PUBLIC _err_too_many_deps
 
 _err_no_release:
    defm "App has no releas", 'e' + 0x80
@@ -60,6 +62,10 @@ _err_unzip_check:
    defm "Extracted file failed chec", 'k' + 0x80
 _err_unzip_abort:
    defm "Install cancelle", 'd' + 0x80
+_err_dep_missing:
+   defm "A dependency is not on SPU", 'N' + 0x80
+_err_too_many_deps:
+   defm "Too many dependencie", 's' + 0x80
 _err_browser:
    defm "File browser faile", 'd' + 0x80
 _err_drive:

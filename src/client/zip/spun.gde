@@ -61,10 +61,12 @@ With no command, .spun opens the SPUN browser.
 
 @{b}get APPID@{ub}
     Installs an app, then changes to the directory it is in. APPID can
-    also be the app's alias.
+    also be the app's alias. If the app has dependencies, SPUN installs
+    or updates them first.
 
 @{b}update@{ub}
-    Installs the latest release of each app that SPUN installed.
+    Installs the latest release of each app that SPUN installed, and
+    their dependencies.
 
 @{h2}Options
 

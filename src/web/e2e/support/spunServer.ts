@@ -1,13 +1,23 @@
 import { Socket } from "node:net";
 
-// A minimal SPUNServer client for the category commands: sends one command
+// A minimal SPUNServer client for the category and dependency commands: sends one command
 // line and decodes the reply block (NBN reply, SPUN format 1). The tag
 // numbers are in src/server/src/codec.ts. The e2e server listens on 48129.
 const HOST = process.env.E2E_SPUN_HOST ?? "127.0.0.1";
 const PORT = Number(process.env.E2E_SPUN_PORT ?? 48129);
 
 const LONG_TAG = 0x80;
-const Tag = { total: 0x01, page: 0x02, pages: 0x03, app: 0x10, appId: 0x11, category: 0x19, categoryEntry: 0x20, slug: 0x21 };
+const Tag = {
+  total: 0x01,
+  page: 0x02,
+  pages: 0x03,
+  app: 0x10,
+  appId: 0x11,
+  category: 0x19,
+  categoryEntry: 0x20,
+  slug: 0x21,
+  dependsCount: 0x22,
+};
 
 type Field = { tag: number; value: Buffer };
 
@@ -46,7 +56,13 @@ async function exchange(command: string): Promise<Buffer> {
 
 export type Counts = { total: number; page: number; pages: number };
 export type SpunReply =
-  | ({ error: null; categories: { slug: string; name: string }[]; apps: string[] } & Counts)
+  | ({
+      error: null;
+      categories: { slug: string; name: string }[];
+      apps: string[];
+      ids: string[];
+      dependsCount: number | null;
+    } & Counts)
   | { error: string };
 
 export async function spun(command: string): Promise<SpunReply> {
@@ -57,7 +73,11 @@ export async function spun(command: string): Promise<SpunReply> {
   const counts: Counts = { total: 0, page: 0, pages: 0 };
   const categories: { slug: string; name: string }[] = [];
   const apps: string[] = [];
+  const ids: string[] = [];
+  let dependsCount: number | null = null;
   for (const { tag, value } of top) {
+    if (tag === Tag.appId) ids.push(value.toString("latin1"));
+    if (tag === Tag.dependsCount) dependsCount = number(value);
     if (tag === Tag.total) counts.total = number(value);
     if (tag === Tag.page) counts.page = number(value);
     if (tag === Tag.pages) counts.pages = number(value);
@@ -68,5 +88,5 @@ export async function spun(command: string): Promise<SpunReply> {
     }
     if (tag === Tag.app) apps.push(fields(value).find((f) => f.tag === Tag.appId)?.value.toString("latin1") ?? "");
   }
-  return { error: null, ...counts, categories, apps };
+  return { error: null, ...counts, categories, apps, ids, dependsCount };
 }

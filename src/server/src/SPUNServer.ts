@@ -21,18 +21,22 @@ import {
   parseCategorySlug,
   parseLog,
   parsePage,
+  parseAppId,
   parseSerial,
-  zipAppId,
+  zipRelease,
   type AppId,
   type Catalogue,
 } from "./catalogue.js";
-import { encodeCategories, encodeChangelog, encodeError, encodeFind, encodeInfo } from "./codec.js";
+import { encodeCategories, encodeChangelog, encodeDepends, encodeError, encodeFind, encodeInfo } from "./codec.js";
 
 export class SPUNServer extends Server {
   private readonly catalogue: Catalogue;
   private download: AppId | null = null;
   private readonly connectionId = randomUUID();
   private logRows = 0;
+  // The release of the last zip GET or SPDEPS. A LOG baddep names one of its dependencies.
+  private lastGot: { id: AppId; serial: number; depends?: readonly AppId[] } | null = null;
+  private readonly badDeps = new Set<string>();
 
   constructor(session: Session, catalogue: Catalogue) {
     super(session);
@@ -53,6 +57,8 @@ export class SPUNServer extends Server {
         return { bytes: await this.info(params) };
       case "SPCLOG":
         return { bytes: await this.changelog(params) };
+      case "SPDEPS":
+        return { bytes: await this.depends(params) };
       case "LOG":
         await this.clientLog(params);
         return { bytes: new Uint8Array() };
@@ -76,7 +82,11 @@ export class SPUNServer extends Server {
     absFile: string,
     stats: fs.Stats,
   ): Promise<Answer> {
-    this.download = zipAppId(path.relative(this.session.config.FILEPATH, absFile));
+    const release = zipRelease(path.relative(this.session.config.FILEPATH, absFile));
+    this.download = release?.id ?? null;
+    if (release) {
+      this.lastGot = release;
+    }
     return super.sendFileDangerous(filename, absFile, stats);
   }
 
@@ -92,13 +102,18 @@ export class SPUNServer extends Server {
   }
 
   // LOG never answers, so the client never waits; a failed write only goes to the server's log.
+  // A baddep is outside the row limit, so it is kept only once, and only for a dependency of the last got release.
   private async clientLog(params: readonly string[]): Promise<void> {
     const entry = parseLog(params.join(" "));
-    if (entry === null || this.logRows >= LOG_ROWS_MAX) {
+    if (entry === null || (entry.name !== "baddep" && this.logRows >= LOG_ROWS_MAX)) {
       return;
     }
-    this.logRows++;
     try {
+      if (entry.name !== "baddep") {
+        this.logRows++;
+      } else if (!(await this.isBadDep(entry.value))) {
+        return;
+      }
       await this.catalogue.clientLog({
         connectionId: this.connectionId,
         address: this.session.socket.remoteAddress ?? null,
@@ -107,6 +122,21 @@ export class SPUNServer extends Server {
     } catch (err) {
       log(err);
     }
+  }
+
+  private async isBadDep(value: string): Promise<boolean> {
+    const id = parseAppId(value);
+    const got = this.lastGot;
+    if (id === null || got === null) {
+      return false;
+    }
+    got.depends ??= (await this.catalogue.depends(got.id, got.serial)) ?? [];
+    const key = `${got.id} ${got.serial} ${id}`;
+    if (this.badDeps.has(key) || !got.depends.includes(id)) {
+      return false;
+    }
+    this.badDeps.add(key);
+    return true;
   }
 
   private async find(params: readonly string[]): Promise<Uint8Array> {
@@ -216,6 +246,23 @@ export class SPUNServer extends Server {
       return encodeError("NoRelease_ERROR");
     }
     return encodeChangelog(release);
+  }
+
+  private async depends(params: readonly string[]): Promise<Uint8Array> {
+    const id = await this.appId(params[0]);
+    if (id === null) {
+      return encodeError("NoApp_ERROR");
+    }
+    const serial = parseSerial(params[1]);
+    if (serial === null) {
+      return encodeError("BadQuery_ERROR");
+    }
+    const ids = await this.catalogue.depends(id, serial);
+    if (ids === null) {
+      return encodeError("NoRelease_ERROR");
+    }
+    this.lastGot = { id, serial, depends: ids };
+    return encodeDepends(ids);
   }
 }
 

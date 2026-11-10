@@ -30,6 +30,7 @@ export const Tag = {
   nxiCrc: 0x1f,
   categoryEntry: 0x20,
   slug: 0x21,
+  dependsCount: 0x22,
   description: 0x80,
   changelog: 0x81,
 } as const;
@@ -164,6 +165,9 @@ export function encodeInfo(page: InfoPage): Uint8Array {
   if (page.app.installDir !== null) {
     out.text(Tag.installDir, page.app.installDir);
   }
+  if (page.app.dependsCount > 0) {
+    out.u8(Tag.dependsCount, page.app.dependsCount);
+  }
   for (const category of page.app.categories) {
     out.text(Tag.category, category);
   }
@@ -196,6 +200,15 @@ export function encodeChangelog(release: Changelog): Uint8Array {
   out.text(Tag.date, release.date);
   if (release.changelog !== null) {
     out.text(Tag.changelog, release.changelog);
+  }
+  return out.reply();
+}
+
+// SPDEPS: one app id field for each dependency, in the release's order.
+export function encodeDepends(ids: readonly AppId[]): Uint8Array {
+  const out = new Writer();
+  for (const id of ids) {
+    out.text(Tag.appId, id);
   }
   return out.reply();
 }
@@ -315,7 +328,17 @@ export function decodeCategories(bytes: Uint8Array): CategoriesPage {
 
 export function decodeInfo(bytes: Uint8Array): InfoPage {
   const fields = readReply(bytes);
-  const app: AppInfo = { id: "" as AppId, username: "", title: "", description: "", downloads: 0, categories: [], screenshots: [], installDir: null };
+  const app: AppInfo = {
+    id: "" as AppId,
+    username: "",
+    title: "",
+    description: "",
+    downloads: 0,
+    categories: [],
+    screenshots: [],
+    installDir: null,
+    dependsCount: 0,
+  };
   const releases: Release[] = [];
   for (const { tag, value } of fields) {
     if (tag === Tag.appId) app.id = fieldText(value) as AppId;
@@ -325,6 +348,7 @@ export function decodeInfo(bytes: Uint8Array): InfoPage {
     if (tag === Tag.downloads) app.downloads = fieldNumber(value);
     if (tag === Tag.category) app.categories.push(fieldText(value));
     if (tag === Tag.installDir) app.installDir = fieldText(value);
+    if (tag === Tag.dependsCount) app.dependsCount = fieldNumber(value);
     if (tag === Tag.screenshot) {
       const shot: Screenshot = { slot: 0, width: 0, thumbCrc: 0, nxiCrc: 0 };
       for (const inner of readFields(value)) {
@@ -346,6 +370,12 @@ export function decodeInfo(bytes: Uint8Array): InfoPage {
     }
   }
   return { app, ...readCounts(fields), releases };
+}
+
+export function decodeDepends(bytes: Uint8Array): AppId[] {
+  return readReply(bytes)
+    .filter((field) => field.tag === Tag.appId)
+    .map((field) => fieldText(field.value) as AppId);
 }
 
 export function decodeChangelog(bytes: Uint8Array): Changelog {

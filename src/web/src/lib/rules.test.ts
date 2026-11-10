@@ -2,6 +2,9 @@ import { readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  checkDepends,
+  dependsFromText,
+  DEPENDS_MAX,
   appLimitFor,
   catalogueHref,
   searchOf,
@@ -713,5 +716,48 @@ describe("T&C versions", () => {
     expect(termsState(version(1, true, later), 2, now)).toBe("scheduled");
     expect(termsState(version(2, true, now), 2, now)).toBe("current");
     expect(termsState(version(1, true, earlier), 2, now)).toBe("past");
+  });
+});
+
+describe("checkDepends", () => {
+  const live = new Set(["abc123", "def456", "ghi789"]);
+
+  it("accepts live app ids, lowercases them and drops repeats in their first order", () => {
+    expect(checkDepends("zzz999", ["DEF456", "abc123", "def456", " ", ""], live)).toEqual({
+      ok: true,
+      ids: ["def456", "abc123"],
+    });
+  });
+
+  it("accepts an empty list", () => {
+    expect(checkDepends("zzz999", [], live)).toEqual({ ok: true, ids: [] });
+  });
+
+  it("refuses the app itself", () => {
+    expect(checkDepends("abc123", ["ABC123"], live)).toEqual({ ok: false, error: { code: "depends.self" } });
+  });
+
+  it("names every id that is not a live app, or not in the form of an id", () => {
+    expect(checkDepends("zzz999", ["abc123", "nope00", "my-alias", "abc12"], live)).toEqual({
+      ok: false,
+      error: { code: "depends.unknown", names: ["nope00", "my-alias", "abc12"] },
+    });
+  });
+
+  it(`allows at most ${DEPENDS_MAX}`, () => {
+    const ids = Array.from({ length: DEPENDS_MAX + 1 }, (_, i) => `a${String(i).padStart(5, "0")}`);
+    const many = new Set(ids);
+    expect(checkDepends("zzz999", ids.slice(0, DEPENDS_MAX), many).ok).toBe(true);
+    expect(checkDepends("zzz999", ids, many)).toEqual({
+      ok: false,
+      error: { code: "depends.tooMany", max: DEPENDS_MAX },
+    });
+  });
+});
+
+describe("dependsFromText", () => {
+  it("splits at spaces, commas and new lines", () => {
+    expect(dependsFromText(" abc123, def456\nghi789\r\n ")).toEqual(["abc123", "def456", "ghi789"]);
+    expect(dependsFromText("")).toEqual([]);
   });
 });

@@ -901,6 +901,7 @@ describe("a database failure", () => {
       app: () => Promise.reject(new Error("database down")),
       releases: () => Promise.reject(new Error("database down")),
       changelog: () => Promise.reject(new Error("database down")),
+      depends: () => Promise.reject(new Error("database down")),
       countDownload: () => Promise.reject(new Error("database down")),
       clientLog: () => Promise.reject(new Error("database down")),
     };
@@ -951,6 +952,7 @@ describe("lines sent together", () => {
       app: (...args) => later(fast.app(...args)),
       releases: (...args) => later(fast.releases(...args)),
       changelog: (...args) => later(fast.changelog(...args)),
+      depends: (...args) => later(fast.depends(...args)),
       countDownload: (...args) => later(fast.countDownload(...args)),
       clientLog: (...args) => later(fast.clientLog(...args)),
     };

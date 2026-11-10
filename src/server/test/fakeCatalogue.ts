@@ -2,6 +2,7 @@ import {
   FEATURED,
   type AppId,
   type Catalogue,
+  dependsList,
   type Category,
   type ClientLog,
   type FoundApp,
@@ -36,6 +37,8 @@ export interface ReleaseRow {
   version: string;
   releaseDate: string;
   changelog?: string;
+  // As the database column: app ids with one space between them.
+  depends?: string;
   deleted?: boolean;
 }
 
@@ -194,6 +197,7 @@ export function fakeCatalogue(tables: Tables): Catalogue {
         categories: [...(app.categories ?? [])].sort(),
         screenshots: [...(app.screenshots ?? [])].sort((a, b) => a.slot - b.slot),
         installDir: app.installDir ?? null,
+        dependsCount: dependsList(liveReleases(id)[0].depends ?? "").length,
       };
     },
 
@@ -216,6 +220,11 @@ export function fakeCatalogue(tables: Tables): Catalogue {
             changelog: release.changelog ?? null,
           }
         : null;
+    },
+
+    async depends(id, serial) {
+      const release = liveApp(id) ? liveReleases(id).find((row) => row.serial === serial) : undefined;
+      return release ? dependsList(release.depends ?? "") : null;
     },
 
     async countDownload(id) {

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   CATEGORY_PAGE_SIZE,
+  DEPENDS_MAX,
   FIND_PAGE_SIZE,
   INFO_CATEGORIES_MAX,
   INFO_PAGE_SIZE,
@@ -12,10 +13,12 @@ import {
 import {
   decodeCategories,
   decodeChangelog,
+  decodeDepends,
   decodeFind,
   decodeInfo,
   encodeCategories,
   encodeChangelog,
+  encodeDepends,
   encodeError,
   encodeFind,
   encodeInfo,
@@ -82,6 +85,7 @@ const INFO_PAGE: InfoPage = {
       { slot: 3, width: 320, thumbCrc: 0xfedcba98, nxiCrc: 0x0a0b0c0d },
     ],
     installDir: null,
+    dependsCount: 0,
   },
   total: 2,
   page: 1,
@@ -147,6 +151,32 @@ test("SPINFO sends the suggested install directory after the download count, onl
   );
   assert.equal(toHex(encodeInfo(suggested)), expected);
   assert.deepEqual(decodeInfo(bytes(expected)), suggested);
+});
+
+test("SPINFO sends the dependency count after the install directory, only when it is not 0", () => {
+  const meta: InfoPage = { ...INFO_PAGE, app: { ...INFO_PAGE.app, installDir: "/apps/d3", dependsCount: 5 } };
+  const expected = reply(
+    INFO_BODY.replace(
+      field(0x16, le(7, 4)),
+      field(0x16, le(7, 4)) + field(0x1d, ascii("/apps/d3")) + field(0x22, "05"),
+    ),
+  );
+  assert.equal(toHex(encodeInfo(meta)), expected);
+  assert.deepEqual(decodeInfo(bytes(expected)), meta);
+});
+
+test("SPDEPS sends one app id field for each dependency, in order", () => {
+  const ids = ["zzz001", "aaa002"] as AppId[];
+  const expected = reply(field(0x11, ascii("zzz001")) + field(0x11, ascii("aaa002")));
+  assert.equal(toHex(encodeDepends(ids)), expected);
+  assert.deepEqual(decodeDepends(bytes(expected)), ids);
+  assert.equal(toHex(encodeDepends([])), reply(""));
+});
+
+test("the largest SPDEPS reply fits in one block", () => {
+  const page = encodeDepends(Array.from({ length: DEPENDS_MAX }, () => "zzzzzz" as AppId));
+  assert.equal(page.length - 5, DEPENDS_MAX * 8);
+  assert.ok(page.length - 5 <= MAX_BLOCK_SIZE);
 });
 
 test("SPINFO leaves out a screenshot CRC of 0, and a missing CRC decodes as 0", () => {
@@ -282,6 +312,7 @@ test("the largest SPINFO page fits in one block", () => {
         nxiCrc: 0xffffffff,
       })),
       installDir: "/".repeat(MAX.installDir),
+      dependsCount: DEPENDS_MAX,
     },
     total: 0xffff,
     page: 0xffff,
@@ -293,8 +324,8 @@ test("the largest SPINFO page fits in one block", () => {
     })),
   });
   // counts 12, app id 8, username 18, title 34, description 259, downloads 6, install directory 66,
-  // categories 34 each, screenshots 21 each, releases 36 each.
-  const body = 12 + 8 + 18 + 34 + 259 + 6 + 66 + INFO_CATEGORIES_MAX * 34 + MAX.slots * 21 + INFO_PAGE_SIZE * 36;
+  // dependency count 3, categories 34 each, screenshots 21 each, releases 36 each.
+  const body = 12 + 8 + 18 + 34 + 259 + 6 + 66 + 3 + INFO_CATEGORIES_MAX * 34 + MAX.slots * 21 + INFO_PAGE_SIZE * 36;
   assert.equal(page.length - 5, body);
   assert.ok(body <= MAX_BLOCK_SIZE);
 });

@@ -5,12 +5,14 @@ export const LIST_PAGE_SIZE = 20;
 export const CATEGORY_PAGE_SIZE = 20;
 export const INFO_PAGE_SIZE = 64;
 export const INFO_CATEGORIES_MAX = 16;
+// The CMS's limit (DEPENDS_MAX in src/web/src/lib/rules.ts): the count goes as one byte.
+export const DEPENDS_MAX = 255;
 
 // The column sizes of client_log, and the rows one connection may add to it.
 export const LOG_NAME_MAX = 32;
 export const LOG_VALUE_MAX = 255;
 export const LOG_ROWS_MAX = 16;
-export const LOG_NAMES: ReadonlySet<string> = new Set(["version"]);
+export const LOG_NAMES: ReadonlySet<string> = new Set(["version", "baddep"]);
 
 // Always lowercase: an AppId only comes from parseAppId.
 export type AppId = string & { readonly __brand: "AppId" };
@@ -45,6 +47,8 @@ export interface AppInfo {
   categories: string[];
   screenshots: Screenshot[];
   installDir: string | null;
+  // The dependency count of the latest release.
+  dependsCount: number;
 }
 
 export interface Release {
@@ -91,6 +95,8 @@ export interface Catalogue {
   app(id: AppId): Promise<AppInfo | null>;
   releases(id: AppId, offset: number, limit: number): Promise<Slice<Release>>;
   changelog(id: AppId, serial: number): Promise<Changelog | null>;
+  // The ids a live release of a public app lists, in their stored order; null when there is no such release.
+  depends(id: AppId, serial: number): Promise<AppId[] | null>;
   countDownload(id: AppId): Promise<void>;
   clientLog(entry: ClientLog): Promise<void>;
 }
@@ -132,11 +138,17 @@ export function namedFile(relativePath: string): [string, AppName, string] | nul
   return null;
 }
 
-const ZIP_PATH_RE = /^[^/]+\/([0-9a-z]{6})-[0-9a-f]{4}\.zip$/i;
+const ZIP_RELEASE_RE = /^[^/]+\/([0-9a-z]{6})-([0-9a-f]{4})\.zip$/i;
 
-export function zipAppId(relativePath: string): AppId | null {
-  const match = ZIP_PATH_RE.exec(relativePath);
-  return match ? parseAppId(match[1]) : null;
+export function zipRelease(relativePath: string): { id: AppId; serial: number } | null {
+  const match = ZIP_RELEASE_RE.exec(relativePath);
+  const id = match ? parseAppId(match[1]) : null;
+  return match && id ? { id, serial: parseInt(match[2], 16) } : null;
+}
+
+// The ids of a release's depends column: app ids with one space between them.
+export function dependsList(text: string): AppId[] {
+  return text.split(" ").flatMap((value) => parseAppId(value) ?? []);
 }
 
 // "key=value" from a LOG command, split at the first "=". The key is stored lowercase.

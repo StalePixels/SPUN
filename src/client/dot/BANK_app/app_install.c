@@ -59,6 +59,7 @@ void app_install(void) {
         message_show(error);
         return;
     }
+    if(depWarning) message_show(depWarning);
     tm_text(1, STATUS_ROW, (const unsigned char *)"Installed to", ATTR_TEXT);
     tm_cut(14, STATUS_ROW, installDir, GUI_COLUMNS - 15, ATTR_TEXT);
 }
