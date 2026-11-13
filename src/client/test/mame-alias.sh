@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs the alias tests of .spun get in MAME through mane-harness, with
+# Runs the alias tests of .spun get in MAME through pinesy-harness, with
 # dot/BUILD-test/spun from build.sh, against the test server in .env:
 #   spun-alias.scn.in        get by the alias spunalias installs als001 under
 #                            its real id; a second get by the alias finds it
@@ -108,7 +108,7 @@ scenario() {
     local name=$1
     sed -e "s|@SPUN@|$spun|" -e "s|@CAT@|$work/als001.cat|" -e "s|@ALIAS@|$alias|g" -e "s|@PORT@|$port|" \
         "$here/$name.scn.in" > "$work/$name.scn"
-    (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=1
+    (cd "$PINESY_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=1
     run=$(sed -n 's/^run dir *//p' "$work/run.out")
     echo "$run" >> "$work/runs.list"
     "$HDFMONKEY" get "$run/sd.img" /sys/spun.cat "$work/spun.cat" > /dev/null 2>&1 || : > "$work/spun.cat"

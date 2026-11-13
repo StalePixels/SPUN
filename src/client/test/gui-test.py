@@ -11,7 +11,7 @@ usage: gui-test.py rows HOST PORT < SCENARIO.in > SCENARIO
 
 rows   copies the scenario and expands each line "@ROWS T COMMAND": it sends
        COMMAND (for example "SPLIST 2" or "SPFIND 1 zebra") to the SPUNServer
-       at HOST:PORT, and writes mane-harness "expect" lines for time T that
+       at HOST:PORT, and writes pinesy-harness "expect" lines for time T that
        check tilemap rows 3 to 25 against the reply: the heading, one row for
        each app as BANK_gui/entry_draw.c draws it, with the selected entry
        (the first) in the bar colours, blank rows after the last app, and the

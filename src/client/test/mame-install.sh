@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs the install and update tests of the .spun GUI in MAME through
-# mane-harness, with dot/BUILD-test/spun from build.sh, against the test server
+# pinesy-harness, with dot/BUILD-test/spun from build.sh, against the test server
 # in .env:
 #   spun-install.scn.in  installs gui024 from its app page, to a directory
 #                        picked in the NextZXOS browser, with progress
@@ -140,7 +140,7 @@ scenario() {
     scn=${scn//@CAT@/$work/old.cat}
     printf '%s\n' "$scn" > "$work/$name.scn"
 
-    (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=$?
+    (cd "$PINESY_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=$?
     run=$(sed -n 's/^run dir *//p' "$work/run.out")
     echo "$run" >> "$work/runs.list"
     python3 "$here/gui-test.py" pointers "$work/$name.scn" "$run" || status=1

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs spun-splash.scn.in, the test of the GUI's splash, in MAME through
-# mane-harness, with dot/BUILD-test/spun from build.sh, against the test server
+# pinesy-harness, with dot/BUILD-test/spun from build.sh, against the test server
 # in .env (make e2e in src/web once after a reset). It checks the splash's last
 # picture in Layer 2 (gui-test.py layer2), the hidden pointer during the splash
 # (gui-test.py pointers) and the list after it. With
@@ -34,7 +34,7 @@ scn=${scn//@PORT@/$SPUN_TEST_PORT}
 printf '%s\n' "$scn" > "$work/spun-splash.scn"
 
 status=0
-(cd "$MANE_HARNESS" && ./run.py "$work/spun-splash.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=$?
+(cd "$PINESY_HARNESS" && ./run.py "$work/spun-splash.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=$?
 run=$(sed -n 's/^run dir *//p' "$work/run.out")
 python3 "$here/gui-test.py" pointers "$work/spun-splash.scn" "$run" || status=1
 python3 "$here/gui-test.py" layer2 "$work/spun-splash.scn" "$run" "$SPUN_TEST_SERVER" "$SPUN_TEST_PORT" /nonexistent || status=1

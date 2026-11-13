@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs the self-replace test of .spun in MAME through mane-harness, with
+# Runs the self-replace test of .spun in MAME through pinesy-harness, with
 # dot/BUILD-test/spun from build.sh as /dot/SPUN, against the test server in
 # .env:
 #   spun-self.scn.in  get of self01, whose zip has spun.dot at its root, so its
@@ -95,7 +95,7 @@ holds() {
 name=spun-self
 sed -e "s|@SPUN@|$spun|" -e "s|@HOST@|$SPUN_TEST_SERVER|" -e "s|@PORT@|$SPUN_TEST_PORT|" \
     -e "s|@OWNER@|$owner|" "$here/$name.scn.in" > "$work/$name.scn"
-(cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=1
+(cd "$PINESY_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=1
 run=$(sed -n 's/^run dir *//p' "$work/run.out")
 echo "$run" >> "$work/runs.list"
 "$HDFMONKEY" get "$run/sd.img" /sys/spun.cat "$work/spun.cat" > /dev/null 2>&1 || : > "$work/spun.cat"

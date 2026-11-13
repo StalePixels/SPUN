@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs spun-click.scn.in, the test of the GUI's clicks (the search field, the
-# category picker and the buttons), in MAME through mane-harness, with
+# category picker and the buttons), in MAME through pinesy-harness, with
 # dot/BUILD-test/spun from build.sh, against the test server in .env. Needs the
 # e2e users, so run make e2e in src/web once after a reset. Before the run it adds
 # the GUI test apps to the e2e database (src/web/e2e/gui-catalogue.mts) and
@@ -41,7 +41,7 @@ scn=${scn//@PORT@/$port}
 printf '%s\n' "$scn" > "$work/spun-click.scn"
 
 status=0
-(cd "$MANE_HARNESS" && ./run.py "$work/spun-click.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=$?
+(cd "$PINESY_HARNESS" && ./run.py "$work/spun-click.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=$?
 run=$(sed -n 's/^run dir *//p' "$work/run.out")
 
 python3 "$here/gui-test.py" pointers "$work/spun-click.scn" "$run" || status=1

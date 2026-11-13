@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs the install directory, overwrite and dot command tests of .spun in MAME
-# through mane-harness, with dot/BUILD-test/spun from build.sh, against the
+# through pinesy-harness, with dot/BUILD-test/spun from build.sh, against the
 # test server in .env:
 #   spun-dir-first.scn.in   get of an app with a suggested install directory:
 #                           y takes it, .spun creates it and its parents
@@ -119,7 +119,7 @@ scenario() {
         -e "s|@UPDCAT@|$work/update.cat|" -e "s|@APP@|$SPUN_TEST_APP|g" \
         "$here/$name.scn.in" | python3 "$here/gui-test.py" rows "$SPUN_TEST_SERVER" "$SPUN_TEST_PORT")
     printf '%s\n' "$scn" > "$work/$name.scn"
-    (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=1
+    (cd "$PINESY_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=1
     run=$(sed -n 's/^run dir *//p' "$work/run.out")
     echo "$run" >> "$work/runs.list"
     python3 "$here/gui-test.py" ula "$work/$name.scn" "$run" || status=1

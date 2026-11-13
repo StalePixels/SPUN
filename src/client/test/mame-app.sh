@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs spun-app.scn.in, the test of the GUI's app page, in MAME through
-# mane-harness, with dot/BUILD-test/spun from build.sh, against the test server
+# pinesy-harness, with dot/BUILD-test/spun from build.sh, against the test server
 # in .env. Needs the e2e users, so run make e2e in src/web once after a reset.
 # Before the run it adds the GUI test apps and the screenshots of gui024 and
 # gui022 to the e2e
@@ -44,7 +44,7 @@ scn=${scn//@PORT@/$port}
 printf '%s\n' "$scn" > "$work/spun-app.scn"
 
 status=0
-(cd "$MANE_HARNESS" && ./run.py "$work/spun-app.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=$?
+(cd "$PINESY_HARNESS" && ./run.py "$work/spun-app.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=$?
 run=$(sed -n 's/^run dir *//p' "$work/run.out")
 python3 "$here/gui-test.py" pointers "$work/spun-app.scn" "$run" || status=1
 python3 "$here/gui-test.py" layer2 "$work/spun-app.scn" "$run" "$SPUN_TEST_SERVER" "$SPUN_TEST_PORT" "$storage/public" || status=1

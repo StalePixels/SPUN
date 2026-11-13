@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs spun-category.scn.in, the test of the GUI's category filter, in MAME
-# through mane-harness, with dot/BUILD-test/spun from build.sh, against the test server in .env. Needs the e2e users, so run
+# through pinesy-harness, with dot/BUILD-test/spun from build.sh, against the test server in .env. Needs the e2e users, so run
 # make e2e in src/web once after a reset. Before the run it adds the GUI test
 # apps to the e2e database (src/web/e2e/gui-catalogue.mts) and removes them
 # after it. The GUI reaches the server through gui-test.py's proxy, whose log
@@ -39,7 +39,7 @@ scn=${scn//@PORT@/$port}
 printf '%s\n' "$scn" > "$work/spun-category.scn"
 
 status=0
-(cd "$MANE_HARNESS" && ./run.py "$work/spun-category.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=$?
+(cd "$PINESY_HARNESS" && ./run.py "$work/spun-category.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=$?
 run=$(sed -n 's/^run dir *//p' "$work/run.out")
 
 # Leaving the picker with Edit, BREAK or Back (key C does nothing there) shows the catalogue again (SPLIST 1), and

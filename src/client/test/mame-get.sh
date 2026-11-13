@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs spun-get.scn.in in MAME through mane-harness, with the values in .env, twice:
+# Runs spun-get.scn.in in MAME through pinesy-harness, with the values in .env, twice:
 #   spun-get:   dot/BUILD-test/spun with no options (its default server)
 #   spun-get-s: dot/BUILD-test-s/spun with -s and -p
 # Exits with 1 if either run fails.
@@ -26,7 +26,7 @@ scenario() {
         "$here/spun-get.scn.in" > "$work/$name.scn"
 
     local status=0
-    (cd "$MANE_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/$name.out" || status=$?
+    (cd "$PINESY_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/$name.out" || status=$?
 
     sed -n 's/^run dir *//p' "$work/$name.out" >> "$work/runs.list"
     if [ -n "${HDFMONKEY:-}" ]; then

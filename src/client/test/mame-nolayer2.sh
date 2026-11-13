@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs spun-nolayer2.scn.in in MAME through mane-harness: the GUI of
+# Runs spun-nolayer2.scn.in in MAME through pinesy-harness: the GUI of
 # dot/BUILD-test/spun (from build.sh) must refuse to open when no 80K run of
 # free pages is left for Layer 2, and leave nothing allocated. It builds the
 # test tool fragment/fragment.c first. .spun connects to the test server in
@@ -32,4 +32,4 @@ docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$fragment:$fragment"
 scn=$(sed -e "s|@SPUN@|$spun|" -e "s|@FRAGMENT@|$work/fragment|" "$here/spun-nolayer2.scn.in")
 printf '%s\n' "$scn" > "$work/spun-nolayer2.scn"
 
-(cd "$MANE_HARNESS" && ./run.py "$work/spun-nolayer2.scn" --mame "$(command -v "$MAME")")
+(cd "$PINESY_HARNESS" && ./run.py "$work/spun-nolayer2.scn" --mame "$(command -v "$MAME")")

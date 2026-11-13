@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs spun-drop.scn.in in MAME through mane-harness, with dot/BUILD-test/spun
+# Runs spun-drop.scn.in in MAME through pinesy-harness, with dot/BUILD-test/spun
 # from build.sh, once for each stage at which gui-test.py's drop proxy closes
 # the connection to the test server in .env:
 #   connect   at once, before .spun has sent anything
@@ -103,7 +103,7 @@ for stage in connect request midblock between; do
     sleep 1
     sed -e "s|@SPUN@|$spun|" -e "s|@HOST@|$SPUN_TEST_SERVER|" -e "s|@PORT@|$port|" \
         "$here/spun-drop.scn.in" > "$work/$stage.scn"
-    (cd "$MANE_HARNESS" && ./run.py "$work/$stage.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/$stage.out" || status=1
+    (cd "$PINESY_HARNESS" && ./run.py "$work/$stage.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/$stage.out" || status=1
     kill "$proxy" 2>/dev/null || true
     proxy=
     run=$(sed -n 's/^run dir *//p' "$work/$stage.out")
