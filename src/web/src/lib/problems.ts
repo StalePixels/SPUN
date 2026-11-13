@@ -87,7 +87,25 @@ export type ProblemCode =
   | "api.bodyTooLarge"
   | "api.lengthRequired"
   | "api.tooManyRequests"
-  | "api.termsNotAccepted";
+  | "api.termsNotAccepted"
+  | "oauth.badRequest"
+  | "oauth.unknownClient"
+  | "oauth.clientMetadata"
+  | "oauth.clientTooLarge"
+  | "oauth.contentType"
+  | "oauth.badRedirectUri"
+  | "oauth.redirectUri"
+  | "oauth.responseType"
+  | "oauth.pkce"
+  | "oauth.resource"
+  | "oauth.grantType"
+  | "oauth.badGrant"
+  | "oauth.denied"
+  | "mcp.noToken"
+  | "mcp.badToken"
+  | "mcp.origin"
+  | "mcp.internal"
+  | "upload.badTicket";
 
 export type Problem = {
   code: ProblemCode;

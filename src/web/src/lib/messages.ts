@@ -210,5 +210,41 @@ export function problemMessage(problem: Problem): string {
       return "Too many requests. Wait for the time in the Retry-After header.";
     case "api.termsNotAccepted":
       return "The key's user has not accepted the current terms and conditions. Accept them on the web, at /terms.";
+    case "oauth.badRequest":
+      return "The request is missing a parameter, or has one more than once.";
+    case "oauth.unknownClient":
+      return "SPUN does not know this client. Register it again.";
+    case "oauth.clientMetadata":
+      return `The client metadata is not valid. It needs redirect_uris with 1 to ${max} URLs, and only the code grant with no client secret.`;
+    case "oauth.clientTooLarge":
+      return `The client metadata is too large: its client_id would be over ${max} characters. Register fewer or shorter redirect URIs, or a shorter client_name.`;
+    case "oauth.contentType":
+      return "The request body has the wrong Content-Type. /oauth/token takes application/x-www-form-urlencoded, and /oauth/register takes application/json.";
+    case "oauth.badRedirectUri":
+      return "Each redirect URI must be an http URL on localhost, 127.0.0.1 or [::1], with no fragment.";
+    case "oauth.redirectUri":
+      return "The redirect URI is not one that the client registered.";
+    case "oauth.responseType":
+      return "SPUN supports only response_type=code.";
+    case "oauth.pkce":
+      return "The request needs PKCE with code_challenge_method=S256, and the code verifier must match the challenge.";
+    case "oauth.resource":
+      return "The resource must be the URL of SPUN's MCP server.";
+    case "oauth.grantType":
+      return "SPUN supports only the authorization_code and refresh_token grants.";
+    case "oauth.badGrant":
+      return "The code or refresh token is unknown, used, expired or revoked, or belongs to another client.";
+    case "oauth.denied":
+      return "The user did not allow the connection.";
+    case "mcp.noToken":
+      return "The request needs an access token in the Authorization header: Bearer <token>. Get one with the OAuth flow that the resource_metadata URL describes.";
+    case "mcp.badToken":
+      return "The access token is unknown, expired or revoked, or its user cannot publish. Refresh it, or connect again.";
+    case "mcp.origin":
+      return "SPUN's MCP server does not take requests from web pages: a request with an Origin header is refused.";
+    case "mcp.internal":
+      return "SPUN had an internal error. Try again later.";
+    case "upload.badTicket":
+      return "The upload URL is unknown, used or expired, its user cannot publish, or the client that got it was disconnected. Each URL works for one upload only. Get a new one with upload_release or upload_screenshot.";
   }
 }

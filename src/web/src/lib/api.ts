@@ -5,7 +5,9 @@ import { apiKeyUser, serverKey } from "./apikeys";
 import { parseAppId, type AppFields, type AppId } from "./apps";
 import type { Problem } from "./problems";
 import { claimOnce, countHit } from "./redis";
+import { uploadOwnRelease } from "./releases";
 import { lineFeeds, parseSerial, parseSlot } from "./rules";
+import { uploadOwnScreenshot } from "./screenshots";
 import { currentTermsId } from "./terms";
 
 export type ApiContext<P> = { request: NextRequest; user: ApiUser; params: P };
@@ -23,7 +25,7 @@ function deps(): ApiDeps {
 }
 
 // Next sets X-Forwarded-For to the socket address when a request has none.
-function clientIp(request: NextRequest): string {
+export function clientIp(request: NextRequest): string {
   return request.headers.get("x-forwarded-for")?.split(",").pop()?.trim() || "unknown";
 }
 
@@ -53,6 +55,21 @@ export async function apiForm(request: NextRequest): Promise<FormData> {
   return request.formData().catch(() => new FormData());
 }
 
+export async function apiReleaseUpload(
+  userId: string,
+  appId: AppId,
+  request: NextRequest,
+  readForm: () => Promise<FormData> = () => apiForm(request),
+): Promise<Response> {
+  const result = await uploadOwnRelease(userId, appId, readForm);
+  return "error" in result ? apiProblem(result.error) : apiJson(201, { serial: result.serial, dotMoves: result.dotMoves });
+}
+
+export async function apiScreenshotUpload(user: ApiUser, appId: AppId, slot: number, request: NextRequest): Promise<Response> {
+  const result = await uploadOwnScreenshot(user, appId, slot, () => apiForm(request));
+  return "error" in result ? apiProblem(result.error) : apiJson(200, { slot, width: result.width });
+}
+
 export function apiReleaseParams(params: {
   id: string;
   serial: string;
@@ -77,14 +94,27 @@ export function apiScreenshotParams(params: {
   return slot ? { appId, slot } : { error: { code: "screenshot.notFound" } };
 }
 
+const textField = (value: unknown) => (typeof value === "string" ? value : "");
+
 export function apiAppFields(body: Record<string, unknown>): AppFields {
-  const text = (value: unknown) => (typeof value === "string" ? value : "");
   return {
-    title: text(body.title),
-    description: lineFeeds(text(body.description)),
-    installDir: text(body.installDir),
+    title: textField(body.title),
+    description: lineFeeds(textField(body.description)),
+    installDir: textField(body.installDir),
     categories: Array.isArray(body.categories) ? body.categories.filter((value) => Number.isInteger(value)) : [],
   };
+}
+
+export function apiDependsIds(body: Record<string, unknown>): string[] {
+  return Array.isArray(body.depends) ? body.depends.filter((value) => typeof value === "string") : [];
+}
+
+export function apiRepublishFields(body: Record<string, unknown>): { version: string; changelog: string } {
+  return { version: textField(body.version), changelog: textField(body.changelog) };
+}
+
+export function apiChangelog(body: Record<string, unknown>): string {
+  return textField(body.changelog);
 }
 
 export function apiRoute<P = object>(

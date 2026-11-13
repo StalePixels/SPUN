@@ -52,7 +52,7 @@ export type ApiDeps = {
   findKeyUser(keyId: string): Promise<ApiKeyUser | null>;
   currentTermsId(): Promise<number | null>;
   claimOnce(name: string, ttlSeconds: number): Promise<boolean>;
-  count(name: string, ttlSeconds: number): Promise<number>;
+  count(name: string, ttlSeconds: number, hits?: number): Promise<number>;
 };
 
 export type ApiRefusal = { status: number; error: Problem; retryAfter?: number };
@@ -98,11 +98,12 @@ export async function rateCheck(
   name: string,
   limit: number,
   windowSeconds: number,
+  hits = 1,
 ): Promise<number | null> {
   const now = deps.nowMs() / 1000;
   const window = Math.floor(now / windowSeconds);
   const left = Math.max(1, Math.ceil((window + 1) * windowSeconds - now));
-  const n = await deps.count(`rate:${name}:${window}`, left);
+  const n = await deps.count(`rate:${name}:${window}`, left, hits);
   return n > limit ? left : null;
 }
 

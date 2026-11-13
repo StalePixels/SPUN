@@ -1,4 +1,4 @@
-import { apiBody, apiJson, apiProblem, apiRoute } from "@/lib/api";
+import { apiBody, apiJson, apiProblem, apiRepublishFields, apiRoute } from "@/lib/api";
 import { parseAppId } from "@/lib/apps";
 import { republishOwnRelease } from "@/lib/releases";
 
@@ -7,12 +7,6 @@ export const POST = apiRoute<{ id: string }>({ body: "json" }, async ({ request,
   if (!appId) {
     return apiProblem({ code: "app.notFound" });
   }
-  const result = await republishOwnRelease(user.id, appId, async () => {
-    const { version, changelog } = await apiBody(request);
-    return {
-      version: typeof version === "string" ? version : "",
-      changelog: typeof changelog === "string" ? changelog : "",
-    };
-  });
+  const result = await republishOwnRelease(user.id, appId, async () => apiRepublishFields(await apiBody(request)));
   return "error" in result ? apiProblem(result.error) : apiJson(201, { serial: result.serial, dotMoves: result.dotMoves });
 });

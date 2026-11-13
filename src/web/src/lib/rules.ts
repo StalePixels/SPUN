@@ -27,6 +27,20 @@ export const UPLOADS_PER_HOUR = 20;
 export const API_REQUEST_WINDOW_SECONDS = 5 * 60;
 export const KEY_NAME_MAX = TITLE_MAX;
 
+// OAuth for /mcp. A refresh gives a new refresh token with a new lifetime.
+export const OAUTH_ACCESS_SECONDS = 60 * 60;
+export const OAUTH_REFRESH_SECONDS = 30 * 24 * 60 * 60;
+export const OAUTH_CODE_SECONDS = 60;
+// A used code is remembered past its own life, so a second use can still revoke the grant it made.
+export const OAUTH_USED_CODE_SECONDS = OAUTH_CODE_SECONDS + 60;
+export const OAUTH_CLIENT_NAME_MAX = 64;
+export const OAUTH_REDIRECT_URIS_MAX = 10;
+export const OAUTH_REDIRECT_URI_MAX = 1024;
+// nginx's default 8 KB request line, less a fully percent-encoded redirect_uri and 1 KB for the other /oauth/authorize parameters.
+export const OAUTH_CLIENT_ID_MAX = 8 * 1024 - 3 * OAUTH_REDIRECT_URI_MAX - 1024;
+// A one-time upload URL from upload_release or upload_screenshot.
+export const MCP_UPLOAD_TICKET_SECONDS = 15 * 60;
+
 const SLUG_CHAR = /[A-Za-z0-9_-]/;
 const VERSION_CHAR = /[A-Za-z0-9_.,#-]/;
 const PRINTABLE_ASCII_CHAR = /[\x20-\x7e]/;
@@ -212,6 +226,7 @@ const CATEGORY_SLUG_CHAR = /[a-z0-9-]/;
 // Every top-level path of the site except apps, which is also a category, plus
 // index, whose .md copy is /index.md. Old category URLs, /<slug>, still redirect.
 export const RESERVED_PATHS = [
+  ".well-known",
   "admin",
   "api",
   "catalog",
@@ -220,11 +235,14 @@ export const RESERVED_PATHS = [
   "index",
   "keys",
   "llms.txt",
+  "mcp",
   "md",
   "me",
   "my",
+  "oauth",
   "publish",
   "terms",
+  "upload",
   "username",
 ];
 
@@ -416,6 +434,13 @@ export function checkReleaseDate(input: string, uploadDate: Date): DateCheck {
     return { ok: false, error: { code: "releaseDate.future" } };
   }
   return { ok: true, day: input };
+}
+
+// The checks of a release upload's text fields, in the order checkUpload makes them.
+export function checkReleaseText(version: string, releaseDate: string, changelog: string, now: Date): Problem | null {
+  const date = checkReleaseDate(releaseDate, now);
+  const log = checkChangelog(changelog);
+  return checkVersion(version) ?? (date.ok ? null : date.error) ?? (log.ok ? null : log.error);
 }
 
 export const ARTICLE_MAX = 1024;

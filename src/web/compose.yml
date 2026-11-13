@@ -1,6 +1,9 @@
 services:
   cms:
-    build: .
+    build:
+      context: .
+      additional_contexts:
+        client: ../client
     env_file: ${CMS_ENV_FILE:-.env}
     ports:
       - "${CMS_PORT:-48180}:3000"

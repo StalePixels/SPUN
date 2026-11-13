@@ -30,6 +30,13 @@
 - Republish makes a new release from the last zip, with a new version and
   changelog, on the app page or with `POST /api/apps/{id}/republish`.
 - Admins can edit an app's dependencies, and see which apps need it.
+- MCP server at `/mcp`, with a tool for each API call. An MCP client
+  connects with the URL and logs in with OAuth on the site, as the
+  publisher who allows it.
+- `/me/keys` lists the connected MCP clients, and a publisher can
+  disconnect each one there.
+- The MCP upload tools give a one-time URL. The agent sends the zip or
+  the screenshot to it, for example with `curl`.
 
 ## 0.8.3 - 20261106
 

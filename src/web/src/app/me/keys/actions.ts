@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createApiKey, deleteApiKey } from "@/lib/apikeys";
+import { revokeGrant } from "@/lib/oauthserver";
 import type { Problem } from "@/lib/problems";
 import { requirePublisher } from "@/lib/session";
 
@@ -21,5 +22,11 @@ export async function makeKey(_prev: KeyFormState, formData: FormData): Promise<
 export async function removeKey(keyId: string): Promise<void> {
   const user = await requirePublisher();
   await deleteApiKey(user.id, keyId);
+  revalidatePath("/me/keys");
+}
+
+export async function removeGrant(grantId: string): Promise<void> {
+  const user = await requirePublisher();
+  await revokeGrant(user.id, grantId);
   revalidatePath("/me/keys");
 }

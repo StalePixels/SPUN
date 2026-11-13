@@ -28,7 +28,10 @@ import {
   UPLOADS_PER_HOUR,
   VERSION_MAX,
   DEPENDS_MAX,
+  OAUTH_ACCESS_SECONDS,
+  OAUTH_REFRESH_SECONDS,
 } from "./rules";
+import { MCP_TOOL_OF_ROUTE } from "./mcptext";
 
 function escapeText(text: string): string {
   return text.replace(/[\\`*_[\]<>#|~]/g, "\\$&");
@@ -185,6 +188,7 @@ function llmsText(categories: Category[]): string {
     "## API",
     "",
     `- ${link("SPUN API", "/api.md")}: how an agent with a user's API key works with that user's apps. Each request is signed with the key.`,
+    "- `/mcp`: an MCP server with a tool for each API call. An MCP client connects with this URL and logs in with OAuth on this site, as the user. The user can disconnect it on `/me/keys`. The SPUN API page describes the login.",
     `- ${link("spun-publish", "https://github.com/StalePixels/agent-skills/tree/main/spun-publish")}: an Agent Skill for publishing apps on SPUN, with a script that signs requests.`,
     "",
   ].join("\n");
@@ -197,6 +201,20 @@ function apiText(): string {
     "# SPUN API",
     "",
     "The API lets an agent act for a SPUN user on that user's apps. Every request is signed with the user's API key. The examples use paths only: put the address of this site in front of each one.",
+    "",
+    "## MCP server",
+    "",
+    "The site is also an MCP server, at `/mcp`. Each API call below has an MCP tool that calls the same function on the server, with the same rules and the same error codes. The server gives each tool's description and input to the MCP client, so this page does not repeat them.",
+    "",
+    "To connect, give the MCP client the URL of `/mcp` on this site. The client logs in with OAuth: it opens the site in the user's browser, the user logs in to SPUN and allows the client, and the client gets an access token. The user needs a username and must have accepted the current terms and conditions. The client finds the OAuth endpoints at `/.well-known/oauth-protected-resource/mcp`, and registers with dynamic client registration.",
+    "",
+    `A token can do all that the user can do with their apps, as an API key can. An access token works for ${OAUTH_ACCESS_SECONDS / 60} minutes. A refresh token works for ${OAUTH_REFRESH_SECONDS / 86400} days, and each refresh gives a new one. The user sees each connected client on \`/me/keys\`, under MCP clients, and can disconnect it there; its tokens stop working at once. The rate limits below apply to \`/mcp\` too, with each connected client counted as a key and each message of a JSON-RPC batch counted as a request.`,
+    "",
+    "The upload tools do not take the file. They return a one-time URL, and the client sends the same form as the API call to that URL, without a signature.",
+    "",
+    "The MCP tool for each API call:",
+    "",
+    ...Object.entries(MCP_TOOL_OF_ROUTE).map(([route, tool]) => `- \`${route}\`: \`${tool}\``),
     "",
     "## API keys",
     "",

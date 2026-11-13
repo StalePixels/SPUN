@@ -88,6 +88,12 @@ Everything you can do with your apps on the site, you can also do through the AP
 
 The repository has a ready-made skill for AI agents in `skills/spun-publish`.
 
+### MCP clients
+
+The site is also an MCP server, with a tool for each API call. To connect an MCP client, such as an AI agent, give it the URL `https://spun.nextbestnetwork.com/mcp`. The client opens the site in your browser: log in, check the client's name, and click Allow. You need a username, and you must have accepted the current terms and conditions.
+
+A connected client can do all that an API key can. The API keys tab, `/me/keys`, lists each connected client under MCP clients. Disconnect a client there and it stops working at once.
+
 ## Error codes
 
 The site shows an error in words. Each error also has a code, in the form `area.problem`, such as `file.macFiles` or `version.taken`. The API returns the code in its answer. The words for each code are in `src/web/src/lib/messages.ts`, and the list of codes is in `src/web/src/lib/problems.ts`.

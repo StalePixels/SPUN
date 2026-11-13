@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",
+    "@modelcontextprotocol/server": "2.4.0",
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
     "drizzle-orm": "^0.45.3",
@@ -27,9 +28,11 @@
     "recharts": "^3.10.1",
     "server-only": "^0.0.1",
     "sharp": "^0.35.4",
-    "yauzl": "^3.4.0"
+    "yauzl": "^3.4.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "^24.19.0",
     "@types/nodemailer": "^7.0.12",

@@ -30,6 +30,7 @@ import {
   suggestInstallDir,
   checkPublishAt,
   checkReleaseDate,
+  checkReleaseText,
   parseLimit,
   checkDescription,
   DESCRIPTION_MAX,
@@ -120,6 +121,24 @@ describe("release date", () => {
       ok: false,
       error: { code: "releaseDate.invalid" },
     });
+  });
+});
+
+describe("checkReleaseText", () => {
+  const now = new Date("2026-09-26T12:00:00Z");
+
+  it("accepts a version with no date and no changelog, and a full set", () => {
+    expect(checkReleaseText("1.0", "", "", now)).toBeNull();
+    expect(checkReleaseText("1.0", "2026-09-26", "Fixes.\r\nMore.", now)).toBeNull();
+  });
+
+  it("checks the version, then the date, then the changelog", () => {
+    expect(checkReleaseText("", "2026-09-27", "\u00e9", now)).toMatchObject({ code: "version.length" });
+    expect(checkReleaseText("1 0", "", "", now)).toMatchObject({ code: "version.invalidCharacters" });
+    expect(checkReleaseText("1.0", "2026-09-27", "\u00e9", now)).toEqual({ code: "releaseDate.future" });
+    expect(checkReleaseText("1.0", "26-09-01", "", now)).toEqual({ code: "releaseDate.invalid" });
+    expect(checkReleaseText("1.0", "", "\u00e9", now)).toMatchObject({ code: "changelog.invalidCharacters" });
+    expect(checkReleaseText("1.0", "", "x".repeat(CHANGELOG_MAX + 1), now)).toMatchObject({ code: "changelog.length" });
   });
 });
 

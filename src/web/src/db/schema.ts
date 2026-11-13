@@ -232,6 +232,29 @@ export const apiKeys = mysqlTable("api_keys", {
   deletedAt: timestamp("deleted_at"),
 });
 
+// One row for each time a user allowed an MCP client. The client_id and the
+// tokens are SHA-256 hashes; a refresh replaces both tokens.
+export const oauthGrants = mysqlTable(
+  "oauth_grants",
+  {
+    id: char("id", { length: 16 }).primaryKey(),
+    userId: varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id),
+    clientIdHash: char("client_id_hash", { length: 64 }).notNull(),
+    clientName: varchar("client_name", { length: 64 }).notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at"),
+    deletedAt: timestamp("deleted_at"),
+    accessHash: char("access_hash", { length: 64 }).notNull().unique(),
+    accessExpiresAt: timestamp("access_expires_at").notNull(),
+    refreshHash: char("refresh_hash", { length: 64 }).notNull().unique(),
+    previousRefreshHash: char("previous_refresh_hash", { length: 64 }),
+    refreshExpiresAt: timestamp("refresh_expires_at").notNull(),
+  },
+  (t) => [index("oauth_grants_previous_refresh_hash_idx").on(t.previousRefreshHash)],
+);
+
 // One row for each filled slot; 1 is the main screenshot. An app delete keeps
 // the rows, so a restore brings the screenshots back.
 export const screenshots = mysqlTable(
