@@ -1,8 +1,11 @@
 import { readdirSync, readFileSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { expect, test } from "@playwright/test";
-import { settings } from "../support/settings";
+import { connectMcpClient, MCP_URL } from "../support/oauth";
+import { accounts, settings } from "../support/settings";
+import { MCP_TOOL_OF_ROUTE } from "../../src/lib/mcptext";
 
 // Every route under src/app/api with the methods its file exports, in the form /api.md uses.
 // The doc's wording and layout can change; a route missing from it fails the test.
@@ -39,6 +42,25 @@ test("/api.md is served, describes every API route, and /llms.txt links to it", 
 
   const llms = await (await page.request.get("/llms.txt")).text();
   expect(llms).toContain("](/api.md)");
+});
+
+test("every API route and method has an MCP tool that /mcp serves", async ({ browser }) => {
+  const routes = apiRoutes();
+  expect(Object.keys(MCP_TOOL_OF_ROUTE).sort()).toEqual([...routes].sort());
+
+  const context = await browser.newContext({ storageState: accounts.client.storageState });
+  const client = new Client({ name: "spun-e2e", version: "1.0.0" });
+  try {
+    const { accessToken } = await connectMcpClient(await context.newPage(), `E2E MCP parity ${Date.now().toString(36)}`);
+    await client.connect(new StreamableHTTPClientTransport(new URL(MCP_URL), { authProvider: { token: async () => accessToken } }));
+    const served = (await client.listTools()).tools.map((tool) => tool.name);
+    for (const route of routes) {
+      expect(served, route).toContain(MCP_TOOL_OF_ROUTE[route]);
+    }
+  } finally {
+    await client.close();
+    await context.close();
+  }
 });
 
 test("an API call without a key is refused with JSON", async ({ page }) => {

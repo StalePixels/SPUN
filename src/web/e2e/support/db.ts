@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { existsSync, readdirSync, rmdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import mysql, { type ResultSetHeader, type RowDataPacket } from "mysql2/promise";
@@ -95,6 +95,10 @@ export async function userRow(userId: string) {
     [userId],
   );
   return row;
+}
+
+export async function setUserDisabled(userId: string, disabled: boolean): Promise<void> {
+  await query(`update users set disabled_at = ${disabled ? "now()" : "null"} where id = ?`, [userId]);
 }
 
 const CURRENT_TERMS_SQL =
@@ -440,6 +444,43 @@ export async function apiKeyRow(keyId: string) {
     [keyId],
   );
   return row;
+}
+
+export type GrantRow = {
+  id: string;
+  user_id: string;
+  client_id_hash: string;
+  client_name: string;
+  last_used_at: Date | null;
+  deleted_at: Date | null;
+  access_hash: string;
+  refresh_hash: string;
+  previous_refresh_hash: string | null;
+};
+
+export async function grantRowsOfClient(clientId: string): Promise<GrantRow[]> {
+  return query<GrantRow>(
+    "select id, user_id, client_id_hash, client_name, last_used_at, deleted_at, access_hash, refresh_hash, previous_refresh_hash from oauth_grants where client_id_hash = ?",
+    [createHash("sha256").update(clientId).digest("hex")],
+  );
+}
+
+export async function markGrantDeleted(grantId: string): Promise<void> {
+  await query("update oauth_grants set deleted_at = now() where id = ?", [grantId]);
+}
+
+export async function setGrantRefreshExpiry(grantId: string, at: Date): Promise<void> {
+  await query("update oauth_grants set refresh_expires_at = ? where id = ?", [at, grantId]);
+}
+
+// The CMS's queries on the table fail while it has another name, as on a database fault.
+export async function withTableRenamed<T>(table: string, work: () => Promise<T>): Promise<T> {
+  await query(`rename table \`${table}\` to \`${table}_e2e_hidden\``);
+  try {
+    return await work();
+  } finally {
+    await query(`rename table \`${table}_e2e_hidden\` to \`${table}\``);
+  }
 }
 
 export async function liveAppIdsOf(userId: string): Promise<string[]> {

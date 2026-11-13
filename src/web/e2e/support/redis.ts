@@ -12,6 +12,7 @@ if (!prefix.includes("e2e")) {
 }
 
 export const uploadsPerHour = Number(cms.UPLOADS_PER_HOUR || 20);
+export const keyPerMinute = Number(cms.API_KEY_PER_MINUTE || 60);
 
 function uploadKeys(userId: string): string[] {
   const hour = Math.floor(Date.now() / 3_600_000);
@@ -39,5 +40,15 @@ export async function setUploadCount(userId: string, count: number): Promise<voi
 export async function clearUploadCount(userId: string): Promise<void> {
   await withRedis(async (redis) => {
     await redis.del(...uploadKeys(userId));
+  });
+}
+
+// Sets this minute's count of a rate limit (src/lib/apigate.ts rateCheck), and the next minute's.
+export async function setRateCount(name: string, count: number): Promise<void> {
+  const minute = Math.floor(Date.now() / 60_000);
+  await withRedis(async (redis) => {
+    for (const window of [minute, minute + 1]) {
+      await redis.set(`${prefix}rate:${name}:${window}`, String(count), "EX", 180);
+    }
   });
 }
