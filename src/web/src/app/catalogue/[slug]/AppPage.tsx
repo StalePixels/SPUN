@@ -6,6 +6,7 @@ import { savedIds } from "@/lib/saved";
 import { currentUser } from "@/lib/session";
 import { Breadcrumbs } from "../../Breadcrumbs";
 import { SaveButton } from "../../SaveButton";
+import { DownloadButton } from "./DownloadButton";
 import { ScreenshotGallery } from "./ScreenshotGallery";
 
 export async function AppPage({ id }: { id: string }) {
@@ -54,10 +55,7 @@ export async function AppPage({ id }: { id: string }) {
           </dl>
           <div className="d-flex align-items-center gap-2">
             {saved !== null && <SaveButton appId={app.id} saved={saved} />}
-            <a href={`/catalogue/${app.id}/download`} className="btn btn-primary" data-testid="public-app-download" download>
-              <i className="bi bi-download me-1" />
-              Download
-            </a>
+            <DownloadButton appId={app.id} title={app.title} />
           </div>
         </div>
       </div>

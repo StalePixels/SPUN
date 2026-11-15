@@ -37,6 +37,9 @@
   disconnect each one there.
 - The MCP upload tools give a one-time URL. The agent sends the zip or
   the screenshot to it, for example with `curl`.
+- The Download button on an app page first shows the line to type on
+  the Next to get the app with `.spun`. The zip is still a button there,
+  and a tick box stops the message for that browser.
 
 ## 0.8.3 - 20261106
 

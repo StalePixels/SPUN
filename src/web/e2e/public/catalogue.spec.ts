@@ -110,6 +110,24 @@ test("the download is the latest zip from the data directory; a deleted app give
   await page.goto(`/catalogue/${id}`);
   await expect(page.getByTestId("public-app-download")).toHaveAttribute("href", `/catalogue/${id}/download`);
 
+  // The button first offers the .spun command; a ticked box skips that from then on.
+  await page.getByTestId("public-app-download").click();
+  await expect(page.getByTestId("download-modal")).toBeVisible();
+  await expect(page.getByTestId("download-modal-command")).toHaveText(
+    `.nbnget /dot/spun : ../spun get spun : .spun get ${id}`,
+  );
+  await page.getByTestId("download-modal-hide").check();
+  const fromModal = page.waitForEvent("download");
+  await page.getByTestId("download-modal-zip").click();
+  expect((await fromModal).suggestedFilename()).toBe(`${id}-0002.zip`);
+  await expect(page.getByTestId("download-modal")).toBeHidden();
+
+  await page.reload();
+  const direct = page.waitForEvent("download");
+  await page.getByTestId("public-app-download").click();
+  expect((await direct).suggestedFilename()).toBe(`${id}-0002.zip`);
+  await expect(page.getByTestId("download-modal")).toBeHidden();
+
   const response = await page.request.get(`/catalogue/${id}/download`);
   expect(response.status()).toBe(200);
   expect(response.headers()["content-type"]).toBe("application/zip");
