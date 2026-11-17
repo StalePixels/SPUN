@@ -3,5 +3,6 @@
 
 void help_and_exit(unsigned char *error);
 void parse_page(char *text);
+void tmp_make(void);
 
 #endif

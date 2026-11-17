@@ -188,6 +188,7 @@ int main(int argc, char** argv) {
 
     ZXN_NEXTREG(REG_TURBO_MODE, 3);
 #endif
+    _far(BANK_PACKAGES, (far_fn_t)tmp_make);
 
     counter = 0;
     while(counter+1<argc) {
