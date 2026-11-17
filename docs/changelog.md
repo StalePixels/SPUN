@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.1 - 20261117
+
+### `.spun`
+
+- `.spun` makes `C:/tmp` when the SD card does not have it. Downloads and
+  the screenshot cache are in `C:/tmp`, so without it a get, an update and
+  the screenshots failed.
+
 ## 0.9.0 - 20261116
 
 ### `.spun`
