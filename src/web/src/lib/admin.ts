@@ -235,6 +235,7 @@ export async function adminGetApp(appId: AppId) {
       title: apps.title,
       description: apps.description,
       installDir: apps.installDir,
+      minCore: apps.minCore,
       hidden: apps.hidden,
       deletedAt: apps.deletedAt,
       ownerId: users.id,
@@ -389,7 +390,7 @@ export async function adminGetRelease(appId: AppId, serial: number) {
 
 export async function adminUpdateApp(
   appId: AppId,
-  changes: { title: string; description: string; installDir: string | null; hidden: boolean },
+  changes: { title: string; description: string; installDir: string | null; minCore: number | null; hidden: boolean },
   categoryIds: number[],
 ): Promise<{ error?: Problem }> {
   const admin = await requireAdmin();

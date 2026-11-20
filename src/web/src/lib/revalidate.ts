@@ -4,6 +4,7 @@ import { apps, releases, users } from "@/db/schema";
 import { checkAppFields, type AppId } from "./apps";
 import { appCategoryList } from "./categories";
 import { db } from "./db";
+import { formatMinCore } from "./mincore";
 import type { Problem } from "./problems";
 import { appDotOverrides, checkUpload } from "./releases";
 import { releaseFileName } from "./rules";
@@ -15,7 +16,7 @@ export type AppRevalidation = { app: Problem | null; releases: ReleaseRevalidati
 
 export async function revalidateApp(appId: AppId): Promise<AppRevalidation | null> {
   const [app] = await db()
-    .select({ title: apps.title, description: apps.description, installDir: apps.installDir, owner: users.username })
+    .select({ title: apps.title, description: apps.description, installDir: apps.installDir, minCore: apps.minCore, owner: users.username })
     .from(apps)
     .innerJoin(users, eq(users.id, apps.userId))
     .where(and(eq(apps.id, appId), isNull(apps.deletedAt)));
@@ -26,6 +27,7 @@ export async function revalidateApp(appId: AppId): Promise<AppRevalidation | nul
     title: app.title,
     description: app.description,
     installDir: app.installDir ?? "",
+    minCore: formatMinCore(app.minCore),
     categories: (await appCategoryList(appId)).map((category) => category.id),
   });
   const overrides = await appDotOverrides(appId);

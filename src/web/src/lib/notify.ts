@@ -6,6 +6,7 @@ import { appDepends, apps, releases, users } from "@/db/schema";
 import type { AppId } from "./apps";
 import { appCategoryList } from "./categories";
 import { db } from "./db";
+import { formatMinCore } from "./mincore";
 import {
   mailConfig,
   noticeEvent,
@@ -118,7 +119,13 @@ export function notify(notice: Notice): void {
 // The app fields a publisher or an admin can change, as the notice shows them.
 export async function appSnapshot(appId: AppId): Promise<Record<string, string>> {
   const [row] = await db()
-    .select({ title: apps.title, description: apps.description, installDir: apps.installDir, hidden: apps.hidden })
+    .select({
+      title: apps.title,
+      description: apps.description,
+      installDir: apps.installDir,
+      minCore: apps.minCore,
+      hidden: apps.hidden,
+    })
     .from(apps)
     .where(eq(apps.id, appId));
   const categories = await appCategoryList(appId);
@@ -131,6 +138,7 @@ export async function appSnapshot(appId: AppId): Promise<Record<string, string>>
     Title: row?.title ?? "",
     Description: row?.description ?? "",
     "Install directory": row?.installDir ?? "",
+    "Minimum core version": formatMinCore(row?.minCore ?? null),
     "Hidden in the catalogue": row?.hidden ? "Yes" : "No",
     Categories: categories.map((category) => category.name).join(", "),
     Dependencies: depends.map((dep) => dep.id).join(" "),

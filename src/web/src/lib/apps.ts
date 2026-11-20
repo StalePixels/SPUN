@@ -6,6 +6,7 @@ import { appCategoryList, liveCategories, setAppCategories } from "./categories"
 import { db } from "./db";
 import { appDependsList } from "./depends";
 import { appCount, appLimit } from "./limits";
+import { formatMinCore, parseMinCore } from "./mincore";
 import { fieldChanges } from "./notices";
 import { appSnapshot, notify } from "./notify";
 import type { Problem } from "./problems";
@@ -141,7 +142,14 @@ export async function moveApp(
   }
 }
 
-export type AppFields = { title: string; description: string; installDir: string; categories: number[]; hidden: boolean };
+export type AppFields = {
+  title: string;
+  description: string;
+  installDir: string;
+  minCore: string;
+  categories: number[];
+  hidden: boolean;
+};
 
 export type OwnRelease = {
   serial: number;
@@ -155,6 +163,7 @@ export type OwnAppView = {
   title: string;
   description: string;
   installDir: string | null;
+  minCore: string | null;
   hidden: boolean;
   categories: number[];
   depends: AppId[];
@@ -179,7 +188,9 @@ export async function withCategoryInstallDir(fields: AppFields): Promise<AppFiel
   return { ...fields, installDir: suggestInstallDir(chosen, fields.title) ?? "" };
 }
 
-type AppFieldsCheck = { ok: true; installDir: string; categoryIds: number[] } | { ok: false; error: Problem };
+type AppFieldsCheck =
+  | { ok: true; installDir: string; minCore: number | null; categoryIds: number[] }
+  | { ok: false; error: Problem };
 
 export async function checkAppFields(fields: Omit<AppFields, "hidden">): Promise<AppFieldsCheck> {
   const error = checkTitle(fields.title) ?? checkDescription(fields.description);
@@ -191,7 +202,11 @@ export async function checkAppFields(fields: Omit<AppFields, "hidden">): Promise
     return choice;
   }
   const dir = checkRequiredInstallDir(fields.installDir);
-  return dir.ok ? { ok: true, installDir: dir.installDir, categoryIds: choice.ids } : dir;
+  if (!dir.ok) {
+    return dir;
+  }
+  const core = parseMinCore(fields.minCore);
+  return core.ok ? { ok: true, installDir: dir.installDir, minCore: core.minCore, categoryIds: choice.ids } : core;
 }
 
 export async function addApp(userId: string, fields: AppFields): Promise<{ error: Problem } | { id: AppId }> {
@@ -213,6 +228,7 @@ export async function addApp(userId: string, fields: AppFields): Promise<{ error
         title: fields.title,
         description: fields.description,
         installDir: choice.installDir,
+        minCore: choice.minCore,
         hidden: fields.hidden,
       });
     await setAppCategories(tx, id, choice.categoryIds);
@@ -238,7 +254,13 @@ export async function editApp(
   await db().transaction(async (tx) => {
     await tx
       .update(apps)
-      .set({ title: fields.title, description: fields.description, installDir: choice.installDir, hidden: fields.hidden })
+      .set({
+        title: fields.title,
+        description: fields.description,
+        installDir: choice.installDir,
+        minCore: choice.minCore,
+        hidden: fields.hidden,
+      })
       .where(eq(apps.id, appId));
     await setAppCategories(tx, appId, choice.categoryIds);
   });
@@ -277,6 +299,7 @@ export async function ownAppView(userId: string, appId: AppId): Promise<OwnAppVi
     title: app.title,
     description: app.description,
     installDir: app.installDir,
+    minCore: app.minCore === null ? null : formatMinCore(app.minCore),
     hidden: app.hidden,
     categories: (await appCategoryList(appId)).map((category) => category.id),
     depends: await appDependsList(appId),

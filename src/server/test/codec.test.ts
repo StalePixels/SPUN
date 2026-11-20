@@ -86,6 +86,7 @@ const INFO_PAGE: InfoPage = {
     ],
     installDir: null,
     dependsCount: 0,
+    minCore: null,
   },
   total: 2,
   page: 1,
@@ -163,6 +164,24 @@ test("SPINFO sends the dependency count after the install directory, only when i
   );
   assert.equal(toHex(encodeInfo(meta)), expected);
   assert.deepEqual(decodeInfo(bytes(expected)), meta);
+});
+
+test("SPINFO sends the minimum core after the dependency count, only when it is set", () => {
+  const core: InfoPage = {
+    ...INFO_PAGE,
+    app: { ...INFO_PAGE.app, installDir: "/apps/d3", dependsCount: 5, minCore: 0x03010a },
+  };
+  const expected = reply(
+    INFO_BODY.replace(
+      field(0x16, le(7, 4)),
+      field(0x16, le(7, 4)) + field(0x1d, ascii("/apps/d3")) + field(0x22, "05") + field(0x23, le(0x03010a, 4)),
+    ),
+  );
+  assert.equal(toHex(encodeInfo(core)), expected);
+  assert.deepEqual(decodeInfo(bytes(expected)), core);
+
+  const zero: InfoPage = { ...INFO_PAGE, app: { ...INFO_PAGE.app, minCore: 0 } };
+  assert.deepEqual(decodeInfo(encodeInfo(zero)), zero);
 });
 
 test("SPDEPS sends one app id field for each dependency, in order", () => {
@@ -313,6 +332,7 @@ test("the largest SPINFO page fits in one block", () => {
       })),
       installDir: "/".repeat(MAX.installDir),
       dependsCount: DEPENDS_MAX,
+      minCore: 0xffffff,
     },
     total: 0xffff,
     page: 0xffff,
@@ -324,8 +344,8 @@ test("the largest SPINFO page fits in one block", () => {
     })),
   });
   // counts 12, app id 8, username 18, title 34, description 259, downloads 6, install directory 66,
-  // dependency count 3, categories 34 each, screenshots 21 each, releases 36 each.
-  const body = 12 + 8 + 18 + 34 + 259 + 6 + 66 + 3 + INFO_CATEGORIES_MAX * 34 + MAX.slots * 21 + INFO_PAGE_SIZE * 36;
+  // dependency count 3, minimum core 6, categories 34 each, screenshots 21 each, releases 36 each.
+  const body = 12 + 8 + 18 + 34 + 259 + 6 + 66 + 3 + 6 + INFO_CATEGORIES_MAX * 34 + MAX.slots * 21 + INFO_PAGE_SIZE * 36;
   assert.equal(page.length - 5, body);
   assert.ok(body <= MAX_BLOCK_SIZE);
 });

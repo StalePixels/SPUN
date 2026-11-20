@@ -75,6 +75,8 @@ export type ProblemCode =
   | "depends.self"
   | "depends.unknown"
   | "depends.tooMany"
+  | "minCore.format"
+  | "minCore.range"
   | "limit.notNumber"
   | "limit.missing"
   | "user.notFound"

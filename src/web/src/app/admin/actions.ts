@@ -52,6 +52,7 @@ import {
 import { parseAppId } from "@/lib/apps";
 import { liveCategories } from "@/lib/categories";
 import type { DependsApp } from "@/lib/depends";
+import { parseMinCore } from "@/lib/mincore";
 import { appDotOverrides, checkUpload, formFile } from "@/lib/releases";
 import { checkScreenshot } from "@/lib/screenshots";
 import {
@@ -144,6 +145,10 @@ export async function saveAdminApp(rawId: string, _prev: FormState, formData: Fo
   if (!dir.ok) {
     return { error: dir.error };
   }
+  const core = parseMinCore(text(formData, "minCore"));
+  if (!core.ok) {
+    return { error: core.error };
+  }
   const values = formData
     .getAll("categories")
     .filter((value) => typeof value === "string")
@@ -154,7 +159,7 @@ export async function saveAdminApp(rawId: string, _prev: FormState, formData: Fo
   }
   const result = await adminUpdateApp(
     appId,
-    { title, description, installDir: dir.installDir, hidden: formData.get("hidden") === "on" },
+    { title, description, installDir: dir.installDir, minCore: core.minCore, hidden: formData.get("hidden") === "on" },
     choice.ids,
   );
   if (result.error) {

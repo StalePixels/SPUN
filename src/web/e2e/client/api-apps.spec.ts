@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { makeApiKey, signedJson, type ApiKey } from "../support/api";
 import {
   appCategoryIds,
+  appMinCore,
   appRow,
   insertApp,
   insertCategory,
@@ -39,12 +40,14 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
       title,
       description: "Made by the API",
       installDir: "apps\\myapp\\",
+      minCore: "3.1.10",
       categories: [first],
     });
     expect(made.status).toBe(201);
     const id = made.body.id as string;
     created.push(id);
     expect(await appRow(id)).toMatchObject({ user_id: client.id, title, install_dir: "/apps/myapp", deleted_at: null });
+    expect(await appMinCore(id)).toBe(0x03010a);
     expect(await appCategoryIds(id)).toEqual([first]);
 
     const read = await signedJson(page.request, key, "GET", `/api/apps/${id}`);
@@ -55,6 +58,7 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
         title,
         description: "Made by the API",
         installDir: "/apps/myapp",
+        minCore: "3.01.10",
         hidden: false,
         categories: [first],
         depends: [],
@@ -75,6 +79,9 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
     expect(put).toEqual({ status: 200, body: {} });
     expect(await appRow(id)).toMatchObject({ title: edited });
     expect(await appCategoryIds(id)).toEqual([first, second].sort((a, b) => a - b));
+    expect(await appMinCore(id), "a field left out is made empty").toBeNull();
+    const none = await signedJson(page.request, key, "GET", `/api/apps/${id}`);
+    expect(none.body.minCore).toBeNull();
 
     const hide = await signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
       title: edited,
@@ -111,6 +118,23 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
     });
     expect(banned).toEqual({ status: 400, body: { error: { code: "installDir.banned" } } });
     expect((await appRow(id)).install_dir, "a refused edit changes nothing").toBe("/Games/My App");
+
+    const core = (minCore: unknown) =>
+      signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
+        title: edited,
+        description: "",
+        installDir: "/Games/My App",
+        minCore,
+        categories: [first],
+      });
+    expect(await core("2.00.28")).toEqual({ status: 200, body: {} });
+    expect(await appMinCore(id)).toBe(0x02001c);
+    expect((await signedJson(page.request, key, "GET", `/api/apps/${id}`)).body.minCore).toBe("2.00.28");
+    expect(await core("3.01")).toEqual({ status: 400, body: { error: { code: "minCore.format" } } });
+    expect(await core("3.16.00")).toEqual({ status: 400, body: { error: { code: "minCore.range" } } });
+    expect(await appMinCore(id), "a refused edit changes nothing").toBe(0x02001c);
+    expect(await core("")).toEqual({ status: 200, body: {} });
+    expect(await appMinCore(id)).toBeNull();
 
     expect(await signedJson(page.request, key, "DELETE", `/api/apps/${id}`)).toEqual({ status: 200, body: {} });
     expect((await appRow(id)).deleted_at).not.toBeNull();
@@ -180,6 +204,10 @@ test("the API refuses each bad title, description, install directory and categor
     [{ ...good, installDir: "/dot /x" }, "installDir.partEnd"],
     [{ ...good, installDir: "/NEXTZX~1" }, "installDir.invalidCharacters"],
     [{ ...good, installDir: `/${"a".repeat(64)}` }, "installDir.length"],
+    [{ ...good, minCore: "3.01" }, "minCore.format"],
+    [{ ...good, minCore: "3.01.x" }, "minCore.format"],
+    [{ ...good, minCore: "16.00.00" }, "minCore.range"],
+    [{ ...good, minCore: "3.01.256" }, "minCore.range"],
     [{ ...good, categories: [] }, "category.missing"],
     [{ ...good, categories: [999999] }, "category.missing"],
     [{ title: good.title, description: "" }, "category.missing"],

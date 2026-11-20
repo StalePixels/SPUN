@@ -84,6 +84,8 @@ export const apps = mysqlTable("apps", {
   title: varchar("title", { length: 32 }).notNull(),
   description: varchar("description", { length: 256 }).notNull().default(""),
   installDir: varchar("install_dir", { length: 64 }),
+  // The oldest Next core the app runs on, as (major << 16) | (minor << 8) | sub. Null: any.
+  minCore: int("min_core", { unsigned: true }),
   downloads: int("downloads", { unsigned: true }).notNull().default(0),
   // A hidden app is left out of the catalogue lists, but search and its own page still find it.
   hidden: boolean("hidden").notNull().default(false),

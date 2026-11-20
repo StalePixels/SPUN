@@ -17,6 +17,7 @@ const Tag = {
   categoryEntry: 0x20,
   slug: 0x21,
   dependsCount: 0x22,
+  minCore: 0x23,
 };
 
 type Field = { tag: number; value: Buffer };
@@ -62,6 +63,7 @@ export type SpunReply =
       apps: string[];
       ids: string[];
       dependsCount: number | null;
+      minCore: number | null;
     } & Counts)
   | { error: string };
 
@@ -75,9 +77,11 @@ export async function spun(command: string): Promise<SpunReply> {
   const apps: string[] = [];
   const ids: string[] = [];
   let dependsCount: number | null = null;
+  let minCore: number | null = null;
   for (const { tag, value } of top) {
     if (tag === Tag.appId) ids.push(value.toString("latin1"));
     if (tag === Tag.dependsCount) dependsCount = number(value);
+    if (tag === Tag.minCore) minCore = number(value);
     if (tag === Tag.total) counts.total = number(value);
     if (tag === Tag.page) counts.page = number(value);
     if (tag === Tag.pages) counts.pages = number(value);
@@ -88,5 +92,5 @@ export async function spun(command: string): Promise<SpunReply> {
     }
     if (tag === Tag.app) apps.push(fields(value).find((f) => f.tag === Tag.appId)?.value.toString("latin1") ?? "");
   }
-  return { error: null, ...counts, categories, apps, ids, dependsCount };
+  return { error: null, ...counts, categories, apps, ids, dependsCount, minCore };
 }

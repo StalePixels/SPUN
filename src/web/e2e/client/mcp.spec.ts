@@ -7,6 +7,7 @@ import type { APIRequestContext } from "@playwright/test";
 import { makeApiKey, signedFetch, signedJson, type ApiKey } from "../support/api";
 import {
   appCategoryIds,
+  appMinCore,
   appRow,
   dependsOf,
   grantRowsOfClient,
@@ -320,7 +321,7 @@ test("each write tool makes the change its API call makes, with the same answer 
       return byTool;
     };
 
-    const fields = { description: "Made by MCP\r\nand the API", installDir: "apps\\mcp\\", categories: [first] };
+    const fields = { description: "Made by MCP\r\nand the API", installDir: "apps\\mcp\\", minCore: "3.1.10", categories: [first] };
     const titleA = uniqueTitle("MCP write");
     const created = await tool("create_app", { title: titleA, ...fields });
     expect(created).toEqual({ isError: false, body: { id: expect.stringMatching(/^[0-9a-z]{6}$/) } });
@@ -340,9 +341,18 @@ test("each write tool makes the change its API call makes, with the same answer 
         deleted_at: null,
       });
       expect(await appCategoryIds(id)).toEqual([first]);
+      expect(await appMinCore(id)).toBe(0x03010a);
     }
+    expect(await tool("get_app", { id: a })).toMatchObject({ isError: false, body: { minCore: "3.01.10" } });
+    expect((await tool("get_app", { id: a })).body).toEqual((await api("GET", `/api/apps/${a}`)).body);
     expect((await appRow(a)).title).toBe(titleA);
     expect(await tool("create_app", { ...fields, title: "" })).toEqual(toolProblem({ code: "title.length", min: 1, max: 32 }));
+    expect(await tool("create_app", { ...fields, title: titleA, minCore: "3.01" })).toEqual(
+      toolProblem({ code: "minCore.format" }),
+    );
+    expect(await tool("create_app", { ...fields, title: titleA, minCore: "3.16.00" })).toEqual(
+      toolProblem({ code: "minCore.range" }),
+    );
     expect(await tool("create_app", { ...fields, title: titleA, categories: [] })).toEqual(
       toolProblem({ code: "category.missing" }),
     );
@@ -354,7 +364,21 @@ test("each write tool makes the change its API call makes, with the same answer 
       expect(await appRow(id)).toMatchObject({ title: edit.title, description: "" });
       expect(await appCategoryIds(id)).toEqual([first, second].sort((x, y) => x - y));
       expect((await appRow(id)).install_dir, "a missing installDir is set from the categories").not.toBe("/apps/mcp");
+      expect(await appMinCore(id), "a missing minCore removes the minimum").toBeNull();
     }
+    const withCore = { ...edit, minCore: "2.00.28" };
+    await same("update_app", (id) => ({ id, ...withCore }), "PUT", appPath, withCore, pair);
+    for (const id of pair) {
+      expect(await appMinCore(id)).toBe(0x02001c);
+    }
+    const badCore = { ...edit, minCore: "3.01.256" };
+    expect(await same("update_app", (id) => ({ id, ...badCore }), "PUT", appPath, badCore, pair)).toEqual(
+      toolProblem({ code: "minCore.range" }),
+    );
+    for (const id of pair) {
+      expect(await appMinCore(id), "a refused edit changes nothing").toBe(0x02001c);
+    }
+    await same("update_app", (id) => ({ id, ...edit, minCore: "" }), "PUT", appPath, { ...edit, minCore: "" }, pair);
     expect((await appRow(a)).install_dir).toBe((await appRow(b)).install_dir);
     const banned = { ...edit, installDir: "/dot/x" };
     expect(await same("update_app", (id) => ({ id, ...banned }), "PUT", appPath, banned, pair)).toEqual(

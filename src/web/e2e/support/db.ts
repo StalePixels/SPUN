@@ -37,6 +37,11 @@ export async function appRow(appId: string) {
   return row;
 }
 
+export async function appMinCore(appId: string): Promise<number | null> {
+  const [row] = await query<{ min_core: number | null }>("select min_core from apps where id = ?", [appId]);
+  return row.min_core;
+}
+
 export async function releaseRow(appId: string, serial: number) {
   const [row] = await query<{ version: string; release_date: string; changelog: string | null; deleted_at: Date | null }>(
     "select version, date_format(release_date, '%Y-%m-%d') as release_date, changelog, deleted_at from releases where app_id = ? and serial = ?",

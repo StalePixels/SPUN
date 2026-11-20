@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { installDirSlug } from "../../src/lib/rules";
 import { uniqueSlug } from "../support/categories";
-import { appRow, insertCategory, removeApps, removeCategories } from "../support/db";
+import { appMinCore, appRow, insertCategory, removeApps, removeCategories } from "../support/db";
 import {
   clickHydrated,
   expect,
@@ -60,6 +60,63 @@ test("the suggested install directory is stored normalised, shown when editing, 
   await clickHydrated(page.getByTestId("app-submit"));
   await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "installDir.missing");
   expect(await appRow(id)).toMatchObject({ install_dir: "/apps/wifi/spun" });
+});
+
+test("the minimum core version is stored as a number, shown as major.minor.sub, refused when wrong, and can be cleared", async ({
+  page,
+  apps,
+}) => {
+  const id = await apps.create("Min core");
+  await page.goto(`/publish/apps/${id}/details`);
+  const input = page.getByTestId("app-min-core");
+  expect(await appMinCore(id), "no minimum by default").toBeNull();
+  await expect(input).toHaveValue("");
+
+  await input.fill("3.1.10");
+  await clickHydrated(page.getByTestId("app-submit"));
+  await expect(page.getByTestId("form-saved")).toBeVisible();
+  expect(await appMinCore(id)).toBe(0x03010a);
+  await page.reload();
+  await expect(input).toHaveValue("3.01.10");
+
+  // Each code differs from the one before, so each wait sees its own submit.
+  for (const [value, code] of [
+    ["3.01", "minCore.format"],
+    ["16.00.00", "minCore.range"],
+    ["3.01.256", "minCore.range"],
+    ["three", "minCore.format"],
+  ]) {
+    await input.fill(value);
+    await clickHydrated(page.getByTestId("app-submit"));
+    await expect(page.getByTestId("form-error"), value).toHaveAttribute("data-error", code);
+  }
+  expect(await appMinCore(id), "a refused value changes nothing").toBe(0x03010a);
+
+  await input.fill("  ");
+  await clickHydrated(page.getByTestId("app-submit"));
+  await expect(page.getByTestId("form-saved")).toBeVisible();
+  expect(await appMinCore(id)).toBeNull();
+  await page.reload();
+  await expect(input).toHaveValue("");
+});
+
+test("a new app can be made with a minimum core version", async ({ page }) => {
+  await page.goto("/publish/new");
+  await page.getByTestId("app-title").fill(uniqueTitle("New core"));
+  await waitForHydration(page.getByTestId("app-submit"));
+  await page.getByTestId(/^app-category-/).first().check();
+  await page.getByTestId("app-min-core").fill("2.00.28");
+  await clickHydrated(page.getByTestId("app-submit"));
+  await page.waitForURL(/\/publish\/apps\/[0-9a-z]{6}$/);
+  const id = pathname(page).split("/").pop()!;
+  try {
+    expect(await appMinCore(id)).toBe(0x02001c);
+    await page.goto(`/publish/apps/${id}/details`);
+    await waitForHydration(page.getByTestId("app-submit"));
+    await expect(page.getByTestId("app-min-core")).toHaveValue("2.00.28");
+  } finally {
+    await removeApps([id]);
+  }
 });
 
 test("the install directory follows the chosen categories and the title until the publisher types in it", async ({ page }) => {

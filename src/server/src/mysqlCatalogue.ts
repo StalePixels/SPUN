@@ -141,7 +141,7 @@ export function mysqlCatalogue(uri: string): Catalogue {
 
     async app(id) {
       const [rows] = await pool.query<RowDataPacket[]>(
-        `SELECT u.username, a.title, a.description, a.downloads, a.install_dir,
+        `SELECT u.username, a.title, a.description, a.downloads, a.install_dir, a.min_core,
            (SELECT depends_count FROM releases
             WHERE app_id = a.id AND deleted_at IS NULL
             ORDER BY serial DESC LIMIT 1) AS depends_count
@@ -176,6 +176,7 @@ export function mysqlCatalogue(uri: string): Catalogue {
         screenshots: screenshots as Screenshot[],
         installDir: app.install_dir,
         dependsCount: Number(app.depends_count),
+        minCore: app.min_core === null ? null : Number(app.min_core),
       };
     },
 

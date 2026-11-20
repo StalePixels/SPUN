@@ -101,6 +101,7 @@ export function apiAppFields(body: Record<string, unknown>): AppFields {
     title: textField(body.title),
     description: lineFeeds(textField(body.description)),
     installDir: textField(body.installDir),
+    minCore: textField(body.minCore),
     categories: Array.isArray(body.categories) ? body.categories.filter((value) => Number.isInteger(value)) : [],
     hidden: body.hidden === true,
   };

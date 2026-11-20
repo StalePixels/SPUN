@@ -15,6 +15,7 @@ import {
 } from "@/lib/admin";
 import { parseAppId } from "@/lib/apps";
 import { appCategoryList, liveCategories } from "@/lib/categories";
+import { formatMinCore } from "@/lib/mincore";
 import { formatDay, isoDay } from "@/lib/rules";
 import { appScreenshots } from "@/lib/screenshots";
 import { AppForm } from "../../../AppForm";
@@ -161,11 +162,18 @@ export default async function AdminAppPage({ params }: { params: Promise<{ id: s
       <div className="card mb-4">
         <div className="card-header">
           <i className="bi bi-pencil me-1" />
-          Title, description, install directory and categories
+          Title, description, install directory, minimum core version and categories
         </div>
         <div className="card-body">
           <AppForm
-            app={{ id: app.id, title: app.title, description: app.description, installDir: app.installDir, hidden: app.hidden }}
+            app={{
+              id: app.id,
+              title: app.title,
+              description: app.description,
+              installDir: app.installDir,
+              minCore: formatMinCore(app.minCore),
+              hidden: app.hidden,
+            }}
             categories={categories}
             selected={selected}
             save={saveAdminApp.bind(null, app.id)}

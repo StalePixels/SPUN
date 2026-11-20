@@ -49,6 +49,8 @@ export interface AppInfo {
   installDir: string | null;
   // The dependency count of the latest release.
   dependsCount: number;
+  // The oldest Next core that can run the app, as (major << 16) | (minor << 8) | sub; null for any.
+  minCore: number | null;
 }
 
 export interface Release {

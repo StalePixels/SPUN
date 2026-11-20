@@ -122,6 +122,7 @@ const appFieldsInput = {
   title: z.string().optional().describe(MCP_FIELDS.title),
   description: z.string().optional().describe(MCP_FIELDS.description),
   installDir: z.string().optional().describe(MCP_FIELDS.installDir),
+  minCore: z.string().optional().describe(MCP_FIELDS.minCore),
   categories: z.array(z.number().int()).optional().describe(MCP_FIELDS.categories),
   hidden: z.boolean().optional().describe(MCP_FIELDS.hidden),
 };

@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 import {
   aliasRow,
   appIdsOf,
+  appMinCore,
   dotOverrideNames,
   appRow,
   firstLiveCategoryId,
@@ -31,6 +32,7 @@ import {
   waitForHydration,
 } from "../support/pages";
 import { settings } from "../support/settings";
+import { spun } from "../support/spunServer";
 import { makeZip, sampleEntries, tempFiles } from "../support/zips";
 
 // Admin rights on other users' apps. Every user and app here is inserted by the
@@ -257,6 +259,51 @@ test("dot command overrides: add in any case, refuse others and repeats, let upl
   await uploadRelease(page, { version: "2.0", file: spunZip() });
   await expect(page.getByTestId("form-error").first()).toHaveAttribute("data-error", "file.dotCommandTaken");
   expect(await releaseRow(id, 2)).toBeUndefined();
+});
+
+test("an admin saves another user's minimum core version through the same rules, and the SPUNServer sends it", async ({
+  page,
+  people,
+}) => {
+  const owner = await people.user();
+  const id = await people.app(owner, "Rights core");
+  const input = page.getByTestId("app-min-core");
+
+  async function save(value: string) {
+    await input.fill(value);
+    await clickHydrated(page.getByTestId("app-submit"));
+  }
+
+  await page.goto(`/admin/apps/${id}`);
+  await expect(input).toHaveValue("");
+  expect(await appMinCore(id), "no minimum by default").toBeNull();
+  await adminUpload(page, id, "1.0", 1);
+  await page.goto(`/admin/apps/${id}`);
+  expect(await spun(`SPINFO ${id}`)).toMatchObject({ error: null, minCore: null });
+
+  await save("3.1.10");
+  await expect(page.getByTestId("form-saved")).toBeVisible();
+  expect(await appMinCore(id)).toBe(0x03010a);
+  expect(await spun(`SPINFO ${id}`)).toMatchObject({ error: null, minCore: 0x03010a });
+  await page.reload();
+  await expect(input).toHaveValue("3.01.10");
+
+  // Each code differs from the one before, so each wait sees its own submit.
+  for (const [value, code] of [
+    ["3.01", "minCore.format"],
+    ["16.00.00", "minCore.range"],
+    ["3.01.256", "minCore.range"],
+    ["three", "minCore.format"],
+  ]) {
+    await save(value);
+    await expect(page.getByTestId("form-error"), value).toHaveAttribute("data-error", code);
+  }
+  expect(await appMinCore(id), "a refused value changes nothing").toBe(0x03010a);
+
+  await save("");
+  await expect(page.getByTestId("form-saved")).toBeVisible();
+  expect(await appMinCore(id)).toBeNull();
+  expect(await spun(`SPINFO ${id}`)).toMatchObject({ error: null, minCore: null });
 });
 
 test("revalidate reruns the upload and app checks on the stored app and zips, and skips deleted releases", async ({

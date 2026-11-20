@@ -48,7 +48,7 @@ Each run makes a new timestamp and nonce, so you can run the same command again.
 ## The order of the work
 
 1. **Categories.** Get the categories and choose the ids that fit the software. An app needs at least one.
-2. **Create the app.** Give it a title, a description and its categories, and a suggested install directory (`installDir`, see below). Set `hidden` to `true` only for an app that is a part of a larger app: the catalogue lists leave it out, but search, downloads and dependencies still find it. Keep the app id the answer gives you. If the app already exists, list the user's apps and use its id. A change to an existing app sends all its fields again: a field left out is made empty.
+2. **Create the app.** Give it a title, a description and its categories, a suggested install directory (`installDir`, see below), and the minimum core version if the app needs one (`minCore`, see below). Set `hidden` to `true` only for an app that is a part of a larger app: the catalogue lists leave it out, but search, downloads and dependencies still find it. Keep the app id the answer gives you. If the app already exists, list the user's apps and use its id. A change to an existing app sends all its fields again: a field left out is made empty.
 3. **Upload a release.** Upload the zip with its version, and a changelog written for the Next (see below). The app becomes public when it has a release.
 4. **Add screenshots.** Slot 1 is the main screenshot. Add more in the other slots if the user has them. An image may have at most 4 megapixels, width times height (`screenshot.tooManyPixels`); the Next shows 320×256 at most, so scale a larger image down first.
 5. **Save apps.** If the user asks, save apps to their list, or remove them from it.
@@ -65,6 +65,15 @@ The CMS stores it in one form: `\` becomes `/`, it starts with `/`, repeated sla
 - No `.` or `..` part (`installDir.dots`).
 - No part that ends with a dot or a space, such as `/games./x` (`installDir.partEnd`).
 - Not `/`, and not `/nextzxos`, `/sys`, `/dot` or `/machines` or anything under them, in any case (`installDir.banned`).
+
+## The minimum core version
+
+`minCore` is the oldest Next core that the app runs on, as `major.minor.sub`, for example `3.01.10`. Leave it out, or empty, when the app runs on any core. SPUN on the Next does not install any apps that depend on a newer core, directly or through a dependency. It refuses a version that breaks any of these rules:
+
+- Three numbers with dots between them: one or two digits for major and minor, one to three for sub (`minCore.format`).
+- Major and minor from 0 to 15, and sub from 0 to 255 (`minCore.range`).
+
+`GET /api/apps/{id}` returns it in the same form, or `null`. A change to an existing app sends `minCore` again with the other fields: a field left out removes the minimum.
 
 ## The changelog
 

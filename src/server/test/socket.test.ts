@@ -73,6 +73,7 @@ const tables: Tables = {
         { slot: 1, width: 320, thumbCrc: 0xcafef00d, nxiCrc: 0xdeadbeef },
       ],
       installDir: "/apps/mixed",
+      minCore: 0x03010a,
     },
     {
       id: "long01",
@@ -450,6 +451,7 @@ describe("SPINFO", () => {
       { slot: 4, width: 256, thumbCrc: 0x11223344, nxiCrc: 0 },
     ]);
     assert.equal(page.app.installDir, "/apps/mixed");
+    assert.equal(page.app.minCore, 0x03010a);
   });
 
   test("sends at most 16 categories", async () => {

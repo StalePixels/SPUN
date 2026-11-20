@@ -28,6 +28,7 @@ export interface AppRow {
   categories?: string[];
   screenshots?: Screenshot[];
   installDir?: string;
+  minCore?: number;
   deleted?: boolean;
 }
 
@@ -198,6 +199,7 @@ export function fakeCatalogue(tables: Tables): Catalogue {
         screenshots: [...(app.screenshots ?? [])].sort((a, b) => a.slot - b.slot),
         installDir: app.installDir ?? null,
         dependsCount: dependsList(liveReleases(id)[0].depends ?? "").length,
+        minCore: app.minCore ?? null,
       };
     },
 

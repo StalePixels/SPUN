@@ -12,7 +12,7 @@ import { createApp, updateApp, type FormState } from "./actions";
 import { Field, FieldRow, RequiredNote } from "./Field";
 
 type Props = {
-  app?: { id: string; title: string; description: string; installDir?: string | null; hidden?: boolean };
+  app?: { id: string; title: string; description: string; installDir?: string | null; minCore?: string | null; hidden?: boolean };
   categories: LiveCategory[];
   selected?: number[];
   save?: (prev: FormState, formData: FormData) => Promise<FormState>;
@@ -93,6 +93,13 @@ export function AppForm({ app, categories, selected = [], save }: Props) {
             setTyped(true);
           }}
         />
+      </Field>
+      <Field
+        controlId="minCore"
+        label="Minimum core version"
+        help="The oldest Next core the app runs on, as major.minor.sub, for example 3.01.10. Empty means any core. .spun does not install any apps that depend on a newer core."
+      >
+        <Form.Control data-testid="app-min-core" name="minCore" defaultValue={app?.minCore ?? ""} />
       </Field>
       <Field
         controlId="hidden"

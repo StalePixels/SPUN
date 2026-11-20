@@ -70,6 +70,8 @@ export const MCP_FIELDS = {
   description: `What the app does: up to ${DESCRIPTION_MAX} characters of printable ASCII and line feeds. A CR LF counts as one line feed. Left out, it is empty.`,
   installDir:
     "The suggested install directory, for example /apps/myapp. Left out or empty, SPUN uses the install directory of the chosen categories with a folder for the app under it.",
+  minCore:
+    "The minimum core version, as major.minor.sub, for example 3.01.10. Left out or empty, the app runs on any core.",
   categories: "Category ids from list_categories, at least one. Unknown ids are left out.",
   hidden: "true to hide the app in the catalogue lists. Left out, it is false.",
   depends: `App ids of other apps on SPUN that are not deleted, any user's, up to ${DEPENDS_MAX}. Not aliases, and not the app itself. An empty or missing list removes every dependency.`,
@@ -84,10 +86,11 @@ const APP_FIELD_RULES = [
   "hidden is true or false; left out, it is false. A hidden app is not in the catalogue lists, on the web or on the Next. Search still finds it, and its own page, downloads and dependencies still work. Use it for the parts of a larger app.",
   "installDir is the directory where SPUN on the Next installs the app the first time. The user can change it on the Next, and it is not used after the first install. Leave it out, or empty, to use the install directory of the chosen categories with a folder for the app under it, named from the title: Jet Set Willy in a category at /games gives /games/jet-set-willy.",
   `SPUN stores installDir in one form: \\ becomes /, it starts with /, repeated slashes become one, and a slash at the end goes, so apps\\myapp\\ is stored as /apps/myapp. It is refused when, in that form, it is over ${INSTALL_DIR_MAX} characters (installDir.length); has a colon, so a drive letter (installDir.drive); has a character that is not printable ASCII (space to }) or is one of " * ? < > | ~ (installDir.invalidCharacters); has a . or .. part (installDir.dots); has a part that ends with a dot or a space, such as /games./x (installDir.partEnd); or is /, or is in or under ${INSTALL_DIR_BANNED.slice(1).join(", ")}, in any case (installDir.banned).`,
+  "minCore is the oldest Next core that the app runs on, as major.minor.sub, for example 3.01.10: major and minor from 0 to 15 with one or two digits, sub from 0 to 255 with one to three digits (minCore.format, minCore.range). Left out or empty, the app runs on any core. SPUN on the Next does not install any apps that depend on a newer core, directly or through a dependency.",
 ];
 
 const APP_FIELD_ERRORS =
-  "title.length, title.invalidCharacters, description.length, description.invalidCharacters, installDir.drive, installDir.invalidCharacters, installDir.dots, installDir.partEnd, installDir.banned, installDir.length and category.missing";
+  "title.length, title.invalidCharacters, description.length, description.invalidCharacters, installDir.drive, installDir.invalidCharacters, installDir.dots, installDir.partEnd, installDir.banned, installDir.length, minCore.format, minCore.range and category.missing";
 
 const CHANGELOG_RULES = `People read the changelog on the Next, an 8-bit machine, so write it for the Next: short, with the new features and fixes a user will notice, not internal work. Plain ASCII only, no UTF-8, no markdown and no links. Up to ${CHANGELOG_MAX} characters of printable ASCII and line feeds (changelog.length, changelog.invalidCharacters).`;
 
@@ -135,7 +138,7 @@ export const MCP_DESCRIPTIONS: Record<keyof typeof MCP_TOOLS, string> = {
   getApp: [
     "Gives one of the user's own apps.",
     "Input: id, the app id.",
-    "Returns its id, title, description, suggested install directory (installDir, null when there is none), hidden (true when it is hidden in the catalogue lists), category ids, dependencies (depends: the app ids that SPUN on the Next installs or updates first; set_depends changes them), all its releases, newest first, deleted ones too, and its screenshots.",
+    "Returns its id, title, description, suggested install directory (installDir, null when there is none), minimum core version (minCore, as major.minor.sub, null when there is none), hidden (true when it is hidden in the catalogue lists), category ids, dependencies (depends: the app ids that SPUN on the Next installs or updates first; set_depends changes them), all its releases, newest first, deleted ones too, and its screenshots.",
     "Each release has serial, version, releaseDate (YYYY-MM-DD) and deletedDay, the day it was deleted or null. An app is public when it has a release that is not deleted.",
     `Each screenshot has slot (1 to ${SCREENSHOT_SLOTS}; slot 1 is the main screenshot), width (256 or 320) and url, a path on the SPUN site.`,
     "installDir is where SPUN on the Next installs the app the first time. The user can change it on the Next, and it is not used after the first install.",
@@ -157,15 +160,15 @@ export const MCP_DESCRIPTIONS: Record<keyof typeof MCP_TOOLS, string> = {
   createApp: [
     "Makes a new app for the user, with no releases. An app is public only when it has a release that is not deleted.",
     "The order of the work: get the category ids with list_categories, check with list_apps that the app does not exist already, make the app here and keep the id it returns, then add a release with upload_release and screenshots with upload_screenshot.",
-    "Input: title, description, installDir, categories and hidden.",
+    "Input: title, description, installDir, minCore, categories and hidden.",
     ...APP_FIELD_RULES,
     'Returns { "id": "abc123" }, the new app id.',
     `Errors: ${APP_FIELD_ERRORS}, and app.limitReached when the user has as many apps as their limit permits (limit gives the limit).`,
   ].join("\n\n"),
   updateApp: [
-    "Changes the title, description, suggested install directory, categories and hidden flag of one of the user's apps.",
-    "Send all five fields each time: a field left out is made empty or false, and an empty installDir is set again from the categories. Read the current values with get_app first.",
-    "Input: id, the app id, and title, description, installDir, categories and hidden, as for create_app.",
+    "Changes the title, description, suggested install directory, minimum core version, categories and hidden flag of one of the user's apps.",
+    "Send all six fields each time: a field left out is made empty or false, and an empty installDir is set again from the categories. An empty minCore removes the minimum. Read the current values with get_app first.",
+    "Input: id, the app id, and title, description, installDir, minCore, categories and hidden, as for create_app.",
     ...APP_FIELD_RULES,
     "Returns {}.",
     `Errors: ${APP_FIELD_ERRORS}, and app.notFound (no such app, it is deleted, or it is another user's).`,

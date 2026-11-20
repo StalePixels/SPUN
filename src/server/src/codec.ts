@@ -31,6 +31,7 @@ export const Tag = {
   categoryEntry: 0x20,
   slug: 0x21,
   dependsCount: 0x22,
+  minCore: 0x23,
   description: 0x80,
   changelog: 0x81,
 } as const;
@@ -167,6 +168,9 @@ export function encodeInfo(page: InfoPage): Uint8Array {
   }
   if (page.app.dependsCount > 0) {
     out.u8(Tag.dependsCount, page.app.dependsCount);
+  }
+  if (page.app.minCore !== null) {
+    out.u32(Tag.minCore, page.app.minCore);
   }
   for (const category of page.app.categories) {
     out.text(Tag.category, category);
@@ -338,6 +342,7 @@ export function decodeInfo(bytes: Uint8Array): InfoPage {
     screenshots: [],
     installDir: null,
     dependsCount: 0,
+    minCore: null,
   };
   const releases: Release[] = [];
   for (const { tag, value } of fields) {
@@ -349,6 +354,7 @@ export function decodeInfo(bytes: Uint8Array): InfoPage {
     if (tag === Tag.category) app.categories.push(fieldText(value));
     if (tag === Tag.installDir) app.installDir = fieldText(value);
     if (tag === Tag.dependsCount) app.dependsCount = fieldNumber(value);
+    if (tag === Tag.minCore) app.minCore = fieldNumber(value);
     if (tag === Tag.screenshot) {
       const shot: Screenshot = { slot: 0, width: 0, thumbCrc: 0, nxiCrc: 0 };
       for (const inner of readFields(value)) {
