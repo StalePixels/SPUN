@@ -93,9 +93,8 @@ run=$(sed -n 's/^run dir *//p' "$work/run.out")
 echo "$run" >> "$work/runs.list"
 "$HDFMONKEY" get "$run/sd.img" /sys/spun.cat "$work/spun.cat" > /dev/null 2>&1 || : > "$work/spun.cat"
 
-ended=$(sed -n 's/^harness: reset t=\([0-9.]*\) CPU at \$0000 with ROM paged in (BASIC line PPC 20)$/\1/p' "$run/mame.log" | head -1)
-echo ".spun ended at t=${ended:-never}"
-check "ended     with an error" yes "$([ -n "$ended" ] && echo yes || echo no)"
+# The autoexec's ON ERROR handler prints SPUNERR with the error code and the line of .spun
+check "ended     with an error" yes "$(grep -q '^screen .*"SPUNERR 255 30" .* MATCH' "$run/summary.txt" && echo yes || echo no)"
 check "spun.cat  no bomb01" "" "$(grep "^$app " "$work/spun.cat" || true)"
 if "$HDFMONKEY" get "$run/sd.img" "$dir/BOMB.BIN" "$work/bomb" > /dev/null 2>&1; then got=present; else got=none; fi
 check "file      $dir/BOMB.BIN: none" none "$got"

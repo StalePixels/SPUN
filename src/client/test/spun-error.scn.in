@@ -4,18 +4,20 @@
 # back before that message is printed, so the message and the lines BASIC
 # printed before .spun show on it, and nothing of the GUI or the browser
 # does. Without ON ERROR the autoexec would end at the error and NextZXOS
-# would show its menu. ON and ERROR are NextBASIC tokens $90 and $8F, which
-# the harness writes as raw bytes. In MAME the trapped error never reaches
-# line 50: BASIC fetches $0000 once a frame with PPC on the ON ERROR line,
-# also after an error from the CLI (.spun get of a missing app), and the
-# screen stays as it is. That is not a reset, so this scenario has no
-# noreset; mame-install.sh fails it on a "machine reset" line in mame.log
-# instead. gui023 is third in the list.
+# would show its menu. The handler jumps to line 60, the loop that never
+# ends, so the screen stays as it is: BASIC prints no report for a trapped
+# error, and the PRINT of line 50 runs only if .spun returns without an
+# error, which would put SPUNNOERROR on row 3 and fail the ula check of
+# mame-install.sh. NextZXOS fetches $0000 once when a handler catches the
+# error of a dot command, with BASIC at the line of that command, and the
+# harness logs it as a "reset" line, so this scenario has no noreset;
+# mame-install.sh fails it on a "machine reset" line in mame.log instead.
+# gui023 is third in the list.
 put @SPUN@ /dot/SPUN
 autostart PRINT "SPUNBEFORE1": PRINT "SPUNBEFORE2"
-autostart \x90\x8fGO TO 50
+autostart ON ERROR GO TO 60
 autostart .spun -p @PORT@
-autostart PRINT "SPUNTRAPPED"
+autostart PRINT "SPUNNOERROR"
 autostart FOR i=0 TO 1 STEP 0: NEXT i
 seconds 48
 mouse 2 move 128 128

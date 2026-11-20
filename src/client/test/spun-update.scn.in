@@ -32,8 +32,10 @@ key 21.5 q
 @TEXT 30 15 12 11 2 installed apps have updates.
 @MODAL 30 1 Updates Update:u:4 Ignore:i:2
 key 32 u
-@TEXT 39 25 1 0 Downloading block 
-@TEXT 46 25 1 0 Unzipping file 
+@TEXT 39 25 0 4  Downloading block 
+@TEXT 39 25 79 4  
+@TEXT 46 25 0 4  DATA/PART
+@TEXT 46 25 79 4  
 @TEXT 51 25 1 0 @STATUS@
 @NOULA 51
 key 53 q

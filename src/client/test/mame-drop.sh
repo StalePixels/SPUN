@@ -110,9 +110,8 @@ for stage in connect request midblock between; do
     echo "$run" >> "$work/runs.list"
     echo "$stage proxy log:"; sed 's/^/  /' "$work/$stage.log"
     check "$stage dropped" "1" "$(grep -c "dropped $stage" "$work/$stage.log" || true)"
-    ended=$(sed -n 's/^harness: reset t=\([0-9.]*\) CPU at \$0000 with ROM paged in (BASIC line PPC 20)$/\1/p' "$run/mame.log" | head -1)
-    echo "$stage .spun ended at t=${ended:-never}"
-    check "$stage ended with an error" yes "$([ -n "$ended" ] && echo yes || echo no)"
+    # The autoexec's ON ERROR handler prints SPUNERR with the error code and the line of .spun
+    check "$stage ended with an error" yes "$(grep -q '^screen .*"SPUNERR 255 30" .* MATCH' "$run/summary.txt" && echo yes || echo no)"
     "$HDFMONKEY" get "$run/sd.img" /sys/spun.cat "$work/spun.cat" > /dev/null 2>&1 || : > "$work/spun.cat"
     holds /tmp/$app-0001.zip none
     check "$stage spun.cat" "" "$(grep "^$app " "$work/spun.cat" || true)"

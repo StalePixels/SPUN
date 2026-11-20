@@ -7,7 +7,7 @@
 #   spun-dir-cancel.scn.in  get again over files that exist: Cancel at the first
 #                           Overwrite question writes nothing
 #   spun-dir-update.scn.in  update of dir001 and the test app: Cancel at
-#                           dir001 leaves it as it was, and the update goes on
+#                           dir001 stops the update, and both stay as they were
 #   spun-dir-all.scn.in     the same: Once, then All, and no more questions
 #   spun-dir-gui.scn.in     the GUI's dialogs for the same: the suggested
 #                           directory, then Overwrite with Once and All
@@ -113,6 +113,16 @@ holds() {
     check "file      $remote: $want" "$want" "$got"
 }
 
+# A crash of .spun resets the machine. The scenarios cannot use noreset, because NextZXOS fetches $0000 once when ON ERROR catches a dot command's error, so this looks for the harness's "machine reset" line in mame.log
+no_reset() {
+    if grep -E '^harness: reset t=([89]|[1-9][0-9])\.[0-9]* machine reset' "$run/mame.log"; then
+        echo "reset     machine reset after boot DIFFERENT"
+        status=1
+    else
+        echo "reset     no machine reset after boot MATCH"
+    fi
+}
+
 scenario() {
     local name=$1
     scn=$(sed -e "s|@SPUN@|$spun|" -e "s|@CAT@|$work/old.cat|" -e "s|@OLD@|$work/old|g" \
@@ -149,19 +159,14 @@ holds "$dir/DATA/ONE.BIN" none
 holds "$dir/DATA/TWO.BIN" none
 holds "$dir/SUB/KEEP.DOT" none
 holds /dot/spuntiny none
-if grep -E '^harness: reset t=([89]|[1-9][0-9])\.[0-9]* machine reset' "$run/mame.log"; then
-    echo "reset     machine reset after boot DIFFERENT"
-    status=1
-else
-    echo "reset     no machine reset after boot MATCH"
-fi
+no_reset
 
 scenario spun-dir-update
-check "spun.cat  update" "$(printf '%s 0000 0.9 C:%s\n%s 0001 ' "$app" "$dir" "$SPUN_TEST_APP")" \
-    "$(head -1 "$work/spun.cat"; sed -n '2s/^\([^ ]* [^ ]* \).*/\1/p' "$work/spun.cat")"
+check "spun.cat  update" "$(cat "$work/update.cat")" "$(cat "$work/spun.cat")"
 holds "$dir/DIRTEST.TXT" "file:$work/old"
 holds "$dir/DATA/ONE.BIN" none
 holds /dot/SPUNDIR none
+no_reset
 
 scenario spun-dir-all
 installed all

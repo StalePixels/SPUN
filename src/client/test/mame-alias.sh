@@ -122,7 +122,8 @@ catalogue point als002
 scenario spun-alias-moved
 check "spun.cat  moved" "$(printf 'als001 0001 1.0 C:/apps/alsa\nals002 0001 1.0 C:/apps/alsb')" "$(cat "$work/spun.cat")"
 installed als002 /apps/alsb
-check "server    unknown alias" "$(printf 'SPINFO nosuchalias 1\n< NoApp_ERROR')" "$(sed -En 's/^([0-9.]* )?(SP.*|GET .*|< .*)/\2/p' "$work/commands.log")"
+# Every start of .spun first asks for its own latest release (self_update); that request and its reply are left out
+check "server    unknown alias" "$(printf 'SPINFO nosuchalias 1\n< NoApp_ERROR')" "$(sed -En 's/^([0-9.]* )?(SP.*|GET .*|< .*)/\2/p' "$work/commands.log" | awk '/^SPINFO spun 1$/ { skip = 1; next } skip && /^< / { skip = 0; next } { skip = 0; print }')"
 # The number of the autoexec line with the get of the unknown alias, read from the run's image
 "$HDFMONKEY" get "$run/sd.img" /nextzxos/autoexec.bas "$work/autoexec.bas" > /dev/null
 line=$(python3 -c '
@@ -134,7 +135,8 @@ while at < len(prog):
     if b"nosuchalias" in prog[at + 4:at + 4 + size]:
         print(struct.unpack(">H", prog[at:at + 2])[0])
     at += 4 + size' "$work/autoexec.bas")
-if grep -qE "^harness: reset t=.* CPU at \\\$0000 with ROM paged in \(BASIC line PPC ${line:-x}\)" "$run/mame.log"; then
+# The autoexec's ON ERROR handler prints SPUNERR with the error code and the line of the get
+if grep -q "^screen .*\"SPUNERR 255 ${line:-x}\" .* MATCH" "$run/summary.txt"; then
     echo "trap      error of .spun get nosuchalias trapped at line $line MATCH"
 else
     echo "trap      error of .spun get nosuchalias trapped at line ${line:-?} DIFFERENT"

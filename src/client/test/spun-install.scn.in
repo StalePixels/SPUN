@@ -8,7 +8,8 @@
 # A click on Install opens the NextZXOS browser, as get does: 6 moves down to
 # APPS, ENTER opens it, SPACE chooses it. The GUI comes back with the confirm
 # box; key I installs. gui024's zip has 29 blocks and 8 files, so the status
-# line shows the download block by block and the unzip file by file. After
+# line shows the download block by block and the unzip in kilobytes of each
+# file, in the bar colours, and the button row is empty. After
 # the browser the GUI sets the pointer to the middle of the screen again.
 put @SPUN@ /dot/SPUN
 autostart PRINT "SPUNBEFORE1": PRINT "SPUNBEFORE2"
@@ -47,8 +48,12 @@ key 30.5 {SPACE}
 key 33.5 i
 
 # Progress on the status line, during the download and during the unzip
-@TEXT 38.5 25 1 0 Downloading block 
-@TEXT 46.5 25 1 0 Unzipping file 
+@TEXT 38.5 25 0 4  Downloading block 
+@TEXT 38.5 30 0 0                                                                                 
+@TEXT 38.5 25 79 4  
+@TEXT 46.5 25 0 4  DATA/PART
+@TEXT 46.5 30 0 0                                                                                 
+@TEXT 46.5 25 79 4  
 
 # The app page again, with the result on the status line
 @TEXT 51.5 25 1 0 Installed to C:/APPS/

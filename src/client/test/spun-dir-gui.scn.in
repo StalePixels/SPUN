@@ -39,7 +39,8 @@ key 35 i
 key 40 o
 @TEXT 42 15 12 11 C:/apps/spundir/deep/DATA/TWO.BIN
 key 43 a
-@TEXT 43.5 25 1 0 Unzipping file 
+@TEXT 43.5 25 0 4  
+@TEXT 43.5 25 79 4  
 @TEXT 43.5 13 12 8           
 @TEXT 43.5 18 10 0 r the install directory test of .spun.
 @NOULA 43.5
@@ -59,7 +60,8 @@ key 59 o
 key 60 o
 @TEXT 60.5 15 12 11 C:/apps/spundir/deep/SUB/KEEP.DOT
 key 61 o
-@TEXT 61.4 25 1 0 Unzipping file 
+@TEXT 61.4 25 0 4  
+@TEXT 61.4 25 79 4  
 @TEXT 61.4 13 12 8           
 @TEXT 61.4 18 10 0 r the install directory test of .spun.
 @NOULA 61.4
