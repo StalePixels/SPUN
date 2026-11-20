@@ -10,6 +10,7 @@ unsigned char *spun_update(void);
 void self_update(char *name);
 unsigned char *install_check(char *id);
 void install_start(void);
+unsigned char *deps_check(void);
 unsigned char *deps_first(void);
 unsigned char *dep_install(char *id);
 unsigned char *dep_dir(char *id);

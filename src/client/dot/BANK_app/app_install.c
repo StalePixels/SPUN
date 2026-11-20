@@ -53,6 +53,7 @@ void app_install(void) {
         }
     }
 
+    tm_blank(0, BUTTON_ROW, GUI_COLUMNS, ATTR_TEXT);
     if(!error) error = os_call(BANK_PACKAGES, (far_ptr_fn_t)gui_install, appid);
     app_show(false);
     if(error) {

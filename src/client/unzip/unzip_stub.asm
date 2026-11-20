@@ -6,11 +6,11 @@ INCLUDE "inflate_job.inc"
 SECTION code_user
 
 PUBLIC _inflate_call
+EXTERN _inflate_progress
 
 ; hl = struct inflate_job *
-; Saves the machine state into the job, switches off the automap entry points
-; that fire without ROM3 and the NMI buttons, pages the decoder into MMU0 and
-; jumps to it. inflate.asm returns to stub_leave with every other slot restored.
+; Saves the machine state into the job and enters the decoder at its start. inflate.asm
+; returns to stub_leave with every other slot restored.
 _inflate_call:
    push ix
    push iy
@@ -26,16 +26,27 @@ _inflate_call:
    ld de,stub_leave
    ld (ix + J_LEAVE),e
    ld (ix + J_LEAVE + 1),d
-   ld de,J_HMMU
-   add hl,de
-   ld e,REG_MMU0
+   ld de,stub_progress
+   ld (ix + J_PROGRESS),e
+   ld (ix + J_PROGRESS + 1),d
+   ld de,$0000
+
+; ix = job, de = address in page A
+; Saves the machine state into the job, switches off the automap entry points that fire
+; without ROM3 and the NMI buttons, pages the decoder into MMU0 and jumps to de with hl = job.
+stub_enter:
+   push ix
+   pop hl
+   ld bc,J_HMMU
+   add hl,bc
+   ld c,REG_MMU0
 stub_mmu:
-   ld a,e
+   ld a,c
    call stub_getreg
    ld (hl),a
    inc hl
-   inc e
-   ld a,e
+   inc c
+   ld a,c
    cp REG_MMU7 + 1
    jr nz,stub_mmu
    in a,(PORT_DIVMMC)
@@ -49,11 +60,11 @@ stub_mmu:
    call stub_getreg
    ld (ix + J_RB9),a
    cpl
-   ld d,a
+   ld b,a
    ld a,REG_ENTRY0
    call stub_getreg
    ld (ix + J_RB8),a
-   and d
+   and b
    ld (ix + J_B8C),a
    nextreg REG_ENTRY0,a
    ld a,REG_ENTRY1
@@ -66,9 +77,10 @@ stub_mmu:
    nextreg REG_MMU0,a
    xor a
    out (PORT_DIVMMC),a
-   ld l,(ix + J_SELF)
-   ld h,(ix + J_SELF + 1)
-   jp $0000
+   push ix
+   pop hl
+   push de
+   ret
 
 ; a = Next register number
 ; a <- value
@@ -81,9 +93,9 @@ stub_getreg:
    pop bc
    ret
 
-stub_leave:
-   ld sp,(stub_sp)
-   ld ix,(stub_job)
+; ix = job
+; Puts back MMU0, the DivMMC, the automap entry points and the NMI buttons.
+stub_restore:
    ld a,(ix + J_HMMU)
    nextreg REG_MMU0,a
    ld a,(ix + J_HE3)
@@ -94,6 +106,12 @@ stub_leave:
    nextreg REG_ENTRY1,a
    ld a,(ix + J_R06)
    nextreg REG_PERIPH2,a
+   ret
+
+stub_leave:
+   ld sp,(stub_sp)
+   ld ix,(stub_job)
+   call stub_restore
    ld l,(ix + J_RESULT)
    ld h,0
    pop af
@@ -102,6 +120,24 @@ stub_leave:
    ret po
    ei
    ret
+
+; de = the address in page A to go back to
+; inflate_progress runs on the host's stack, with the caller's ix and iy and interrupts off.
+stub_progress:
+   ld sp,(stub_sp)
+   pop af
+   pop iy
+   pop ix
+   push ix
+   push iy
+   push af
+   push de
+   ld ix,(stub_job)
+   call stub_restore
+   call _inflate_progress
+   pop de
+   ld ix,(stub_job)
+   jp stub_enter
 
 SECTION data_user
 

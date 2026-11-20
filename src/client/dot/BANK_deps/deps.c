@@ -15,6 +15,7 @@
 static unsigned char ids[TREE_MAX][7];
 static uint16_t serials[TREE_MAX];
 static uint8_t counts[TREE_MAX];
+static uint32_t cores[TREE_MAX];
 static uint16_t edgeStart[TREE_MAX];
 static uint8_t edgeCount[TREE_MAX];
 static uint8_t state[TREE_MAX];
@@ -42,6 +43,7 @@ static unsigned char savedSuggestDir[sizeof(suggestDir)];
 static uint16_t savedSerial;
 static uint32_t savedDownloads;
 static uint8_t savedCount;
+static uint32_t savedCore;
 
 static void save(void) {
     strcpy(savedUsername, username);
@@ -55,6 +57,7 @@ static void save(void) {
     savedSerial = serial;
     savedDownloads = downloads;
     savedCount = dependsCount;
+    savedCore = minCore;
 }
 
 static void restore(void) {
@@ -69,6 +72,7 @@ static void restore(void) {
     serial = savedSerial;
     downloads = savedDownloads;
     dependsCount = savedCount;
+    minCore = savedCore;
 }
 
 static uint8_t find(unsigned char *id) __z88dk_fastcall {
@@ -124,6 +128,7 @@ static void list_deps(uint8_t at) __z88dk_fastcall {
             strcpy(ids[found], listed[item]);
             serials[found] = serial;
             counts[found] = dependsCount;
+            cores[found] = minCore;
             state[found] = NEW;
         }
         if(edgesUsed == EDGES_MAX) NBN_Fail(err_too_many_deps);
@@ -179,8 +184,11 @@ static unsigned char *install_tree(void) {
     return NULL;
 }
 
-unsigned char *deps_install(void) {
-    unsigned char *error;
+// The tree's only requests. The tables stay for deps_install. The app itself, at 0, is checked
+// by its caller, and each dependency here, before any folder, question or file change
+unsigned char *deps_list(void) {
+    unsigned char name[18];
+    unsigned char *error = NULL;
     uint8_t at;
 
     save();
@@ -191,6 +199,19 @@ unsigned char *deps_install(void) {
     counts[0] = dependsCount;
     for(at = 0; at < used; at++) list_deps(at);
 
+    for(at = 1; at < used && !error; at++) {
+        sprintf(name, "Dependency %s", ids[at]);
+        error = core_check(name, cores[at]);
+    }
+    restore();
+    return error;
+}
+
+// The tree deps_list kept, into the folder chosen since
+unsigned char *deps_install(void) {
+    unsigned char *error;
+
+    save();
     error = install_tree();
     restore();
     return error;

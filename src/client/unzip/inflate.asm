@@ -89,32 +89,14 @@ Entry:
 		ld de,CJob
 		ld bc,JOB_SIZE
 		ldir
-		ld a,(JobA + J_PB)
-		nextreg REG_MMU1,a
-		ld a,(JobA + J_W0)
-		nextreg REG_MMU3,a
-		ld a,(JobA + J_W0 + 1)
-		nextreg REG_MMU4,a
-		ld a,(JobA + J_W0 + 2)
-		nextreg REG_MMU5,a
-		ld a,(JobA + J_W0 + 3)
-		nextreg REG_MMU6,a
+		call DecoderMap
 		ld (EntrySP),sp
 		call Main
 Leave:
 		ld (JobA + J_RESULT),a
 		ld a,(CJob + J_IFFIO)
 		ld (JobA + J_IFFIO),a
-		ld a,(JobA + J_HMMU + 1)
-		nextreg REG_MMU1,a
-		ld a,(JobA + J_HMMU + 3)
-		nextreg REG_MMU3,a
-		ld a,(JobA + J_HMMU + 4)
-		nextreg REG_MMU4,a
-		ld a,(JobA + J_HMMU + 5)
-		nextreg REG_MMU5,a
-		ld a,(JobA + J_HMMU + 6)
-		nextreg REG_MMU6,a
+		call HostMap
 		ld a,(JobA + J_HMMU + 7)
 		nextreg REG_MMU7,a
 		ld hl,(JobA + J_SELF)
@@ -135,6 +117,34 @@ Unwind:
 ThrowException:
 		ld a,UNZIP_E_DATA
 		jp Unwind
+
+; MMU1 and MMU3-6 for the decoder. MMU7 is left to the caller: the stack is there.
+DecoderMap:
+		ld a,(JobA + J_PB)
+		nextreg REG_MMU1,a
+		ld a,(JobA + J_W0)
+		nextreg REG_MMU3,a
+		ld a,(JobA + J_W0 + 1)
+		nextreg REG_MMU4,a
+		ld a,(JobA + J_W0 + 2)
+		nextreg REG_MMU5,a
+		ld a,(JobA + J_W0 + 3)
+		nextreg REG_MMU6,a
+		ret
+
+; MMU1 and MMU3-6 for the host. MMU7 is left to the caller: the stack is there.
+HostMap:
+		ld a,(JobA + J_HMMU + 1)
+		nextreg REG_MMU1,a
+		ld a,(JobA + J_HMMU + 3)
+		nextreg REG_MMU3,a
+		ld a,(JobA + J_HMMU + 4)
+		nextreg REG_MMU4,a
+		ld a,(JobA + J_HMMU + 5)
+		nextreg REG_MMU5,a
+		ld a,(JobA + J_HMMU + 6)
+		nextreg REG_MMU6,a
+		ret
 
 Main:
 		ld hl,InputBufferEnd - 1
@@ -292,6 +302,54 @@ FlushGo:
 FlushDone:
 		ld a,(JobA + J_W0)
 		nextreg REG_MMU3,a
+
+; The host shows progress: its map comes back with the byte count in its job, and the stub
+; calls it with de = Resume. Every register comes back; the stack in page C is out meanwhile.
+Progress:
+		push af
+		push bc
+		push de
+		push hl
+		push ix
+		push iy
+		ex af,af'
+		exx
+		push af
+		push bc
+		push de
+		push hl
+		ld (ProgressSP),sp
+		call HostMap
+		ld a,(JobA + J_HMMU + 7)
+		nextreg REG_MMU7,a
+		ld hl,(JobA + J_SELF)
+		ld de,J_OUTCOUNT
+		add hl,de
+		ex de,hl
+		ld hl,OutputCount
+		ld bc,4
+		ldir
+		ld de,Resume
+		ld hl,(JobA + J_PROGRESS)
+		jp (hl)
+
+Resume:
+		ld a,(JobA + J_PC)
+		nextreg REG_MMU7,a
+		ld sp,(ProgressSP)
+		call DecoderMap
+		pop hl
+		pop de
+		pop bc
+		pop af
+		exx
+		ex af,af'
+		pop iy
+		pop ix
+		pop hl
+		pop de
+		pop bc
+		pop af
 		ret
 
 ; === Inflate decompression ===
@@ -3298,6 +3356,7 @@ FinishBlockEnd:	pop de
 
 JobA:		defs JOB_SIZE
 EntrySP:	dw 0
+ProgressSP:	dw 0
 NoCrcCheck:	db 0
 
 ; -- Used during building the dynamic alphabet --
@@ -3522,7 +3581,6 @@ IoRead:
 		defb F_READ
 		call DecoderLow
 		jp c,IoReadFail
-		nop			; the same size as before, so no address moves
 		ld a,b
 		or c
 		ld a,UNZIP_E_DATA
@@ -3557,7 +3615,6 @@ IoWrite:
 		call DecoderLow
 		pop hl
 		jp c,IoWriteFail
-		nop			; the same size as before, so no address moves
 		and a
 		sbc hl,bc
 		ld a,UNZIP_E_WRITE
@@ -3623,7 +3680,7 @@ DecoderIffOff:
 
 CJob:		defs JOB_SIZE
 
-; After CJob, so that no earlier address moves. a = esxDOS error code, carry set.
+; a = esxDOS error code, carry set.
 IoReadFail:
 		ld (JobA + J_ESXERR),a
 		ld a,UNZIP_E_READ

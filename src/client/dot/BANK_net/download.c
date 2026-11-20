@@ -79,6 +79,7 @@ unsigned char *download(char *id) {
     close_out();
     downloading = false;
 
+    progress_end();
     if(!quiet) printf("Transfer complete\n");
     return NULL;
 }

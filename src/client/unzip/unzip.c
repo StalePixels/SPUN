@@ -127,6 +127,15 @@ static bool dot_target(void) {
     return true;
 }
 
+static void entry_progress(uint32_t done) {
+    progress_bytes(done, get32(hdr + 24), (unsigned char *)path + dir_len + 1);
+}
+
+// unzip_stub.asm calls it after each write of the decoder's window, with interrupts off
+void inflate_progress(void) {
+    entry_progress(job.out_count);
+}
+
 static unsigned char check_existing(void) {
     const char *target = dot_target() ? (const char *)tail : path;
     unsigned char answer;
@@ -264,7 +273,7 @@ unsigned char unzip(const char *zip_path, const char *dir_path, bool yes) {
         for (e = 0; r == UNZIP_OK && e < entries; e++) {
             r = next_entry();
             if (r != UNZIP_OK) break;
-            progress(PROGRESS_UNZIP, e + 1, entries, (unsigned char *)path + dir_len + 1);
+            entry_progress(0);
             r = extract_entry();
         }
         cd_pos = cd_offset;

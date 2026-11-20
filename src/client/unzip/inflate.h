@@ -34,6 +34,7 @@ struct inflate_job {
     uint32_t crc_out;
     uint8_t iff_io;
     uint8_t diag[32];
+    void *progress;
 };
 
 // The 16K bank that holds the two images (inflate_pages.asm.m4). Bank 33 exists
@@ -64,5 +65,6 @@ unsigned char unzip_pages_alloc(struct inflate_job *job);
 void unzip_pages_free(struct inflate_job *job, unsigned char pages);
 
 extern unsigned char inflate_call(struct inflate_job *job) __z88dk_fastcall;
+void inflate_progress(void);
 
 #endif

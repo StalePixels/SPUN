@@ -29,6 +29,7 @@
 #define TAG_CATEGORY_ENTRY  0x20
 #define TAG_SLUG            0x21
 #define TAG_DEPENDS_COUNT   0x22
+#define TAG_MIN_CORE        0x23
 #define TAG_DESCRIPTION     0x80
 #define TAG_CHANGELOG       0x81
 

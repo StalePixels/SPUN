@@ -126,11 +126,15 @@ unsigned char install(char *id, bool yes) {
     unsigned char result;
     int code;
 
+#ifdef __ZXNEXT
+    if(!guiOpen) SYSVAR_SCRCT = 255;
+#endif
     sprintf(zipPath, "C:/tmp/%s-%04x.zip", id, serial);
     if((error = _farWithPointer(BANK_NET, (far_ptr_fn_t)download, id))) NBN_Fail(error);
 
     if(!quiet) printf("Installing to %s\n", installDir);
     result = unzip(zipPath, installDir, yes || overwriteAll);
+    progress_end();
     if(result == UNZIP_E_NOMEM) NBN_Fail(err_no_memory);
     if(result == UNZIP_E_READ || result == UNZIP_E_CREATE || result == UNZIP_E_WRITE) {
         code = errno ? errno : IO_ERROR;
@@ -155,8 +159,13 @@ void install_start(void) {
     walking = false;
 }
 
-// The dependencies go in before the app. The tree is walked in BANK_DEPS, which comes back here
-// for each one, so a dependency's own install never walks it again
+unsigned char *deps_check(void) {
+    if(!dependsCount) return NULL;
+    return _far(BANK_DEPS, (far_fn_t)deps_list);
+}
+
+// The dependencies go in before the app, from the tree deps_check listed. BANK_DEPS comes back
+// here for each one, so a dependency's own install never walks it again
 unsigned char *deps_first(void) {
     unsigned char *error;
 
@@ -214,8 +223,10 @@ unsigned char *spun_get(char *id) {
     }
 
     name_print();
+    if((error = core_check(title, minCore))) return error;
+    if(installed && installedSerial > serial) return err_installed_newer;
+    if((error = deps_check())) return error;
     if(installed) {
-        if(installedSerial > serial) return err_installed_newer;
         if(installedSerial == serial) {
             printf("Installed. Install again? (y/n) ");
             if(ask("yn") != 'y') return NULL;
@@ -270,7 +281,12 @@ unsigned char *spun_update(void) {
 
         name_print();
         updates++;
-        if((error = deps_first())) {
+        if((error = core_check(title, minCore))) {
+            updateError = error;
+            if(!guiOpen) print_error(error);
+            continue;
+        }
+        if((error = deps_check()) || (error = deps_first())) {
             if(error == unzipErrors[UNZIP_E_ABORT - 1]) return error;
             updateError = error;
             if(guiOpen) continue;

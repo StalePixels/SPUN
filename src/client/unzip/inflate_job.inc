@@ -33,8 +33,9 @@ defc J_CRCOUT   = 55
 defc J_IFFIO    = 59
 defc J_DIAG     = 60
 defc J_ESXERR   = 89    ; diag[29]: esxDOS code of a failed read or write in the decoder
+defc J_PROGRESS = 92
 defc J_OUT_SIZE = 42
-defc JOB_SIZE   = 92
+defc JOB_SIZE   = 94
 
 defc UNZIP_OK            = 0
 defc UNZIP_E_NOMEM       = 1

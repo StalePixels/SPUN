@@ -67,6 +67,8 @@ extern bool quiet;
 extern unsigned char *updateError;
 // The dependency count of the app's latest release, from SPINFO
 extern uint8_t dependsCount;
+// The app's minimum core from SPINFO, (major << 16) | (minor << 8) | sub; 0 when it has none
+extern uint32_t minCore;
 // The overwrite answer "All" holds for the rest of a get, an install in the browser, or an update run
 extern bool overwriteAll;
 // Set when a dependency is not on SPUN; the browser shows it after the install or the update
@@ -75,6 +77,7 @@ extern unsigned char *depWarning;
 extern unsigned char parentDir[256];
 
 bool choose_dir(void);
+unsigned char *core_check(unsigned char *name, uint32_t need);
 
 #ifdef __ZXNEXT
 void check_install_drive(void);
@@ -83,6 +86,8 @@ void gui_end(void);
 #define check_install_drive()
 #define gui_end()
 #define progress(stage, done, total, name)
+#define progress_bytes(done, total, name)
+#define progress_end()
 #endif
 
 #ifdef __ZXNEXT

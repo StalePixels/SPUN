@@ -36,6 +36,7 @@ bool downloading;
 bool quiet;
 unsigned char *updateError;
 uint8_t dependsCount;
+uint32_t minCore;
 bool overwriteAll;
 unsigned char *depWarning;
 unsigned char parentDir[256];
@@ -51,11 +52,13 @@ static uint8_t pageArg = 0;
 
 // An exit in the middle of a block read leaves another page over the screen and BASIC's
 // system variables at $4000, so the ULA's pages go back first; NextZXOS's own mapping goes back last.
+// An exit during a CLI progress line ends that line, so the error starts on a line of its own.
 // A download cut short, for example by a lost connection, leaves no part of its zip
 static void shutdown(void) {
 #ifdef __ZXNEXT
     NBN_PageOut();
     gui_end();
+    progress_end();
 #endif
     _far(BANK_NET, (far_fn_t)net_close);
     if(file_out) esxdos_f_close(file_out);
@@ -159,6 +162,26 @@ bool choose_dir(void) {
     return true;
 }
 #endif
+
+#ifdef __ZXNEXT
+static unsigned char coreError[64];
+#endif
+
+// The refusal is in main memory, where NextZXOS and the GUI read it, with bit 7 set on its last letter
+unsigned char *core_check(unsigned char *name, uint32_t need) {
+#ifdef __ZXNEXT
+    uint8_t major = ZXN_READ_REG(REG_VERSION);
+    uint32_t core = ((uint32_t)(major >> 4) << 16) | ((uint16_t)(major & 0x0F) << 8) | ZXN_READ_REG(REG_SUB_VERSION);
+    int length;
+
+    if(core >= need) return NULL;
+    length = sprintf(coreError, "%s needs core %u.%02u.%02u", name, (uint8_t)(need >> 16), (uint8_t)(need >> 8), (uint8_t)need);
+    coreError[length - 1] |= 0x80;
+    return coreError;
+#else
+    return NULL;
+#endif
+}
 
 #ifdef __ZXNEXT
 // NextZXOS keeps a dot command's own file open, which stops a get from deleting C:/dot/spun.
@@ -296,8 +319,14 @@ int main(int argc, char** argv) {
     } else if (stricmp(argv[commandArg], "info") == 0) {
         error = _farWithPointer(BANK_NET, (far_ptr_fn_t)spun_info, argv[valueArg]);
     } else if (stricmp(argv[commandArg], "update") == 0) {
+#ifdef __ZXNEXT
+        SYSVAR_SCRCT = 255;
+#endif
         error = _far(BANK_PACKAGES, (far_fn_t)spun_update);
     } else {
+#ifdef __ZXNEXT
+        SYSVAR_SCRCT = 255;
+#endif
         error = _farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)spun_get, argv[valueArg]);
     }
 

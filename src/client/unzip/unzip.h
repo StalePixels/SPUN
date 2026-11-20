@@ -23,6 +23,8 @@
 #define PROGRESS_DOWNLOAD   0
 #define PROGRESS_UNZIP      1
 extern void progress(unsigned char stage, unsigned int done, unsigned int total, unsigned char *name);
+extern void progress_bytes(unsigned long done, unsigned long total, unsigned char *name);
+extern void progress_end(void);
 
 extern unsigned char overwrite_ask(const char *name);
 
