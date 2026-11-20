@@ -77,7 +77,7 @@ export async function createApp(
 }
 
 export async function deleteAppInUi(page: Page, appId: string): Promise<void> {
-  await page.goto(`/publish/apps/${appId}`);
+  await page.goto(`/publish/apps/${appId}/delete`);
   await clickHydrated(page.getByTestId("delete-app"));
   await page.getByTestId("delete-app-confirm").click();
   await page.waitForURL((url) => url.pathname === "/publish");

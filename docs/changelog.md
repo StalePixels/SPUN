@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9.2 - Unreleased
+
+### SPUNServer
+
+- `SPLIST`, and `SPCAT` without search text, leave out hidden apps.
+  `SPFIND`, `SPINFO` and downloads still find them.
+
+### CMS
+
+- The app page has tabs: Releases, Dependencies, Screenshots, Details
+  and Delete. Each tab has its own URL.
+- Dependencies are chosen from a list of the publisher's other apps, or
+  found with a search of the public apps, in place of a field of app ids.
+  The admin app page has the same picker.
+- An app can be hidden in the catalogue. The catalogue lists, on the web
+  and on the Next, leave it out. Search, its own page, downloads and
+  dependencies still find it. The API and MCP take it as `hidden`.
+
 ## 0.9.1 - 20261117
 
 ### `.spun`

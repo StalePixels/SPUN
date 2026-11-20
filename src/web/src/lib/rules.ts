@@ -251,6 +251,7 @@ export const APP_ID_RE = /^[0-9a-z]{6}$/;
 
 // .spun reads the count of an app's dependencies as one byte.
 export const DEPENDS_MAX = 255;
+export const DEPENDS_SEARCH_MAX = 20;
 
 export type DependsCheck = { ok: true; ids: string[] } | { ok: false; error: Problem };
 

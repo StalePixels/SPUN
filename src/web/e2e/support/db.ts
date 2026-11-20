@@ -28,9 +28,10 @@ export async function appRow(appId: string) {
     title: string;
     description: string;
     install_dir: string | null;
+    hidden: number;
     deleted_at: Date | null;
   }>(
-    "select id, user_id, title, description, install_dir, deleted_at from apps where id = ?",
+    "select id, user_id, title, description, install_dir, hidden, deleted_at from apps where id = ?",
     [appId],
   );
   return row;
@@ -261,6 +262,10 @@ export async function dotOverrideNames(appId: string): Promise<string[]> {
 // Only on an app that the test made.
 export async function insertDotOverride(appId: string, name: string): Promise<void> {
   await query("insert into dot_overrides (app_id, name) values (?, ?)", [appId, name]);
+}
+
+export async function setAppHidden(appId: string, hidden: boolean): Promise<void> {
+  await query("update apps set hidden = ? where id = ?", [hidden, appId]);
 }
 
 export async function markAppDeleted(appId: string): Promise<void> {

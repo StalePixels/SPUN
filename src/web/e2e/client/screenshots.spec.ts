@@ -57,7 +57,7 @@ test("a screenshot never has the transparent colour 0xE3, ready NXI or converted
 
   const nxi = readyNxiData();
   nxi.set([0xe3, 1], 2);
-  await page.goto(`/publish/apps/${id}`);
+  await page.goto(`/publish/apps/${id}/screenshots`);
   await uploadScreenshot(page, 1, files.write("magenta.nxi", nxi));
   await expect(page.getByTestId("screenshot-preview-1")).toBeVisible();
   await uploadScreenshot(page, 2, files.write("magenta.png", await plainPng(256, 192, "#ff00ff")));
@@ -79,7 +79,7 @@ test("upload, replace and clear screenshots, and the public page shows them", as
   await uploadRelease(page, { version: "1.0", file: files.write("1.0.zip", makeZip(sampleEntries())) });
   await expect(page).toHaveURL(new RegExp(`/publish/apps/${id}/releases/1$`));
 
-  await page.goto(`/publish/apps/${id}`);
+  await page.goto(`/publish/apps/${id}/screenshots`);
   await uploadScreenshot(page, 1, await stripes(512, 384, "main.png"));
   await expect(page.getByTestId("screenshot-preview-1")).toBeVisible();
   await uploadScreenshot(page, 2, readyNxi("ready.nxi"));
@@ -109,7 +109,7 @@ test("upload, replace and clear screenshots, and the public page shows them", as
   // cached PNG on the public page would still be 256 wide.
   const before = readFileSync(nxiFile(id, 1));
   const thumbBefore = readFileSync(thumbFile(id, 1));
-  await page.goto(`/publish/apps/${id}`);
+  await page.goto(`/publish/apps/${id}/screenshots`);
   await uploadScreenshot(page, 1, await stripes(640, 512, "wide.png"));
   await expect(page.getByTestId("screenshot-preview-1")).toHaveAttribute("width", "320");
   expect(statSync(nxiFile(id, 1)).size).toBe(82_432);
@@ -136,7 +136,7 @@ test("upload, replace and clear screenshots, and the public page shows them", as
 
 test("a text file shows screenshot.notImage, and a wrong-size NXI screenshot.badNxi", async ({ page, apps }) => {
   const id = await apps.create("BadShot");
-  await page.goto(`/publish/apps/${id}`);
+  await page.goto(`/publish/apps/${id}/screenshots`);
   await uploadScreenshot(page, 3, files.write("notes.png", Buffer.from("not an image\n")));
   await expect(page.getByTestId("screenshot-slot-3").getByTestId("form-error")).toHaveAttribute(
     "data-error",
@@ -152,7 +152,7 @@ test("a text file shows screenshot.notImage, and a wrong-size NXI screenshot.bad
 
 test("an image over 4 megapixels shows screenshot.tooManyPixels and stores nothing", async ({ page, apps }) => {
   const id = await apps.create("BigShot");
-  await page.goto(`/publish/apps/${id}`);
+  await page.goto(`/publish/apps/${id}/screenshots`);
   await uploadScreenshot(page, 2, files.write("big.png", await blackPng(2000, 2001)));
   await expect(page.getByTestId("screenshot-slot-2").getByTestId("form-error")).toHaveAttribute(
     "data-error",
@@ -169,7 +169,7 @@ test("an app delete moves its screenshots to the bin, and a restore brings them 
   browser,
 }) => {
   const id = await apps.create("ShotDelete");
-  await page.goto(`/publish/apps/${id}`);
+  await page.goto(`/publish/apps/${id}/screenshots`);
   await uploadScreenshot(page, 1, await stripes(256, 192, "main.png"));
   await expect(page.getByTestId("screenshot-preview-1")).toBeVisible();
   const thumb = readFileSync(thumbFile(id, 1));

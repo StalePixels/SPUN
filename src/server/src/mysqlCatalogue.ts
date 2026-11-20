@@ -15,6 +15,10 @@ import {
 const PUBLIC = `a.deleted_at IS NULL
   AND EXISTS (SELECT 1 FROM releases WHERE app_id = a.id AND deleted_at IS NULL)`;
 
+// A hidden app is left out of the lists, but SPFIND, SPINFO and downloads still find it.
+const LISTED = `${PUBLIC}
+  AND NOT a.hidden`;
+
 const MATCH = `${PUBLIC}
   AND (LOWER(a.title) LIKE ? OR LOWER(a.description) LIKE ?)`;
 
@@ -82,11 +86,11 @@ export function mysqlCatalogue(uri: string): Catalogue {
 
     async list(offset, limit) {
       const [[count]] = await pool.query<RowDataPacket[]>(
-        `SELECT COUNT(*) AS total FROM apps a WHERE ${PUBLIC}`,
+        `SELECT COUNT(*) AS total FROM apps a WHERE ${LISTED}`,
       );
       const [rows] = await pool.query<RowDataPacket[]>(
         `${FOUND}
-         WHERE ${PUBLIC}
+         WHERE ${LISTED}
          ORDER BY r.release_date DESC, a.title, a.id
          LIMIT ? OFFSET ?`,
         [limit, offset],
@@ -118,7 +122,7 @@ export function mysqlCatalogue(uri: string): Catalogue {
       }
       const categoryId = categories[0].id;
       const pattern = likePattern(text);
-      const where = text === "" ? `${PUBLIC} ${IN_CATEGORY}` : `${MATCH} ${IN_CATEGORY}`;
+      const where = text === "" ? `${LISTED} ${IN_CATEGORY}` : `${MATCH} ${IN_CATEGORY}`;
       const order = text === "" ? "r.release_date DESC, a.title, a.id" : "a.title, a.id";
       const args = text === "" ? [categoryId] : [pattern, pattern, categoryId];
       const [[count]] = await pool.query<RowDataPacket[]>(

@@ -18,7 +18,7 @@ Your account page is `/me`. It shows your username, your email address and how m
 
 ## Apps
 
-An app is the thing people install. It has a title, a description, categories and a suggested install directory. Make one under "New app" in `/publish`.
+An app is the thing people install. It has a title, a description, categories and a suggested install directory. Make one under "New app" in `/publish`. Its page has tabs: Releases, Dependencies, Screenshots, Details (the fields below) and Delete.
 
 - Title: 1 to 32 characters, printable ASCII.
 - Description: up to 256 characters, printable ASCII. It can be empty.
@@ -29,11 +29,13 @@ SPUN gives each app an id of six lowercase letters and digits, such as `abc123`.
 
 Each user may publish a limited number of apps. The limit is on your account page. An admin sets it. If you have reached it, "New app" says so.
 
+- Hide in the catalogue: the catalogue lists, on the web and on the Next, leave the app out. Search still finds it, and its own page, downloads and dependencies still work. Use it for the parts of a large app: the main app is in the catalogue, and its parts are hidden apps that it depends on.
+
 The catalogue lists an app only when it has at least one release that is not deleted.
 
 ## Releases
 
-A release is one zip file with a version. Open your app in `/publish` and use "Upload a release".
+A release is one zip file with a version. Open your app in `/publish` and use "Upload a release" on the Releases tab.
 
 - Version: 1 to 16 characters from letters, digits and `_ . , # -`. No spaces. For example `1.1-beta`.
 - Zip file: up to 4 MB. The files in it add up to at most 16 MB when unpacked.
@@ -61,13 +63,13 @@ A file at the root of the zip with a name ending `.dot` is a dot command. After 
 
 An app can depend on other apps on SPUN, yours or another publisher's. Before `.spun` installs or updates your app, it installs each dependency that is not installed, and updates each one that has a newer release. It does the same for the dependencies of a dependency. An app with no files of its own and only dependencies works as a group: one install gets them all. Give such an app a small zip, for example a text file that says what the group holds.
 
-Enter the dependencies under "Dependencies" on your app's page, as app ids with spaces between them. A dependency with no suggested install directory goes to the directory of the app that lists it. Aliases do not work here. An app cannot depend on itself or on a deleted app. An app can have up to 255 dependencies.
+Choose the dependencies on the Dependencies tab of your app's page. Pick from your other apps, or search for a public app of any publisher by its title, description or id, then save. A dependency with no suggested install directory goes to the directory of the app that lists it. Aliases do not work here. An app cannot depend on itself or on a deleted app. An app can have up to 255 dependencies.
 
 Each release keeps the dependencies that the app has when you upload it, and they never change after that. A change to the list reaches the Next only with your next release. To send out a change without a new zip, use "Republish".
 
 ## Screenshots
 
-An app has five screenshot slots. Slot 1 is the main screenshot, shown in lists.
+An app has five screenshot slots, on the Screenshots tab. Slot 1 is the main screenshot, shown in lists.
 
 - Upload a PNG, JPEG, GIF or WebP image, or an NXI file. The file can be up to 16 MB, and an image up to 4 megapixels. A screenshot needs no more than 320x256.
 - The site converts an image to the NXI format that the Next uses, and keeps a PNG copy for the web site. The site checks an NXI file and keeps it as it is. It must be 49,664 bytes (256x192) or 82,432 bytes (320x256), with its palette first.
@@ -75,7 +77,7 @@ An app has five screenshot slots. Slot 1 is the main screenshot, shown in lists.
 
 ## Deleting an app
 
-"Delete app" takes the app and all its releases and screenshots out of the catalogue. The site keeps the files, so an admin can restore the app. The app id is never used again, by you or by anyone else. An app you deleted does not count against your app limit.
+"Delete app", on the Delete tab, takes the app and all its releases and screenshots out of the catalogue. The site keeps the files, so an admin can restore the app. The app id is never used again, by you or by anyone else. An app you deleted does not count against your app limit.
 
 ## API keys and the API
 

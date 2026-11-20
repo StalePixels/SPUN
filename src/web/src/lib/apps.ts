@@ -141,7 +141,7 @@ export async function moveApp(
   }
 }
 
-export type AppFields = { title: string; description: string; installDir: string; categories: number[] };
+export type AppFields = { title: string; description: string; installDir: string; categories: number[]; hidden: boolean };
 
 export type OwnRelease = {
   serial: number;
@@ -155,6 +155,7 @@ export type OwnAppView = {
   title: string;
   description: string;
   installDir: string | null;
+  hidden: boolean;
   categories: number[];
   depends: AppId[];
   releases: OwnRelease[];
@@ -180,7 +181,7 @@ export async function withCategoryInstallDir(fields: AppFields): Promise<AppFiel
 
 type AppFieldsCheck = { ok: true; installDir: string; categoryIds: number[] } | { ok: false; error: Problem };
 
-export async function checkAppFields(fields: AppFields): Promise<AppFieldsCheck> {
+export async function checkAppFields(fields: Omit<AppFields, "hidden">): Promise<AppFieldsCheck> {
   const error = checkTitle(fields.title) ?? checkDescription(fields.description);
   if (error) {
     return { ok: false, error };
@@ -206,7 +207,14 @@ export async function addApp(userId: string, fields: AppFields): Promise<{ error
   await db().transaction(async (tx) => {
     await tx
       .insert(apps)
-      .values({ id, userId, title: fields.title, description: fields.description, installDir: choice.installDir });
+      .values({
+        id,
+        userId,
+        title: fields.title,
+        description: fields.description,
+        installDir: choice.installDir,
+        hidden: fields.hidden,
+      });
     await setAppCategories(tx, id, choice.categoryIds);
   });
   notify({ kind: "appCreated", actorId: userId, appId: id, fields: await appSnapshot(id) });
@@ -230,7 +238,7 @@ export async function editApp(
   await db().transaction(async (tx) => {
     await tx
       .update(apps)
-      .set({ title: fields.title, description: fields.description, installDir: choice.installDir })
+      .set({ title: fields.title, description: fields.description, installDir: choice.installDir, hidden: fields.hidden })
       .where(eq(apps.id, appId));
     await setAppCategories(tx, appId, choice.categoryIds);
   });
@@ -269,6 +277,7 @@ export async function ownAppView(userId: string, appId: AppId): Promise<OwnAppVi
     title: app.title,
     description: app.description,
     installDir: app.installDir,
+    hidden: app.hidden,
     categories: (await appCategoryList(appId)).map((category) => category.id),
     depends: await appDependsList(appId),
     releases: rows.map((row) => ({

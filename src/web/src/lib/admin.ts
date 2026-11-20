@@ -6,7 +6,7 @@ import { appIdStore, checkAliasFree, deleteApp, moveApp, notifyAppEdit, parseApp
 import { isPublic, matches } from "./catalogue";
 import { setAppCategories } from "./categories";
 import { shapeStats, statsDays, type StatsMeasure } from "./clientstats";
-import { appDependsList, neededBy, setDepends } from "./depends";
+import { appDependsList, dependsApps, neededBy, ownDependsChoices, searchDepends, setDepends, type DependsApp } from "./depends";
 import { checkDotOverride } from "./dotcommands";
 import { db } from "./db";
 import { isDuplicateEntry } from "./dberrors";
@@ -235,6 +235,7 @@ export async function adminGetApp(appId: AppId) {
       title: apps.title,
       description: apps.description,
       installDir: apps.installDir,
+      hidden: apps.hidden,
       deletedAt: apps.deletedAt,
       ownerId: users.id,
       owner: users.username,
@@ -302,6 +303,21 @@ export async function adminRemoveAlias(appId: AppId, alias: string): Promise<voi
 export async function adminListDepends(appId: AppId): Promise<AppId[]> {
   await requireAdmin();
   return appDependsList(appId);
+}
+
+export async function adminDependsApps(ids: AppId[]): Promise<DependsApp[]> {
+  await requireAdmin();
+  return dependsApps(ids);
+}
+
+export async function adminDependsChoices(ownerId: string, appId: AppId): Promise<DependsApp[]> {
+  await requireAdmin();
+  return ownDependsChoices(ownerId, appId);
+}
+
+export async function adminSearchDepends(appId: AppId, query: string): Promise<DependsApp[]> {
+  await requireAdmin();
+  return searchDepends(appId, query);
 }
 
 export async function adminSetDepends(appId: AppId, input: string[]): Promise<{ error?: Problem }> {
@@ -373,7 +389,7 @@ export async function adminGetRelease(appId: AppId, serial: number) {
 
 export async function adminUpdateApp(
   appId: AppId,
-  changes: { title: string; description: string; installDir: string | null },
+  changes: { title: string; description: string; installDir: string | null; hidden: boolean },
   categoryIds: number[],
 ): Promise<{ error?: Problem }> {
   const admin = await requireAdmin();

@@ -1,11 +1,12 @@
 import "server-only";
-import { asc, eq, inArray, isNull, and } from "drizzle-orm";
-import { appDepends, apps } from "@/db/schema";
-import { notifyAppEdit, ownedApp, type AppId } from "./apps";
+import { asc, eq, inArray, isNull, and, ne, or } from "drizzle-orm";
+import { appDepends, apps, users } from "@/db/schema";
+import { notifyAppEdit, ownedApp, parseAppId, type AppId } from "./apps";
+import { isPublic, matches } from "./catalogue";
 import { db } from "./db";
 import { appSnapshot } from "./notify";
 import type { Problem } from "./problems";
-import { checkDepends } from "./rules";
+import { checkDepends, DEPENDS_SEARCH_MAX } from "./rules";
 
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
 
@@ -67,4 +68,47 @@ export async function neededBy(appId: AppId): Promise<{ id: AppId; title: string
     .where(eq(appDepends.dependsOn, appId))
     .orderBy(asc(apps.title), asc(apps.id));
   return rows.map((row) => ({ id: row.id, title: row.title, deleted: row.deletedAt !== null }));
+}
+
+export type DependsApp = { id: AppId; title: string; username: string | null; deleted: boolean };
+
+function dependsAppQuery() {
+  return db()
+    .select({ id: apps.id, title: apps.title, username: users.username, deletedAt: apps.deletedAt })
+    .from(apps)
+    .innerJoin(users, eq(users.id, apps.userId));
+}
+
+function dependsApp(row: { id: AppId; title: string; username: string | null; deletedAt: Date | null }): DependsApp {
+  return { id: row.id, title: row.title, username: row.username, deleted: row.deletedAt !== null };
+}
+
+export async function dependsApps(ids: AppId[]): Promise<DependsApp[]> {
+  if (ids.length === 0) {
+    return [];
+  }
+  const rows = await dependsAppQuery().where(inArray(apps.id, ids)).orderBy(asc(apps.title), asc(apps.id));
+  return rows.map(dependsApp);
+}
+
+// The owner's own apps need no release to be listed: setDepends accepts any app that is not deleted.
+export async function ownDependsChoices(ownerId: string, appId: AppId): Promise<DependsApp[]> {
+  const rows = await dependsAppQuery()
+    .where(and(eq(apps.userId, ownerId), ne(apps.id, appId), isNull(apps.deletedAt)))
+    .orderBy(asc(apps.title), asc(apps.id));
+  return rows.map(dependsApp);
+}
+
+// Public apps of any user, found as the catalogue finds them, or by their exact id.
+export async function searchDepends(appId: AppId, query: string): Promise<DependsApp[]> {
+  const text = query.trim();
+  if (text === "") {
+    return [];
+  }
+  const id = parseAppId(text);
+  const rows = await dependsAppQuery()
+    .where(and(isPublic(), ne(apps.id, appId), id ? or(eq(apps.id, id), matches(text)) : matches(text)))
+    .orderBy(asc(apps.title), asc(apps.id))
+    .limit(DEPENDS_SEARCH_MAX);
+  return rows.map(dependsApp);
 }

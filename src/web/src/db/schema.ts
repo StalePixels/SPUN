@@ -85,6 +85,8 @@ export const apps = mysqlTable("apps", {
   description: varchar("description", { length: 256 }).notNull().default(""),
   installDir: varchar("install_dir", { length: 64 }),
   downloads: int("downloads", { unsigned: true }).notNull().default(0),
+  // A hidden app is left out of the catalogue lists, but search and its own page still find it.
+  hidden: boolean("hidden").notNull().default(false),
   // Soft delete: the row stays, so the id is never reused.
   deletedAt: timestamp("deleted_at"),
 });

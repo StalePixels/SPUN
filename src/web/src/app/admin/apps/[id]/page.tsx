@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Button from "react-bootstrap/Button";
 import {
+  adminDependsApps,
+  adminDependsChoices,
   adminGetApp,
   adminListAliases,
   adminListDepends,
@@ -24,6 +26,7 @@ import { Breadcrumbs } from "../../../Breadcrumbs";
 import {
   clearAdminScreenshot,
   deleteAdminApp,
+  findAdminDepends,
   restoreAdminApp,
   saveAdminApp,
   saveAdminDepends,
@@ -50,7 +53,8 @@ export default async function AdminAppPage({ params }: { params: Promise<{ id: s
   const aliases = await adminListAliases(id);
   const overrides = await adminListDotOverrides(id);
   const dependants = await adminListNeededBy(id);
-  const depends = await adminListDepends(id);
+  const depends = await adminDependsApps(await adminListDepends(id));
+  const own = await adminDependsChoices(app.ownerId, id);
   const categories = await liveCategories();
   const selected = (await appCategoryList(id)).map((category) => category.id);
   const screenshots = await appScreenshots(id);
@@ -161,7 +165,7 @@ export default async function AdminAppPage({ params }: { params: Promise<{ id: s
         </div>
         <div className="card-body">
           <AppForm
-            app={{ id: app.id, title: app.title, description: app.description, installDir: app.installDir }}
+            app={{ id: app.id, title: app.title, description: app.description, installDir: app.installDir, hidden: app.hidden }}
             categories={categories}
             selected={selected}
             save={saveAdminApp.bind(null, app.id)}
@@ -185,7 +189,14 @@ export default async function AdminAppPage({ params }: { params: Promise<{ id: s
           Dependencies
         </div>
         <div className="card-body">
-          <DependsForm appId={app.id} depends={depends} save={saveAdminDepends.bind(null, app.id)} />
+          <DependsForm
+            appId={app.id}
+            depends={depends}
+            own={own}
+            owner={app.owner ?? app.ownerId}
+            save={saveAdminDepends.bind(null, app.id)}
+            find={findAdminDepends.bind(null, app.id)}
+          />
         </div>
       </div>
 

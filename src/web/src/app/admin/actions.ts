@@ -5,6 +5,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  adminSearchDepends,
   adminSetDepends,
   adminAddAlias,
   adminAddCategory,
@@ -50,6 +51,7 @@ import {
 } from "@/lib/admin";
 import { parseAppId } from "@/lib/apps";
 import { liveCategories } from "@/lib/categories";
+import type { DependsApp } from "@/lib/depends";
 import { appDotOverrides, checkUpload, formFile } from "@/lib/releases";
 import { checkScreenshot } from "@/lib/screenshots";
 import {
@@ -150,7 +152,11 @@ export async function saveAdminApp(rawId: string, _prev: FormState, formData: Fo
   if (!choice.ok) {
     return { error: choice.error };
   }
-  const result = await adminUpdateApp(appId, { title, description, installDir: dir.installDir }, choice.ids);
+  const result = await adminUpdateApp(
+    appId,
+    { title, description, installDir: dir.installDir, hidden: formData.get("hidden") === "on" },
+    choice.ids,
+  );
   if (result.error) {
     return { error: result.error };
   }
@@ -254,6 +260,14 @@ export async function moveAdminApp(rawId: string, _prev: FormState, formData: Fo
   }
   revalidatePath(appPath(appId));
   return { saved: true };
+}
+
+export async function findAdminDepends(rawId: string, query: string): Promise<DependsApp[]> {
+  const appId = parseAppId(rawId);
+  if (!appId) {
+    return [];
+  }
+  return adminSearchDepends(appId, query);
 }
 
 export async function saveAdminDepends(rawId: string, _prev: FormState, formData: FormData): Promise<FormState> {

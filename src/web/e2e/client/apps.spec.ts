@@ -18,9 +18,10 @@ import { makeZip, sampleEntries, tempFiles } from "../support/zips";
 
 const client = accounts.client;
 
-test("create an app, then edit its description", async ({ page, apps }) => {
+test("create an app, then edit its description and hide it", async ({ page, apps }) => {
   const id = await apps.create("Create", "First description");
   expect(await appRow(id)).toMatchObject({ deleted_at: null });
+  await page.goto(`/publish/apps/${id}/details`);
 
   await page.getByTestId("app-description").fill("Changed description");
   await clickHydrated(page.getByTestId("app-submit"));
@@ -28,6 +29,13 @@ test("create an app, then edit its description", async ({ page, apps }) => {
   await expect(page.getByTestId("form-error")).toHaveCount(0);
   await page.reload();
   await expect(page.getByTestId("app-description")).toHaveValue("Changed description");
+
+  await page.getByTestId("app-hidden").check();
+  await clickHydrated(page.getByTestId("app-submit"));
+  await expect(page.getByTestId("form-saved")).toBeVisible();
+  expect(await appRow(id)).toMatchObject({ hidden: 1 });
+  await page.reload();
+  await expect(page.getByTestId("app-hidden")).toBeChecked();
 
   await page.goto("/publish");
   await expect(page.getByTestId(`app-${id}`)).toBeVisible();
@@ -38,6 +46,7 @@ test("the suggested install directory is stored normalised, shown when editing, 
   apps,
 }) => {
   const id = await apps.create("Install dir");
+  await page.goto(`/publish/apps/${id}/details`);
 
   await page.getByTestId("app-install-dir").fill("apps\\wifi\\spun\\");
   await clickHydrated(page.getByTestId("app-submit"));
@@ -95,6 +104,7 @@ test("the install directory follows the chosen categories and the title until th
     const id = pathname(page).split("/").pop()!;
     appIds.push(id);
     expect(await appRow(id)).toMatchObject({ install_dir: "/e2e/mine" });
+    await page.goto(`/publish/apps/${id}/details`);
     await waitForHydration(page.getByTestId("app-submit"));
     await expect(dir, "a stored directory is not replaced by a category change").toHaveValue("/e2e/mine");
     await page.getByTestId(`app-category-${low}`).uncheck();
@@ -107,6 +117,7 @@ test("the install directory follows the chosen categories and the title until th
 
 test("a banned install directory and a drive letter are refused and change nothing", async ({ page, apps }) => {
   const id = await apps.create("Install dir bad");
+  await page.goto(`/publish/apps/${id}/details`);
   await page.getByTestId("app-install-dir").fill("/apps/kept");
   await clickHydrated(page.getByTestId("app-submit"));
   await expect(page.getByTestId("form-saved")).toBeVisible();
@@ -180,7 +191,7 @@ test("delete an app: files go, the database row stays marked deleted", async ({ 
   const file = releaseFile(client.username, id, 1);
   expect(existsSync(file)).toBe(true);
 
-  await page.goto(`/publish/apps/${id}`);
+  await page.goto(`/publish/apps/${id}/delete`);
   await clickHydrated(page.getByTestId("delete-app"));
   await page.getByTestId("delete-app-confirm").click();
 

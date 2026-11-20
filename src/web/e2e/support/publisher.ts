@@ -55,7 +55,7 @@ export const test = base.extend<{ publisher: Publisher }>({
           await deleteAppInUi(page, appId);
         },
         async uploadScreenshot(appId, slot) {
-          await page.goto(`/publish/apps/${appId}`);
+          await page.goto(`/publish/apps/${appId}/screenshots`);
           await waitForHydration(page.getByTestId(`screenshot-upload-${slot}`));
           await page
             .getByTestId(`screenshot-file-${slot}`)
@@ -64,7 +64,7 @@ export const test = base.extend<{ publisher: Publisher }>({
           await expect(page.getByTestId(`screenshot-preview-${slot}`)).toBeVisible();
         },
         async clearScreenshot(appId, slot) {
-          await page.goto(`/publish/apps/${appId}`);
+          await page.goto(`/publish/apps/${appId}/screenshots`);
           await clickHydrated(page.getByTestId(`screenshot-clear-${slot}`));
           await expect(page.getByTestId(`screenshot-empty-${slot}`)).toBeVisible();
         },

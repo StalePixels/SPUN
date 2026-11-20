@@ -3,8 +3,8 @@
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
-import { addApp, deleteOwnApp, editApp, parseAppId, type AppFields } from "@/lib/apps";
-import { setOwnDepends } from "@/lib/depends";
+import { addApp, deleteOwnApp, editApp, ownedApp, parseAppId, type AppFields } from "@/lib/apps";
+import { searchDepends, setOwnDepends, type DependsApp } from "@/lib/depends";
 import { dependsFromText, lineFeeds, parseSerial, parseSlot, parseTermsId } from "@/lib/rules";
 import { deleteOwnRelease, editChangelog, republishOwnRelease, uploadOwnRelease } from "@/lib/releases";
 import { saveApp, unsaveApp } from "@/lib/saved";
@@ -32,6 +32,7 @@ function appFields(formData: FormData): AppFields {
       .getAll("categories")
       .filter((value) => typeof value === "string")
       .map(Number),
+    hidden: formData.get("hidden") === "on",
   };
 }
 
@@ -98,7 +99,7 @@ export async function updateApp(
   if (error) {
     return { error };
   }
-  revalidatePath(`/publish/apps/${appId}`);
+  revalidatePath(`/publish/apps/${appId}/details`);
   return { saved: true };
 }
 
@@ -120,6 +121,15 @@ export async function uploadRelease(
   redirect(`/publish/apps/${appId}/releases/${result.serial}`);
 }
 
+export async function findDepends(rawId: string, query: string): Promise<DependsApp[]> {
+  const appId = parseAppId(rawId);
+  const user = await requirePublisher();
+  if (!appId || !(await ownedApp(user.id, appId))) {
+    return [];
+  }
+  return searchDepends(appId, query);
+}
+
 export async function saveDepends(rawId: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const appId = parseAppId(rawId);
   const user = await requirePublisher();
@@ -130,7 +140,7 @@ export async function saveDepends(rawId: string, _prev: FormState, formData: For
   if (error) {
     return { error };
   }
-  revalidatePath(`/publish/apps/${appId}`);
+  revalidatePath(`/publish/apps/${appId}/depends`);
   return { saved: true };
 }
 
@@ -217,7 +227,7 @@ export async function uploadScreenshot(
   if ("error" in result) {
     return { error: result.error };
   }
-  revalidatePath(`/publish/apps/${appId}`);
+  revalidatePath(`/publish/apps/${appId}/screenshots`);
   return {};
 }
 
@@ -226,7 +236,7 @@ export async function removeScreenshot(rawId: string, rawSlot: number): Promise<
   const slot = parseSlot(String(rawSlot));
   const user = await requirePublisher();
   if (appId && slot && !(await clearOwnScreenshot(user, appId, slot)).error) {
-    revalidatePath(`/publish/apps/${appId}`);
+    revalidatePath(`/publish/apps/${appId}/screenshots`);
   }
 }
 

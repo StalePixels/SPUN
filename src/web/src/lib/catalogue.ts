@@ -85,7 +85,7 @@ async function withDetails(rows: Omit<CatalogueRow, "categories" | "screenshot">
 }
 
 // One row more than a page, so the caller knows if there is a next page. Newest release
-// first, as on the Next; a search is in title order.
+// first, as on the Next, and without hidden apps; a search is in title order and finds hidden apps too.
 export async function cataloguePage(
   page: number,
   categoryId: number | null,
@@ -107,7 +107,7 @@ export async function cataloguePage(
       and(
         isPublic(),
         categoryId === null ? undefined : inCategory(categoryId),
-        query === "" ? undefined : matches(query),
+        query === "" ? eq(apps.hidden, false) : matches(query),
       ),
     )
     .orderBy(

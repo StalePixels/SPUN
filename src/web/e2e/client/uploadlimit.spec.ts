@@ -52,6 +52,7 @@ test("one upload limit for each user: the web forms and every key count together
     await page.goto(`/publish/apps/${id}`);
     await uploadRelease(page, { version: "4.0", file: files.write("four.zip", makeZip(sampleEntries())) });
     await expect(page.getByTestId("form-error").first()).toHaveAttribute("data-error", "upload.tooMany");
+    await page.goto(`/publish/apps/${id}/screenshots`);
     await waitForHydration(page.getByTestId("screenshot-upload-3"));
     await page.getByTestId("screenshot-file-3").setInputFiles(files.write("shot.nxi", readyNxi()));
     await clickHydrated(page.getByTestId("screenshot-upload-3"));

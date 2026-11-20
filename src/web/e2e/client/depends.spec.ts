@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { makeApiKey, signedFetch, signedJson, type ApiKey } from "../support/api";
 import {
+  dependsOf,
   insertApp,
   insertRelease,
   insertUser,
@@ -12,7 +13,7 @@ import {
   removeTestUser,
 } from "../support/db";
 import { clickHydrated, expect, releaseFile, test, todayUtc, uniqueTitle, uploadRelease } from "../support/pages";
-import { accounts } from "../support/settings";
+import { accounts, settings } from "../support/settings";
 import { spun } from "../support/spunServer";
 import { makeZip, sampleEntries, tempFiles } from "../support/zips";
 
@@ -107,35 +108,68 @@ test("set dependencies, publish them with a release, and republish through the A
   }
 });
 
-test("the publisher sets dependencies and republishes in the app page", async ({ page, apps }) => {
+test("the publisher picks dependencies and republishes in the app page", async ({ page, apps }) => {
   const files = tempFiles();
   const id = await apps.create("Depends GUI");
-  const other = await otherApps(1);
-  const [needed] = other.ids;
+  // The client's test app: a second new app would pass the client's app limit.
+  const mine = settings.testApp;
+  const other = await otherApps(3);
+  const [needed, hidden, gone] = other.ids;
   await insertRelease(needed, 1, "1.0");
+  await insertRelease(gone, 1, "1.0");
+  const search = async (text: string) => {
+    await page.getByTestId("depends-search").fill(text);
+    await clickHydrated(page.getByTestId("depends-search-submit"));
+  };
   try {
     await page.goto(`/publish/apps/${id}`);
     await expect(page.getByTestId("republish")).toHaveCount(0);
 
-    await page.getByTestId("depends-input").fill("nope00");
-    await clickHydrated(page.getByTestId("depends-submit"));
+    await page.goto(`/publish/apps/${id}/depends`);
+    await expect(page.getByTestId("depends-none")).toBeVisible();
+    await expect(page.getByTestId(`depends-own-${id}`)).toHaveCount(0);
+    await clickHydrated(page.getByTestId(`depends-own-${mine}`));
+    await expect(page.getByTestId(`depends-picked-${mine}`)).toBeVisible();
+
+    // Another publisher's app is found only once it has a live release.
+    await search(hidden);
+    await expect(page.getByTestId("depends-found-none")).toBeVisible();
+    await search(needed.toUpperCase());
+    await page.getByTestId(`depends-add-${needed}`).click();
+    await search(gone);
+    await page.getByTestId(`depends-add-${gone}`).click();
+    await expect(page.getByTestId(`depends-add-${gone}`)).toBeDisabled();
+
+    // Deleted after it was picked: the save is refused and nothing changes.
+    await markAppDeleted(gone);
+    await page.getByTestId("depends-submit").click();
     await expect(page.getByTestId("depends").getByTestId("form-error")).toHaveAttribute("data-error", "depends.unknown");
+    expect(await dependsOf(id)).toEqual([]);
 
-    await page.getByTestId("depends-input").fill(needed.toUpperCase());
-    await clickHydrated(page.getByTestId("depends-submit"));
+    await page.getByTestId(`depends-remove-${gone}`).click();
+    await page.getByTestId("depends-submit").click();
     await expect(page.getByTestId("depends").getByTestId("form-saved")).toBeVisible();
-    await page.reload();
-    await expect(page.getByTestId("depends-input")).toHaveValue(needed);
+    const both = [mine, needed].sort();
+    expect(await dependsOf(id)).toEqual(both);
 
-    await uploadRelease(page, { version: "1.0", file: files.write("one.zip", makeZip(sampleEntries())) });
-    await expect(page).toHaveURL(new RegExp(`/publish/apps/${id}/releases/1$`));
-    await expect(page.getByTestId("release-depends")).toHaveText(needed);
+    await page.reload();
+    await expect(page.getByTestId(`depends-picked-${needed}`)).toBeVisible();
+    await expect(page.getByTestId(`depends-own-${mine}`)).toHaveAttribute("aria-pressed", "true");
 
     await page.goto(`/publish/apps/${id}`);
-    await page.getByTestId("depends-input").fill("");
-    await clickHydrated(page.getByTestId("depends-submit"));
-    await expect(page.getByTestId("depends").getByTestId("form-saved")).toBeVisible();
+    await uploadRelease(page, { version: "1.0", file: files.write("one.zip", makeZip(sampleEntries())) });
+    await expect(page).toHaveURL(new RegExp(`/publish/apps/${id}/releases/1$`));
+    await expect(page.getByTestId("release-depends")).toHaveText(both.join(" "));
 
+    await page.goto(`/publish/apps/${id}/depends`);
+    await clickHydrated(page.getByTestId(`depends-own-${mine}`));
+    await page.getByTestId(`depends-remove-${needed}`).click();
+    await expect(page.getByTestId("depends-none")).toBeVisible();
+    await page.getByTestId("depends-submit").click();
+    await expect(page.getByTestId("depends").getByTestId("form-saved")).toBeVisible();
+    expect(await dependsOf(id)).toEqual([]);
+
+    await page.goto(`/publish/apps/${id}`);
     await page.getByTestId("republish-version").fill("1.0");
     await clickHydrated(page.getByTestId("republish-submit"));
     await expect(page.getByTestId("republish").getByTestId("form-error")).toHaveAttribute("data-error", "version.taken");

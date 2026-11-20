@@ -1,4 +1,4 @@
-import { dependsOf, insertApp, insertDepends, insertUser, markAppDeleted, removeTestUser } from "../support/db";
+import { dependsOf, insertApp, insertDepends, insertRelease, insertUser, markAppDeleted, removeTestUser } from "../support/db";
 import { clickHydrated, expect, test, uniqueTitle } from "../support/pages";
 
 test("an app's page lists the apps that depend on it, deleted ones too", async ({ page }) => {
@@ -23,30 +23,28 @@ test("an app's page lists the apps that depend on it, deleted ones too", async (
   }
 });
 
-test("an admin edits another user's dependency list, with the publisher's checks", async ({ page }) => {
+test("an admin edits another user's dependency list with the picker", async ({ page }) => {
   const userId = await insertUser(`e2ea${Date.now().toString(36).slice(-8)}`);
   try {
     const group = await insertApp(userId, uniqueTitle("Admin group"));
     const part = await insertApp(userId, uniqueTitle("Admin part"));
+    const shared = await insertApp(userId, uniqueTitle("Admin shared"));
+    await insertRelease(shared, 1, "1.0");
     const card = page.getByTestId("depends");
 
     await page.goto(`/admin/apps/${group}`);
-    await card.getByTestId("depends-input").fill(group);
-    await clickHydrated(card.getByTestId("depends-submit"));
-    await expect(card.getByTestId("form-error")).toHaveAttribute("data-error", "depends.self");
-
-    await card.getByTestId("depends-input").fill("nope00");
-    await clickHydrated(card.getByTestId("depends-submit"));
-    await expect(card.getByTestId("form-error")).toHaveAttribute("data-error", "depends.unknown");
-    expect(await dependsOf(group)).toEqual([]);
-
-    await card.getByTestId("depends-input").fill(part.toUpperCase());
-    await clickHydrated(card.getByTestId("depends-submit"));
+    await expect(card.getByTestId(`depends-own-${group}`)).toHaveCount(0);
+    await clickHydrated(card.getByTestId(`depends-own-${part}`));
+    await card.getByTestId("depends-search").fill(shared);
+    await card.getByTestId("depends-search-submit").click();
+    await card.getByTestId(`depends-add-${shared}`).click();
+    await expect(card.getByTestId(`depends-own-${shared}`)).toHaveAttribute("aria-pressed", "true");
+    await card.getByTestId("depends-submit").click();
     await expect(card.getByTestId("form-saved")).toBeVisible();
-    expect(await dependsOf(group)).toEqual([part]);
+    expect(await dependsOf(group)).toEqual([part, shared].sort());
 
     await page.reload();
-    await expect(card.getByTestId("depends-input")).toHaveValue(part);
+    await expect(card.getByTestId(`depends-picked-${part}`)).toBeVisible();
     await page.goto(`/admin/apps/${part}`);
     await expect(page.getByTestId(`needed-by-${group}`)).toBeVisible();
   } finally {

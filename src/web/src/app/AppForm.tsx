@@ -12,7 +12,7 @@ import { createApp, updateApp, type FormState } from "./actions";
 import { Field, FieldRow, RequiredNote } from "./Field";
 
 type Props = {
-  app?: { id: string; title: string; description: string; installDir?: string | null };
+  app?: { id: string; title: string; description: string; installDir?: string | null; hidden?: boolean };
   categories: LiveCategory[];
   selected?: number[];
   save?: (prev: FormState, formData: FormData) => Promise<FormState>;
@@ -92,6 +92,20 @@ export function AppForm({ app, categories, selected = [], save }: Props) {
             setInstallDir(event.target.value);
             setTyped(true);
           }}
+        />
+      </Field>
+      <Field
+        controlId="hidden"
+        label="Catalogue"
+        help="A hidden app is not in the catalogue lists. Search and its own page still find it, and other apps can depend on it. Use it for parts of a larger app."
+      >
+        <Form.Check
+          data-testid="app-hidden"
+          type="checkbox"
+          id="hidden"
+          name="hidden"
+          label="Hide in the catalogue"
+          defaultChecked={app?.hidden ?? false}
         />
       </Field>
       <FieldRow>

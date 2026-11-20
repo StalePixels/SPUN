@@ -55,6 +55,7 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
         title,
         description: "Made by the API",
         installDir: "/apps/myapp",
+        hidden: false,
         categories: [first],
         depends: [],
         releases: [],
@@ -75,6 +76,15 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
     expect(await appRow(id)).toMatchObject({ title: edited });
     expect(await appCategoryIds(id)).toEqual([first, second].sort((a, b) => a - b));
 
+    const hide = await signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
+      title: edited,
+      categories: [first],
+      hidden: true,
+    });
+    expect(hide).toEqual({ status: 200, body: {} });
+    expect((await signedJson(page.request, key, "GET", `/api/apps/${id}`)).body.hidden).toBe(true);
+    expect(await appRow(id)).toMatchObject({ hidden: 1 });
+
     const refused = await signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
       title: "",
       description: "",
@@ -92,6 +102,7 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
     });
     expect(moved).toEqual({ status: 200, body: {} });
     expect((await appRow(id)).install_dir).toBe("/Games/My App");
+    expect((await appRow(id)).hidden, "hidden left out is false").toBe(0);
     const banned = await signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
       title: edited,
       description: "",
