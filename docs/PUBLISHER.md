@@ -18,12 +18,13 @@ Your account page is `/me`. It shows your username, your email address and how m
 
 ## Apps
 
-An app is the thing people install. It has a title, a description, categories and a suggested install directory. Make one under "New app" in `/publish`. Its page has tabs: Releases, Dependencies, Screenshots, Details (the fields below) and Delete.
+An app is the thing people install. It has a title, a description, categories, a suggested install directory and, if it needs one, a minimum core version. Make one under "New app" in `/publish`. Its page has tabs: Releases, Dependencies, Screenshots, Details (the fields below) and Delete.
 
 - Title: 1 to 32 characters, printable ASCII.
 - Description: up to 256 characters, printable ASCII. It can be empty.
 - Categories: at least one.
 - Install directory: where `.spun` offers to install the app on the Next. It starts as a suggestion from the categories and the title. You can type your own, up to 64 characters. It cannot have a drive letter, `.` or `..`, or be `/`, or be in `/nextzxos`, `/sys`, `/dot` or `/machines`. The person who installs can choose another directory.
+- Minimum core version: optional. The oldest Next core that the app runs on, as `major.minor.sub`, for example `3.01.10`. The major and minor numbers go from 0 to 15, and the sub number from 0 to 255. Empty means any core.
 
 SPUN gives each app an id of six lowercase letters and digits, such as `abc123`. People use the id with `.spun get`. An admin can also give an app an alias, a short name that works in its place.
 
@@ -64,6 +65,8 @@ A file at the root of the zip with a name ending `.dot` is a dot command. After 
 An app can depend on other apps on SPUN, yours or another publisher's. Before `.spun` installs or updates your app, it installs each dependency that is not installed, and updates each one that has a newer release. It does the same for the dependencies of a dependency. An app with no files of its own and only dependencies works as a group: one install gets them all. Give such an app a small zip, for example a text file that says what the group holds.
 
 Choose the dependencies on the Dependencies tab of your app's page. Pick from your other apps, or search for a public app of any publisher by its title, description or id, then save. A dependency with no suggested install directory goes to the directory of the app that lists it. Aliases do not work here. An app cannot depend on itself or on a deleted app. An app can have up to 255 dependencies.
+
+Set the minimum core version of your app on the Details tab of its page. `.spun` does not install any apps that depend on a newer core. An app that lists yours as a dependency depends on the minimum core version of yours too.
 
 Each release keeps the dependencies that the app has when you upload it, and they never change after that. A change to the list reaches the Next only with your next release. To send out a change without a new zip, use "Republish".
 

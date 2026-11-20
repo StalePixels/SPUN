@@ -2,10 +2,26 @@
 
 ## 0.9.2 - Unreleased
 
+### `.spun`
+
+- Apps do not install when they depend on a newer Next core, directly or
+  through a dependency. The check covers the whole dependency
+  tree and comes before any question or new directory, so a refusal
+  changes nothing. `update` skips these apps with a warning.
+- The unzip shows the progress of each file, for example
+  `DATA.BIN 128K/28.4M`.
+- Download and unzip show their progress on the command line too, on one
+  line that each update writes over. `-q` hides it.
+- While a download or unzip runs in the browser, the status line has the
+  bar colour across the screen and the buttons disappear.
+- `get` and `update` no longer stop at `scroll?` when their output is
+  longer than the screen.
+
 ### SPUNServer
 
 - `SPLIST`, and `SPCAT` without search text, leave out hidden apps.
   `SPFIND`, `SPINFO` and downloads still find them.
+- `SPINFO` sends an app's minimum core version, when it has one.
 
 ### CMS
 
@@ -17,6 +33,12 @@
 - An app can be hidden in the catalogue. The catalogue lists, on the web
   and on the Next, leave it out. Search, its own page, downloads and
   dependencies still find it. The API and MCP take it as `hidden`.
+- Publishers set the minimum core version of their apps, as
+  `major.minor.sub`, for example `3.01.10`. Empty means any core. Admins
+  edit it with the other app fields. The API (`POST /api/apps` and
+  `PUT /api/apps/{id}`, field `minCore`) and the MCP tools `create_app`
+  and `update_app` take it, and `GET /api/apps/{id}` and `get_app` return
+  it.
 
 ## 0.9.1 - 20261117
 

@@ -54,7 +54,7 @@ The site has no "restore user". "Enable" lets the user log in again, but the app
 - **Revalidate.** It runs the checks of an app edit and of a release upload again, on the app and on the stored zip of each release that is not deleted. It reports what fails and changes nothing.
 - **Upload a release.** It works like the publisher's form, for any app.
 - **Screenshots.** Add, replace or clear a slot. This is not possible while the app is deleted.
-- **Title, description, install directory, categories and hidden flag.** The same fields as the publisher's form.
+- **Title, description, install directory, minimum core version, categories and hidden flag.** The same fields as the publisher's form.
 - **Dependencies.** The same picker and checks as the publisher's form. Its list of apps to pick from is the owner's apps. A change reaches the Next only with the app's next release.
 - **Needed by.** The apps that list this app as a dependency, deleted ones too. The list shows the dependencies as the publishers set them now, which can differ from those of their latest releases.
 - **Aliases.** See below.

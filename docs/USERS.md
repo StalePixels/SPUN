@@ -42,7 +42,7 @@ Run `.spun` with no command, or choose "Browse the catalogue" in the menu.
 - **Category.** Category (key C) shows the categories in place of the list. Choose one with the cursor keys and ENTER, or a click. "All" removes the filter. Back (key B), EDIT or BREAK returns to the list unchanged. With a category chosen, the list and a search show only the apps in it, and the status line names it.
 - **The pointer.** The mouse pointer hides when you press a key, and comes back when the mouse moves.
 - **The app screen.** It shows the details of the app, its releases, and its screenshots (keys 1 to 5 show one in full). ENTER or a click on a release shows its changelog. The buttons are Back, Changelog, Install, Quit and Advanced.
-- **Install.** Install asks where to put the app, as described below, and then installs it. If a file in the app already exists, SPUN asks whether to overwrite it once, overwrite all, or cancel.
+- **Install.** Install asks where to put the app, as described below, and then installs it. During the download and unzip, the browser hides the buttons and the status line shows the progress. If a file in the app already exists, SPUN asks whether to overwrite it once, overwrite all, or cancel.
 - **Updates.** When the browser starts and installed apps have a newer release, it offers to update them or ignore them.
 - **Advanced.** Clear cache (key L) deletes the cached screenshots of the app.
 
@@ -65,6 +65,10 @@ An app can depend on other apps. Before SPUN installs or updates an app, it inst
 An answer to "Overwrite" holds for the rest of the install. All overwrites every file of the app and its dependencies without asking again, and in an update it holds for every app of the update. Cancel stops the app and all its dependencies, and in an update it stops the whole update. What was installed before the Cancel stays installed.
 
 When a dependency is no longer on SPUN, SPUN warns, installs the rest, and tells the server which one it was.
+
+## Core versions
+
+An app can need a minimum version of the Next's core. SPUN does not install any apps that depend on a newer core than the Next has, directly or through a dependency. The message names the app and the core it needs, for example `Dependency core01 needs core 3.03.03`. The check comes before any question, so a refusal changes nothing on the card. Updates skip these apps and show the message.
 
 ## The catalogue file
 
