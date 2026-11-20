@@ -193,9 +193,14 @@ test("a denied request, a wrong redirect URI and a wrong verifier get no tokens"
   await page.goto(authorizeUrl(forged, challenge, "s1"));
   await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "oauth.unknownClient");
 
-  const sent = page.waitForRequest((request) => request.url().startsWith(REDIRECT_URI));
-  await page.goto(authorizeUrl(clientId, challenge, "s2", { resource: "https://other.example/mcp" })).catch(() => {});
-  const wrongResource = new URL((await sent).url());
+  // Read the redirect itself: page.route does not catch a redirected navigation, so the
+  // browser would load the closed port, and its error page would interrupt the next goto.
+  const refused = await page.request.get(authorizeUrl(clientId, challenge, "s2", { resource: "https://other.example/mcp" }), {
+    maxRedirects: 0,
+  });
+  expect(refused.status()).toBe(307);
+  const wrongResource = new URL(refused.headers().location);
+  expect(wrongResource.href.startsWith(REDIRECT_URI)).toBe(true);
   expect(wrongResource.searchParams.get("error")).toBe("invalid_target");
   expect(wrongResource.searchParams.get("state")).toBe("s2");
 
