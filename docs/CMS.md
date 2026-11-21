@@ -36,6 +36,8 @@ None of these files is committed. Treat `AUTH_SECRET`, `API_KEY_SECRET`, `AUTH_N
 5. Start: `docker compose up --build -d` in `docker/`.
 6. Put a reverse proxy with TLS in front of the CMS. The CMS listens on `127.0.0.1:48180` by default. Do not publish it on a public address. SPUNServer is published on its port directly.
 
+   The CMS limits the rate of API, MCP and OAuth requests for each client address. To find that address, it reads `X-Forwarded-For` from right to left, skips each address in a trusted network, and takes the first address that is left. By default the trusted networks are the private and local ranges: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`, `::1/128`, `fc00::/7` and `fe80::/10`. If a proxy reaches the CMS from a public address, set `TRUSTED_PROXIES` in `cms.env` to your list of networks. It replaces the default list. When every address is trusted, the CMS uses the last one.
+
 ### The database
 
 MariaDB makes the empty database and its account on the first start. It does not make the tables. The tables are defined in `src/web/src/db/schema.ts`, and the repository has no migrations. To make them, run `drizzle-kit push` in `src/web` with `DATABASE_URL` set to your database. The test setup, `src/web/e2e/reset.mts`, makes its tables the same way.

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { apiLimits, checkApiCall, type ApiDeps, type ApiOptions, type ApiUser } from "./apigate";
 import { apiKeyUser, serverKey } from "./apikeys";
 import { parseAppId, type AppFields, type AppId } from "./apps";
+import { clientIpFrom } from "./clientip";
 import type { Problem } from "./problems";
 import { claimOnce, countHit } from "./redis";
 import { uploadOwnRelease } from "./releases";
@@ -26,7 +27,7 @@ function deps(): ApiDeps {
 
 // Next sets X-Forwarded-For to the socket address when a request has none.
 export function clientIp(request: NextRequest): string {
-  return request.headers.get("x-forwarded-for")?.split(",").pop()?.trim() || "unknown";
+  return clientIpFrom(request.headers.get("x-forwarded-for"));
 }
 
 export function apiJson(status: number, body: unknown): Response {

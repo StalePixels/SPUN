@@ -43,6 +43,8 @@
   `PUT /api/apps/{id}`, field `minCore`) and the MCP tools `create_app`
   and `update_app` take it, and `GET /api/apps/{id}` and `get_app` return
   it.
+- The per-address rate limits find the real client address behind more
+  than one proxy.
 
 ## 0.9.1 - 20261117
 
