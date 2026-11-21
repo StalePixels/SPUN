@@ -1,9 +1,7 @@
 spun.c
 common/memory.c
 common/file.c
-spun_messages.asm
 browser.asm
-help.asm
 gui/isr.asm
 gui/im2_save.asm
 gui/im2_on.asm

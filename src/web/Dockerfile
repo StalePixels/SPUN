@@ -10,6 +10,7 @@ FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=client VERSION /client/VERSION
 COPY . .
+ARG THEME_COLOUR
 RUN pnpm build
 
 FROM node:24-alpine AS run

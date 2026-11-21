@@ -3,17 +3,23 @@ COMMON ?= ../../vendor/NBNtools/clients/common
 UNZIP ?= ../unzip
 UNZIP_BANK ?= 33
 
-PROD_SERVER := spun.nextbestnetwork.com
-PROD_PORT := 48128
-SERVER ?= $(PROD_SERVER)
-PORT ?= $(PROD_PORT)
+# A build named <name> (make NAME=<name> zip) reads its settings from .env.<name> (gitignored):
+#   DISPLAY_NAME  the name the user sees (default: NAME in capitals)
+#   SERVER, PORT  the default server
+#   UPDATE_ID     the app id of the build itself on that server, for the self-update (default: NAME)
+#   THEME_COLOUR  the 8-bit colour that takes the place of the SPUN blue in PALETTE (default 0x02, the FoaK
+#                 blue). The CMS's web theme takes the same byte, as THEME_COLOUR in docker/.env
+#   PALETTE       the tilemap's paper and ink pairs, in 8-bit colour, for the ATTR_ values in gui/gui.h
+-include .env.$(NAME)
+DISPLAY_NAME ?= $(shell echo '$(NAME)' | tr a-z A-Z)
+SERVER ?= s1.zx.immo
+PORT ?= 48128
+UPDATE_ID ?= $(NAME)
+THEME_COLOUR ?= 0x02
+PALETTE ?= $(THEME_COLOUR),0xFF,$(THEME_COLOUR),0xFC,0xFF,$(THEME_COLOUR),0xFF,0xE0,0xE3,0xE3,0xFF,0x00,0x49,0x92
 
-# .spunjane: .spun for the development server, beside the release .spun. Its server is in .env (gitignored)
--include .env
-SPUNJANE_PORT ?= $(PROD_PORT)
-
-# A build for any other server goes to BUILD-dev, so it never overwrites the release build
-ifeq ($(SERVER):$(PORT),$(PROD_SERVER):$(PROD_PORT))
+# A build for a server given on the command line goes to BUILD-dev, so it never overwrites the release build
+ifeq ($(filter command line,$(origin SERVER) $(origin PORT)),)
 BUILD_DIR ?= ./BUILD-$(NAME)
 else
 BUILD_DIR ?= ./BUILD-dev
@@ -24,11 +30,15 @@ TMP_DIR ?= $(dir $(BUILD_DIR))TMP-$(patsubst BUILD-%,%,$(notdir $(BUILD_DIR)))
 
 VERSION := $(shell cat ../VERSION)
 
-# The release zip: the dot command as spun.dot, then these files, all at the zip's root
+# The release zip: the dot command as <name>.dot, then these files, all at the zip's root
 ZIP := $(BUILD_DIR)/$(NAME)-$(VERSION).zip
-BAS := $(BUILD_DIR)/spun.bas
-ZIP_FILES := ../zip/README.txt ../zip/spun.gde $(BAS)
+BAS := $(BUILD_DIR)/$(NAME).bas
+ZIP_FILES := $(BUILD_DIR)/README.txt $(BUILD_DIR)/$(NAME).gde $(BAS)
 TXT2BAS ?= txt2bas
+
+# Text with the product name in it: SPUN becomes DISPLAY_NAME and spun becomes NAME
+NAMED = sed -e 's/SPUN/$(DISPLAY_NAME)/g' -e 's/spun/$(NAME)/g'
+NAMED_DEPS := Makefile $(wildcard .env.$(NAME))
 
 CRT := 30
 
@@ -39,7 +49,8 @@ Z88DK_RUN = docker run --rm --user $(shell id -u):$(shell id -g) -e HOME=/tmp -v
 
 ZOPT ?= --max-allocs-per-node200000
 CC=$(call Z88DK_RUN,$(CURDIR)) zcc
-CCFLAGS=+zxn -vn -startup=$(CRT) -clib=sdcc_iy -SO3 $(ZOPT) --opt-code-size -pragma-include:$(CURDIR)/zpragma.inc '-DSPUN_VERSION=\"$(VERSION)\"' '-DSPUN_NAME=\"$(NAME)\"'
+CCFLAGS=+zxn -vn -startup=$(CRT) -clib=sdcc_iy -SO3 $(ZOPT) --opt-code-size -pragma-include:$(CURDIR)/zpragma.inc '-DSPUN_VERSION=\"$(VERSION)\"' '-DSPUN_NAME=\"$(NAME)\"' \
+	'-DSPUN_DISPLAY=\"$(DISPLAY_NAME)\"' '-DSPUN_UPDATE_ID=\"$(UPDATE_ID)\"' '-DSPUN_PALETTE=$(PALETTE)'
 LDFLAGS=-m
 # Main ends below the stack, which starts at $BFD8 (zpragma.inc) with 1K reserved;
 # above it are the mouse variables and the IM2 table (gui/isr.asm).
@@ -54,7 +65,8 @@ MV := mv
 POSIX_DIR ?= ./BUILD-posix
 POSIX_CC ?= cc
 POSIX_CFLAGS ?= -O2 -Wall -Wno-pointer-sign
-POSIX_DEFINES='-DSPUN_SERVER="$(SERVER)"' '-DSPUN_PORT="$(PORT)"' '-DSPUN_VERSION="$(VERSION)"' '-DSPUN_NAME="$(NAME)"'
+POSIX_DEFINES='-DSPUN_SERVER="$(SERVER)"' '-DSPUN_PORT="$(PORT)"' '-DSPUN_VERSION="$(VERSION)"' '-DSPUN_NAME="$(NAME)"' \
+	'-DSPUN_DISPLAY="$(DISPLAY_NAME)"' '-DSPUN_UPDATE_ID="$(UPDATE_ID)"'
 POSIX_SRC := spun.c common/file.c $(filter-out BANK_net/gui_%.c,$(wildcard BANK_net/*.c)) BANK_packages/catalogue.c BANK_packages/install.c BANK_packages/usage.c BANK_deps/deps.c \
 	unzip_posix.c $(COMMON)/nbn.c $(COMMON)/nbn_pages.c $(COMMON)/net_posix.c $(COMMON)/posix.c
 POSIX_LIBZIP := $(shell pkg-config --cflags --libs libzip)
@@ -76,7 +88,7 @@ dirs:
 # Any header, the build settings or this Makefile make every bank compile again
 lst_files = $(1) $(addprefix $(dir $(1)),$(shell cat $(1)))
 HEADERS := $(wildcard *.h */*.h $(COMMON)/*.h $(UNZIP)/*.h)
-DEPS := $(HEADERS) zpragma.inc ../VERSION Makefile
+DEPS := $(HEADERS) zpragma.inc ../VERSION Makefile $(wildcard .env.$(NAME))
 
 # BANK_PACKAGES
 $(TMP_DIR)/BANK_packages.o: $(call lst_files,BANK_packages/packages.lst) $(DEPS) | dirs
@@ -138,10 +150,21 @@ $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin: $(UNZIP)/inflate.asm $(UN
 	$(call Z88DK_RUN,$(abspath $(UNZIP))) z88dk-z80asm -mz80n -b inflate.asm
 	rm -f $(UNZIP)/inflate.o $(UNZIP)/inflate.bin
 
-# Main: the server and port are compiled in here only, so .env (the spunjane server) is a prerequisite
-$(TMP_DIR)/main.o: $(call lst_files,spun.lst) help.txt $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin \
-		$(UNZIP)/inflate_job.inc $(DEPS) $(wildcard .env) | dirs
-	$(CC) $(CCFLAGS) $(DEFINES) -c @spun.lst -o$@
+# The help and the messages name the build, so main takes copies from TMP_DIR. BINARY reads from the
+# current directory, so the copy of help.asm names its help.txt by absolute path
+$(TMP_DIR)/help.txt: help.txt $(NAMED_DEPS) | dirs
+	$(NAMED) $< > $@
+
+$(TMP_DIR)/spun_messages.asm: spun_messages.asm $(NAMED_DEPS) | dirs
+	$(NAMED) $< > $@
+
+$(TMP_DIR)/help.asm: help.asm Makefile | dirs
+	sed 's|"help.txt"|"$(abspath $(TMP_DIR))/help.txt"|' $< > $@
+
+# Main: the server and port are compiled in here only
+$(TMP_DIR)/main.o: $(call lst_files,spun.lst) $(addprefix $(TMP_DIR)/,help.txt help.asm spun_messages.asm) \
+		$(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin $(UNZIP)/inflate_job.inc $(DEPS) | dirs
+	$(CC) $(CCFLAGS) $(DEFINES) -c @spun.lst $(TMP_DIR)/spun_messages.asm $(TMP_DIR)/help.asm -o$@
 
 # appmake names a dot command from the first 8 characters of -o, in capitals, so the link runs inside TMP_DIR
 $(BUILD_DIR)/$(NAME): $(TMP_DIR)/main.o $(BANK_OBJS) | dirs
@@ -153,21 +176,23 @@ dotn: $(BUILD_DIR)/$(NAME)
 binaries: dotn
 
 # The menu runs the dot command it was zipped with
-$(BAS): ../zip/spun.txt | dirs
-	sed -e 's/spun\.dot/$(NAME).dot/g' -e 's|c:/dot/spun"|c:/dot/$(NAME)"|' -e 's/\.spun/.$(NAME)/g' -e 's/\.\$$ spun /.$$ $(NAME) /' $< > $(TMP_DIR)/spun.txt
+$(BAS): ../zip/spun.txt $(NAMED_DEPS) | dirs
+	$(NAMED) $< > $(TMP_DIR)/spun.txt
 	$(TXT2BAS) -i $(TMP_DIR)/spun.txt -o $@
 
-zip: binaries $(BAS)
+$(BUILD_DIR)/README.txt: ../zip/README.txt $(NAMED_DEPS) | dirs
+	$(NAMED) $< > $@
+
+$(BUILD_DIR)/$(NAME).gde: ../zip/spun.gde $(NAMED_DEPS) | dirs
+	$(NAMED) $< > $@
+
+zip: binaries $(ZIP_FILES)
 	$(RM) $(BUILD_DIR)/zip $(ZIP)
 	$(MKDIR) $(BUILD_DIR)/zip
 	cp $(BUILD_DIR)/$(NAME) $(BUILD_DIR)/zip/$(NAME).dot
 	cp $(ZIP_FILES) $(BUILD_DIR)/zip/
 	cd $(BUILD_DIR)/zip && zip -X -q $(abspath $(ZIP)) $(NAME).dot $(notdir $(ZIP_FILES))
 	$(RM) $(BUILD_DIR)/zip
-
-spunjane:
-	@test -n "$(SPUNJANE_SERVER)" || { echo "Set SPUNJANE_SERVER in .env" >&2; exit 1; }
-	$(MAKE) NAME=spunjane SERVER=$(SPUNJANE_SERVER) PORT=$(SPUNJANE_PORT) BUILD_DIR=./BUILD-spunjane zip
 
 posix: $(POSIX_DIR)/$(NAME)
 
@@ -178,15 +203,15 @@ $(POSIX_DIR)/messages.c: $(COMMON)/messages.asm $(COMMON)/messages2c.awk
 	$(MKDIR) $(POSIX_DIR)
 	awk -f $(COMMON)/messages2c.awk $(COMMON)/messages.asm > $@
 
-$(POSIX_DIR)/spun_messages.c: spun_messages.asm $(COMMON)/messages2c.awk
+$(POSIX_DIR)/spun_messages.c: spun_messages.asm $(COMMON)/messages2c.awk $(NAMED_DEPS)
 	$(MKDIR) $(POSIX_DIR)
-	awk -f $(COMMON)/messages2c.awk spun_messages.asm > $@
+	$(NAMED) spun_messages.asm | awk -f $(COMMON)/messages2c.awk > $@
 
 # The same file help.asm includes with BINARY
-$(POSIX_DIR)/help.c: help.txt
+$(POSIX_DIR)/help.c: help.txt $(NAMED_DEPS)
 	$(MKDIR) $(POSIX_DIR)
-	( echo "unsigned char help[] = {"; xxd -i < help.txt; echo ", 0 };" ) > $@
+	( echo "unsigned char help[] = {"; $(NAMED) help.txt | xxd -i; echo ", 0 };" ) > $@
 
 .DELETE_ON_ERROR:
 
-.PHONY: all clean dirs spunjane banks bank_46 bank_45 bank_44 bank_43 bank_42 dotn binaries zip posix
+.PHONY: all clean dirs banks bank_46 bank_45 bank_44 bank_43 bank_42 dotn binaries zip posix

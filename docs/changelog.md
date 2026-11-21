@@ -4,6 +4,9 @@
 
 ### `.spun`
 
+- `.spun` can be built with its own name, server, port and colour, for
+  your own SPUN server. See "Building `.spun` for your own server" in
+  `docs/CMS.md`.
 - Apps do not install when they depend on a newer Next core, directly or
   through a dependency. The check covers the whole dependency
   tree and comes before any question or new directory, so a refusal
@@ -25,6 +28,7 @@
 
 ### CMS
 
+- The colour of the `spun` theme can be set to match a `.spun` build.
 - The app page has tabs: Releases, Dependencies, Screenshots, Details
   and Delete. Each tab has its own URL.
 - Dependencies are chosen from a list of the publisher's other apps, or

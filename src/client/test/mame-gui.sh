@@ -39,7 +39,7 @@ scn=${scn//@PORT@/$port}
 printf '%s\n' "$scn" > "$work/spun-gui.scn"
 
 status=0
-(cd "$PINESY_HARNESS" && ./run.py "$work/spun-gui.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=$?
+(cd "$PINESY_HARNESS" && ./run.py "$work/spun-gui.scn") | tee "$work/run.out" || status=$?
 run=$(sed -n 's/^run dir *//p' "$work/run.out")
 python3 "$here/gui-test.py" pointers "$work/spun-gui.scn" "$run" || status=1
 

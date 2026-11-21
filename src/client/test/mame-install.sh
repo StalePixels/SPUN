@@ -140,7 +140,7 @@ scenario() {
     scn=${scn//@CAT@/$work/old.cat}
     printf '%s\n' "$scn" > "$work/$name.scn"
 
-    (cd "$PINESY_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/run.out" || status=$?
+    (cd "$PINESY_HARNESS" && ./run.py "$work/$name.scn" --keep-image) | tee "$work/run.out" || status=$?
     run=$(sed -n 's/^run dir *//p' "$work/run.out")
     echo "$run" >> "$work/runs.list"
     python3 "$here/gui-test.py" pointers "$work/$name.scn" "$run" || status=1

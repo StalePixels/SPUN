@@ -34,7 +34,7 @@ scn=${scn//@PORT@/$SPUN_TEST_PORT}
 printf '%s\n' "$scn" > "$work/spun-splash.scn"
 
 status=0
-(cd "$PINESY_HARNESS" && ./run.py "$work/spun-splash.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=$?
+(cd "$PINESY_HARNESS" && ./run.py "$work/spun-splash.scn") | tee "$work/run.out" || status=$?
 run=$(sed -n 's/^run dir *//p' "$work/run.out")
 python3 "$here/gui-test.py" pointers "$work/spun-splash.scn" "$run" || status=1
 python3 "$here/gui-test.py" layer2 "$work/spun-splash.scn" "$run" "$SPUN_TEST_SERVER" "$SPUN_TEST_PORT" /nonexistent || status=1

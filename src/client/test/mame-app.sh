@@ -44,7 +44,7 @@ scn=${scn//@PORT@/$port}
 printf '%s\n' "$scn" > "$work/spun-app.scn"
 
 status=0
-(cd "$PINESY_HARNESS" && ./run.py "$work/spun-app.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=$?
+(cd "$PINESY_HARNESS" && ./run.py "$work/spun-app.scn") | tee "$work/run.out" || status=$?
 run=$(sed -n 's/^run dir *//p' "$work/run.out")
 python3 "$here/gui-test.py" pointers "$work/spun-app.scn" "$run" || status=1
 python3 "$here/gui-test.py" layer2 "$work/spun-app.scn" "$run" "$SPUN_TEST_SERVER" "$SPUN_TEST_PORT" "$storage/public" || status=1

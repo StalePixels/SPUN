@@ -329,6 +329,6 @@ void self_update(char *name) {
     gui_end();
     check_install_drive();
     if((result = install(appid, true))) NBN_Fail(unzipErrors[result - 1]);
-    printf("SPUN was updated, please restart SPUN to resume\n");
+    printf(SPUN_DISPLAY " was updated, please restart " SPUN_DISPLAY " to resume\n");
     exit(0);
 }

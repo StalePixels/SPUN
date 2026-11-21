@@ -39,7 +39,7 @@ scn=${scn//@PORT@/$port}
 printf '%s\n' "$scn" > "$work/spun-category.scn"
 
 status=0
-(cd "$PINESY_HARNESS" && ./run.py "$work/spun-category.scn" --mame "$(command -v "$MAME")") | tee "$work/run.out" || status=$?
+(cd "$PINESY_HARNESS" && ./run.py "$work/spun-category.scn") | tee "$work/run.out" || status=$?
 run=$(sed -n 's/^run dir *//p' "$work/run.out")
 
 # Leaving the picker with Edit, BREAK or Back (key C does nothing there) shows the catalogue again (SPLIST 1), and

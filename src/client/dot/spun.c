@@ -43,7 +43,7 @@ unsigned char parentDir[256];
 
 static unsigned char defaultServer[] = SPUN_SERVER;
 static unsigned char defaultPort[] = SPUN_PORT;
-static unsigned char spunName[] = SPUN_NAME;
+static unsigned char updateId[] = SPUN_UPDATE_ID;
 static uint8_t customServer = 0;
 static uint8_t customPort = 0;
 static uint8_t commandArg = 0;
@@ -199,7 +199,7 @@ int main(int argc, char** argv) {
     unsigned char *error;
 
     if(argc == 2 && stricmp(argv[1], "-v") == 0) {
-        printf(".spun " SPUN_VERSION "\n");
+        printf("." SPUN_NAME " " SPUN_VERSION "\n");
         exit(0);
     }
 
@@ -301,7 +301,7 @@ int main(int argc, char** argv) {
     netServer = customServer ? argv[customServer] : (char *)defaultServer;
     netPort = customPort ? argv[customPort] : (char *)defaultPort;
     _far(BANK_NET, (far_fn_t)net_open);
-    _farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)self_update, spunName);
+    _farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)self_update, updateId);
 
     if (commandArg && stricmp(argv[commandArg], "get") == 0) {
         _farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)check_catalogue, argv[valueArg]);

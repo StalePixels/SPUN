@@ -3,15 +3,18 @@
 #include "app.h"
 #include "cache.h"
 
+#define CACHE_DIR "C:/tmp/" SPUN_NAME
+static const unsigned char cacheDir[] = CACHE_DIR;
+
 // Thumbnails are indexes 0 to 4, NXI files 5 to 9
 static void cache_path(unsigned char *path, uint8_t index) {
-    if(index == CACHE_SLOTS) sprintf(path, "C:/tmp/spun/%s/cache.crc", appid);
-    else if(index < SLOTS) sprintf(path, "C:/tmp/spun/%s/thumb%u", appid, index + 1);
-    else sprintf(path, "C:/tmp/spun/%s/shot%u", appid, index - SLOTS + 1);
+    if(index == CACHE_SLOTS) sprintf(path, CACHE_DIR "/%s/cache.crc", appid);
+    else if(index < SLOTS) sprintf(path, CACHE_DIR "/%s/thumb%u", appid, index + 1);
+    else sprintf(path, CACHE_DIR "/%s/shot%u", appid, index - SLOTS + 1);
 }
 
 static void cache_save(void) {
-    unsigned char path[32];
+    unsigned char path[sizeof(cacheDir) + 20];
     uint8_t handle;
 
     cache_path(path, CACHE_SLOTS);
@@ -23,7 +26,7 @@ static void cache_save(void) {
 }
 
 static void cache_unlink(uint8_t index) __z88dk_fastcall {
-    unsigned char path[32];
+    unsigned char path[sizeof(cacheDir) + 20];
 
     cache_path(path, index);
     esxdos_f_unlink(path);
@@ -31,7 +34,7 @@ static void cache_unlink(uint8_t index) __z88dk_fastcall {
 
 // A missing or short cache.crc counts as all zeros
 void cache_load(void) {
-    unsigned char path[32];
+    unsigned char path[sizeof(cacheDir) + 20];
     uint8_t handle;
 
     memset(cacheCrc, 0, sizeof(cacheCrc));
@@ -46,7 +49,7 @@ void cache_load(void) {
 // Sets file_in to read the cached file, or file_out to write the download to it. A file that is
 // about to change loses its value in cache.crc first, so cache.crc never names an incomplete file
 void cache_open(uint8_t index) {
-    unsigned char path[32];
+    unsigned char path[sizeof(cacheDir) + 20];
     uint8_t handle;
 
     file_in = 0;
@@ -67,9 +70,9 @@ void cache_open(uint8_t index) {
         cache_save();
     }
 
-    strcpy(nbnBuff, "C:/tmp/spun");
+    strcpy(nbnBuff, cacheDir);
     esx_f_mkdir(nbnBuff);
-    sprintf(nbnBuff, "C:/tmp/spun/%s", appid);
+    sprintf(nbnBuff, CACHE_DIR "/%s", appid);
     esx_f_mkdir(nbnBuff);
     errno = 0;
     handle = esxdos_f_open(path, ESXDOS_MODE_W | ESXDOS_MODE_CT);
@@ -104,7 +107,7 @@ void cache_clear(void) {
     uint8_t index;
 
     for(index = 0; index <= CACHE_SLOTS; index++) cache_unlink(index);
-    sprintf(nbnBuff, "C:/tmp/spun/%s", appid);
+    sprintf(nbnBuff, CACHE_DIR "/%s", appid);
     esx_f_rmdir(nbnBuff);
     memset(cacheCrc, 0, sizeof(cacheCrc));
 }

@@ -1,7 +1,10 @@
 // The SPUN theme, in the SPUI style. It has one colour mode, Bootstrap's dark mode.
-// Colours are the GUI's 8-bit Next colours (src/client/dot/BANK_screen/screen_on.c).
+// Colours are the GUI's 8-bit Next colours (PALETTE in src/client/dot/Makefile).
+// scripts/themes.mts sets the three blues from THEME_COLOUR.
 
-$spun-blue: #0000b6;
+$spun-blue: #0000b6 !default;
+$spun-blue-dark: #00009a !default;
+$spun-blue-light: #0000d7 !default;
 $spun-yellow: #ffff00;
 $spun-red: #ff0000;
 $spun-green: #00ff00;
@@ -17,8 +20,8 @@ $body-bg-dark: $spun-blue;
 $body-color-dark: #fff;
 $body-emphasis-color-dark: #fff;
 $body-secondary-color-dark: rgba(#fff, 0.75);
-$body-secondary-bg-dark: #00009a;
-$body-tertiary-bg-dark: #0000d7;
+$body-secondary-bg-dark: $spun-blue-dark;
+$body-tertiary-bg-dark: $spun-blue-light;
 $headings-color-dark: #fff;
 $link-color-dark: $spun-yellow;
 $link-hover-color-dark: #fff;

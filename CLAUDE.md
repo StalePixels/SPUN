@@ -55,7 +55,11 @@ of `.spun` uses.
   that is a complete Bootstrap build. A new theme is listed in `THEMES` in
   `src/themes/index.ts`. `scripts/themes.mts` compiles each theme to
   `public/themes/<id>/` (`pnpm dev` and `pnpm build` run it); the layout
-  links only the chosen theme's stylesheet.
+  links only the chosen theme's stylesheet. `THEME_COLOUR` (a Next 8-bit
+  colour) replaces the three blues of the `spun` theme.
+- Client builds: `make NAME=<name>` in `src/client/dot` reads `.env.<name>`;
+  the Makefile's top comment lists the keys. Text files that name the
+  product go through `sed` (`NAMED`) into the build.
 
 ## Gotchas
 

@@ -103,7 +103,7 @@ for stage in connect request midblock between; do
     sleep 1
     sed -e "s|@SPUN@|$spun|" -e "s|@HOST@|$SPUN_TEST_SERVER|" -e "s|@PORT@|$port|" \
         "$here/spun-drop.scn.in" > "$work/$stage.scn"
-    (cd "$PINESY_HARNESS" && ./run.py "$work/$stage.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/$stage.out" || status=1
+    (cd "$PINESY_HARNESS" && ./run.py "$work/$stage.scn" --keep-image) | tee "$work/$stage.out" || status=1
     kill "$proxy" 2>/dev/null || true
     proxy=
     run=$(sed -n 's/^run dir *//p' "$work/$stage.out")

@@ -87,7 +87,7 @@ static uint8_t find(unsigned char *id) __z88dk_fastcall {
 // The server keeps a LOG baddep only for a dependency of the release of the last SPDEPS,
 // so it goes before the next one
 static void missing(unsigned char *id) __z88dk_fastcall {
-    if(!quiet) printf("Dependency %s is not on SPUN\n", id);
+    if(!quiet) printf("Dependency %s is not on " SPUN_DISPLAY "\n", id);
     depWarning = err_dep_missing;
     sprintf(nbnBuff, "LOG baddep=%s\x0A", id);
     _far(BANK_NET, (far_fn_t)line_send);

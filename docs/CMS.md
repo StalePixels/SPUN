@@ -53,6 +53,16 @@ Each row in `screenshots` has the CRC32 of the screenshot's thumbnail file (`thu
 
 The first user who logs in becomes the admin. Log in once yourself before you announce the site. Every user after that is a normal user. An admin can make other users admins in `/admin/users`; see [ADMIN.md](ADMIN.md).
 
+## Building `.spun` for your own server
+
+`.spun` has its server and port compiled in. To use it with your server, build it with a name of its own. In `src/client/dot`, write the settings in `.env.<name>`, then run `make NAME=<name> zip`. The comment at the top of `src/client/dot/Makefile` lists the settings.
+
+The zip is `BUILD-<name>/<name>-<version>.zip`. On the Next, the dot command is `.<name>`, and the title bar, help, menu and guide show your name. It keeps its own catalogue and screenshot cache, so it does not touch an installed `.spun`.
+
+For the build to update itself, publish the zip as an app on your CMS. Then, in `/admin`, give the app an alias that is the same as `UPDATE_ID` (by default, the build name).
+
+`THEME_COLOUR` in `docker/.env` sets the colour of the web site. Use the same byte as in the client's `.env.<name>`. The CMS reads it when the image builds, so run `docker compose up --build -d` after a change.
+
 ## Storage layout
 
 `STORAGE_DIR` has three directories.

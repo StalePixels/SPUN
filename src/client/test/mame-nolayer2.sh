@@ -32,4 +32,4 @@ docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$fragment:$fragment"
 scn=$(sed -e "s|@SPUN@|$spun|" -e "s|@FRAGMENT@|$work/fragment|" "$here/spun-nolayer2.scn.in")
 printf '%s\n' "$scn" > "$work/spun-nolayer2.scn"
 
-(cd "$PINESY_HARNESS" && ./run.py "$work/spun-nolayer2.scn" --mame "$(command -v "$MAME")")
+(cd "$PINESY_HARNESS" && ./run.py "$work/spun-nolayer2.scn")

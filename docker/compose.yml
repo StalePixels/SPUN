@@ -8,6 +8,8 @@ services:
       context: ../src/web
       additional_contexts:
         client: ../src/client
+      args:
+        THEME_COLOUR: ${THEME_COLOUR:-}
     env_file: cms.env
     environment:
       DATABASE_URL: mysql://${MARIADB_USER}:${MARIADB_PASSWORD}@mariadb:3306/${MARIADB_DATABASE}

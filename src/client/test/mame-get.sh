@@ -26,7 +26,7 @@ scenario() {
         "$here/spun-get.scn.in" > "$work/$name.scn"
 
     local status=0
-    (cd "$PINESY_HARNESS" && ./run.py "$work/$name.scn" --mame "$(command -v "$MAME")" --keep-image) | tee "$work/$name.out" || status=$?
+    (cd "$PINESY_HARNESS" && ./run.py "$work/$name.scn" --keep-image) | tee "$work/$name.out" || status=$?
 
     sed -n 's/^run dir *//p' "$work/$name.out" >> "$work/runs.list"
     if [ -n "${HDFMONKEY:-}" ]; then

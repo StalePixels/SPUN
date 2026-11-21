@@ -1,9 +1,3 @@
-BUILD-spun
-BUILD-posix
-BUILD-test
-BUILD-test-posix
+BUILD-*
 TMP-*
-BUILD-test-s
-BUILD-dev
-BUILD-spunjane
-.env
+.env*
