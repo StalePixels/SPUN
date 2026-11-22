@@ -15,7 +15,7 @@ import type { Problem } from "./problems";
 import { appSnapshot, notify, releaseSnapshot } from "./notify";
 import { addRelease, appBinStore, notifyRelease, notifyReleaseEdit, type Upload } from "./releases";
 import { revalidateApp, type AppRevalidation } from "./revalidate";
-import { canChangeTerms, checkAlias, checkVersionUnused, currentTermsOf } from "./rules";
+import { canChangeTerms, checkAlias, checkVersionUnused, currentTermsOf, type Visibility } from "./rules";
 import { currentUser, isAdmin, requireTerms } from "./session";
 import { DEFAULT_APP_LIMIT, getSetting } from "./settings";
 import { databaseNow } from "./terms";
@@ -236,7 +236,7 @@ export async function adminGetApp(appId: AppId) {
       description: apps.description,
       installDir: apps.installDir,
       minCore: apps.minCore,
-      hidden: apps.hidden,
+      visibility: apps.visibility,
       deletedAt: apps.deletedAt,
       ownerId: users.id,
       owner: users.username,
@@ -316,9 +316,11 @@ export async function adminDependsChoices(ownerId: string, appId: AppId): Promis
   return ownDependsChoices(ownerId, appId);
 }
 
+// As if the app's owner searched: the owner's secret apps are found too.
 export async function adminSearchDepends(appId: AppId, query: string): Promise<DependsApp[]> {
   await requireAdmin();
-  return searchDepends(appId, query);
+  const app = await adminGetApp(appId);
+  return app ? searchDepends(app.ownerId, appId, query) : [];
 }
 
 export async function adminSetDepends(appId: AppId, input: string[]): Promise<{ error?: Problem }> {
@@ -390,7 +392,7 @@ export async function adminGetRelease(appId: AppId, serial: number) {
 
 export async function adminUpdateApp(
   appId: AppId,
-  changes: { title: string; description: string; installDir: string | null; minCore: number | null; hidden: boolean },
+  changes: { title: string; description: string; installDir: string | null; minCore: number | null; visibility: Visibility },
   categoryIds: number[],
 ): Promise<{ error?: Problem }> {
   const admin = await requireAdmin();

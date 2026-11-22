@@ -1,8 +1,8 @@
 import "server-only";
-import { asc, eq, inArray, isNull, and, ne, or } from "drizzle-orm";
-import { appDepends, apps, users } from "@/db/schema";
+import { asc, eq, exists, inArray, isNull, and, ne, or, sql } from "drizzle-orm";
+import { aliases, appDepends, apps, users } from "@/db/schema";
 import { notifyAppEdit, ownedApp, parseAppId, type AppId } from "./apps";
-import { isPublic, matches } from "./catalogue";
+import { isPublic, matches, shownIn } from "./catalogue";
 import { db } from "./db";
 import { appSnapshot } from "./notify";
 import type { Problem } from "./problems";
@@ -99,15 +99,20 @@ export async function ownDependsChoices(ownerId: string, appId: AppId): Promise<
   return rows.map(dependsApp);
 }
 
-// Public apps of any user, found as the catalogue finds them, or by their exact id.
-export async function searchDepends(appId: AppId, query: string): Promise<DependsApp[]> {
+// Public apps found as the catalogue finds them: listed and unlisted ones, and the owner's
+// secret ones. An exact id or alias finds any public app, secret ones too.
+export async function searchDepends(ownerId: string, appId: AppId, query: string): Promise<DependsApp[]> {
   const text = query.trim();
   if (text === "") {
     return [];
   }
   const id = parseAppId(text);
+  const named = or(
+    ...(id ? [eq(apps.id, id)] : []),
+    exists(db().select({ one: sql`1` }).from(aliases).where(and(eq(aliases.appId, apps.id), eq(aliases.alias, text)))),
+  );
   const rows = await dependsAppQuery()
-    .where(and(isPublic(), ne(apps.id, appId), id ? or(eq(apps.id, id), matches(text)) : matches(text)))
+    .where(and(isPublic(), ne(apps.id, appId), or(named, and(shownIn(["listed", "unlisted"], ownerId), matches(text)))))
     .orderBy(asc(apps.title), asc(apps.id))
     .limit(DEPENDS_SEARCH_MAX);
   return rows.map(dependsApp);

@@ -294,7 +294,7 @@ test("each write tool makes the change its API call makes, with the same answer 
     await Promise.all(["Needed B", "Needed C", "Gone"].map((label) => insertApp(other, uniqueTitle(label))))
   ).sort();
   await markAppDeleted(gone);
-  const hidden = await insertApp(other, uniqueTitle("Not public"));
+  const notPublic = await insertApp(other, uniqueTitle("Not public"));
   const made: string[] = [];
   const { accessToken } = await connectMcpClient(page, `E2E MCP write ${Date.now().toString(36)}`);
   const mcp = await mcpClient(accessToken, ERAS[0]);
@@ -378,7 +378,20 @@ test("each write tool makes the change its API call makes, with the same answer 
     for (const id of pair) {
       expect(await appMinCore(id), "a refused edit changes nothing").toBe(0x02001c);
     }
+    const unlisted = { ...edit, visibility: "unlisted" };
+    await same("update_app", (id) => ({ id, ...unlisted }), "PUT", appPath, unlisted, pair);
+    for (const id of pair) {
+      expect(await appRow(id)).toMatchObject({ visibility: "unlisted" });
+    }
+    expect(await tool("get_app", { id: a })).toMatchObject({ isError: false, body: { visibility: "unlisted" } });
+    const badVisibility = { ...edit, visibility: "private" };
+    expect(await same("update_app", (id) => ({ id, ...badVisibility }), "PUT", appPath, badVisibility, pair)).toEqual(
+      toolProblem({ code: "visibility.unknown" }),
+    );
     await same("update_app", (id) => ({ id, ...edit, minCore: "" }), "PUT", appPath, { ...edit, minCore: "" }, pair);
+    for (const id of pair) {
+      expect(await appRow(id), "a missing visibility is listed").toMatchObject({ visibility: "listed" });
+    }
     expect((await appRow(a)).install_dir).toBe((await appRow(b)).install_dir);
     const banned = { ...edit, installDir: "/dot/x" };
     expect(await same("update_app", (id) => ({ id, ...banned }), "PUT", appPath, banned, pair)).toEqual(
@@ -474,10 +487,10 @@ test("each write tool makes the change its API call makes, with the same answer 
     for (const id of pair) {
       expect(await isSaved(owner.id, id)).toBe(true);
     }
-    expect(await same("save_app", () => ({ id: hidden }), "PUT", () => savedPath(hidden), undefined, pair)).toEqual(
+    expect(await same("save_app", () => ({ id: notPublic }), "PUT", () => savedPath(notPublic), undefined, pair)).toEqual(
       toolProblem({ code: "app.notFound" }),
     );
-    expect(await isSaved(owner.id, hidden)).toBe(false);
+    expect(await isSaved(owner.id, notPublic)).toBe(false);
     await same("unsave_app", (id) => ({ id }), "DELETE", savedPath, undefined, pair);
     for (const id of pair) {
       expect(await isSaved(owner.id, id)).toBe(false);

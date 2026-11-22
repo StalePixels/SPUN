@@ -18,8 +18,10 @@ import {
   checkDescription,
   checkRequiredInstallDir,
   checkTitle,
+  checkVisibility,
   isoDay,
   suggestInstallDir,
+  type Visibility,
 } from "./rules";
 import { appScreenshots, type Screenshot } from "./screenshots";
 
@@ -148,7 +150,7 @@ export type AppFields = {
   installDir: string;
   minCore: string;
   categories: number[];
-  hidden: boolean;
+  visibility: string;
 };
 
 export type OwnRelease = {
@@ -164,7 +166,7 @@ export type OwnAppView = {
   description: string;
   installDir: string | null;
   minCore: string | null;
-  hidden: boolean;
+  visibility: Visibility;
   categories: number[];
   depends: AppId[];
   releases: OwnRelease[];
@@ -189,10 +191,10 @@ export async function withCategoryInstallDir(fields: AppFields): Promise<AppFiel
 }
 
 type AppFieldsCheck =
-  | { ok: true; installDir: string; minCore: number | null; categoryIds: number[] }
+  | { ok: true; installDir: string; minCore: number | null; categoryIds: number[]; visibility: Visibility }
   | { ok: false; error: Problem };
 
-export async function checkAppFields(fields: Omit<AppFields, "hidden">): Promise<AppFieldsCheck> {
+export async function checkAppFields(fields: AppFields): Promise<AppFieldsCheck> {
   const error = checkTitle(fields.title) ?? checkDescription(fields.description);
   if (error) {
     return { ok: false, error };
@@ -206,7 +208,14 @@ export async function checkAppFields(fields: Omit<AppFields, "hidden">): Promise
     return dir;
   }
   const core = parseMinCore(fields.minCore);
-  return core.ok ? { ok: true, installDir: dir.installDir, minCore: core.minCore, categoryIds: choice.ids } : core;
+  if (!core.ok) {
+    return core;
+  }
+  const shown = checkVisibility(fields.visibility);
+  if (!shown.ok) {
+    return shown;
+  }
+  return { ok: true, installDir: dir.installDir, minCore: core.minCore, categoryIds: choice.ids, visibility: shown.visibility };
 }
 
 export async function addApp(userId: string, fields: AppFields): Promise<{ error: Problem } | { id: AppId }> {
@@ -229,7 +238,7 @@ export async function addApp(userId: string, fields: AppFields): Promise<{ error
         description: fields.description,
         installDir: choice.installDir,
         minCore: choice.minCore,
-        hidden: fields.hidden,
+        visibility: choice.visibility,
       });
     await setAppCategories(tx, id, choice.categoryIds);
   });
@@ -259,7 +268,7 @@ export async function editApp(
         description: fields.description,
         installDir: choice.installDir,
         minCore: choice.minCore,
-        hidden: fields.hidden,
+        visibility: choice.visibility,
       })
       .where(eq(apps.id, appId));
     await setAppCategories(tx, appId, choice.categoryIds);
@@ -300,7 +309,7 @@ export async function ownAppView(userId: string, appId: AppId): Promise<OwnAppVi
     description: app.description,
     installDir: app.installDir,
     minCore: app.minCore === null ? null : formatMinCore(app.minCore),
-    hidden: app.hidden,
+    visibility: app.visibility,
     categories: (await appCategoryList(appId)).map((category) => category.id),
     depends: await appDependsList(appId),
     releases: rows.map((row) => ({

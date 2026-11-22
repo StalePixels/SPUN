@@ -1,4 +1,13 @@
-import { dependsOf, insertApp, insertDepends, insertRelease, insertUser, markAppDeleted, removeTestUser } from "../support/db";
+import {
+  dependsOf,
+  insertApp,
+  insertDepends,
+  insertRelease,
+  insertUser,
+  markAppDeleted,
+  removeTestUser,
+  setAppVisibility,
+} from "../support/db";
 import { clickHydrated, expect, test, uniqueTitle } from "../support/pages";
 
 test("an app's page lists the apps that depend on it, deleted ones too", async ({ page }) => {
@@ -49,5 +58,34 @@ test("an admin edits another user's dependency list with the picker", async ({ p
     await expect(page.getByTestId(`needed-by-${group}`)).toBeVisible();
   } finally {
     await removeTestUser(userId);
+  }
+});
+
+test("the admin picker finds the owner's secret apps by text, and other users' only by id", async ({ page }) => {
+  const word = `adv${Date.now().toString(36)}`;
+  const ownerId = await insertUser(`e2eo${Date.now().toString(36).slice(-8)}`);
+  const otherId = await insertUser(`e2ep${Date.now().toString(36).slice(-8)}`);
+  try {
+    const group = await insertApp(ownerId, uniqueTitle("Admin group"));
+    const ownSecret = await insertApp(ownerId, `E2E ${word} own secret`);
+    const otherSecret = await insertApp(otherId, `E2E ${word} other secret`);
+    for (const id of [ownSecret, otherSecret]) {
+      await insertRelease(id, 1, "1.0");
+      await setAppVisibility(id, "secret");
+    }
+    const card = page.getByTestId("depends");
+    await page.goto(`/admin/apps/${group}`);
+
+    await card.getByTestId("depends-search").fill(word);
+    await clickHydrated(card.getByTestId("depends-search-submit"));
+    await expect(card.getByTestId(`depends-add-${ownSecret}`)).toBeVisible();
+    await expect(card.getByTestId(`depends-add-${otherSecret}`)).toHaveCount(0);
+
+    await card.getByTestId("depends-search").fill(otherSecret);
+    await card.getByTestId("depends-search-submit").click();
+    await expect(card.getByTestId(`depends-add-${otherSecret}`)).toBeVisible();
+  } finally {
+    await removeTestUser(ownerId);
+    await removeTestUser(otherId);
   }
 });

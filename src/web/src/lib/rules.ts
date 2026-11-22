@@ -249,6 +249,20 @@ export const RESERVED_PATHS = [
 // The form of an app id. A category slug may not have it: /catalogue/<x> is either.
 export const APP_ID_RE = /^[0-9a-z]{6}$/;
 
+export const VISIBILITIES = ["listed", "unlisted", "secret"] as const;
+export type Visibility = (typeof VISIBILITIES)[number];
+export type VisibilityCheck = { ok: true; visibility: Visibility } | { ok: false; error: Problem };
+
+// Left out, an app is listed, as the other app fields are made empty when left out.
+export function checkVisibility(input: string): VisibilityCheck {
+  if (input === "") {
+    return { ok: true, visibility: "listed" };
+  }
+  return (VISIBILITIES as readonly string[]).includes(input)
+    ? { ok: true, visibility: input as Visibility }
+    : { ok: false, error: { code: "visibility.unknown" } };
+}
+
 // .spun reads the count of an app's dependencies as one byte.
 export const DEPENDS_MAX = 255;
 export const DEPENDS_SEARCH_MAX = 20;

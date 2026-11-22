@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   checkDepends,
+  checkVisibility,
   dependsFromText,
   DEPENDS_MAX,
   appLimitFor,
@@ -778,5 +779,23 @@ describe("dependsFromText", () => {
   it("splits at spaces, commas and new lines", () => {
     expect(dependsFromText(" abc123, def456\nghi789\r\n ")).toEqual(["abc123", "def456", "ghi789"]);
     expect(dependsFromText("")).toEqual([]);
+  });
+});
+
+describe("checkVisibility", () => {
+  it("reads empty as listed", () => {
+    expect(checkVisibility("")).toEqual({ ok: true, visibility: "listed" });
+  });
+
+  it("takes the three states", () => {
+    for (const visibility of ["listed", "unlisted", "secret"]) {
+      expect(checkVisibility(visibility)).toEqual({ ok: true, visibility });
+    }
+  });
+
+  it("refuses any other value with its code", () => {
+    for (const input of ["Listed", "hidden", "true", " listed"]) {
+      expect(checkVisibility(input), input).toEqual({ ok: false, error: { code: "visibility.unknown" } });
+    }
   });
 });

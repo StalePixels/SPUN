@@ -172,7 +172,7 @@ export default async function AdminAppPage({ params }: { params: Promise<{ id: s
               description: app.description,
               installDir: app.installDir,
               minCore: formatMinCore(app.minCore),
-              hidden: app.hidden,
+              visibility: app.visibility,
             }}
             categories={categories}
             selected={selected}

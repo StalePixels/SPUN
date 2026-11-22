@@ -124,7 +124,7 @@ export async function appSnapshot(appId: AppId): Promise<Record<string, string>>
       description: apps.description,
       installDir: apps.installDir,
       minCore: apps.minCore,
-      hidden: apps.hidden,
+      visibility: apps.visibility,
     })
     .from(apps)
     .where(eq(apps.id, appId));
@@ -139,7 +139,7 @@ export async function appSnapshot(appId: AppId): Promise<Record<string, string>>
     Description: row?.description ?? "",
     "Install directory": row?.installDir ?? "",
     "Minimum core version": formatMinCore(row?.minCore ?? null),
-    "Hidden in the catalogue": row?.hidden ? "Yes" : "No",
+    Visibility: row?.visibility ?? "",
     Categories: categories.map((category) => category.name).join(", "),
     Dependencies: depends.map((dep) => dep.id).join(" "),
   };

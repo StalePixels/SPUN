@@ -70,6 +70,7 @@ import {
   checkTitle,
   checkUsernameInput,
   checkVersion,
+  checkVisibility,
   lineFeeds,
   parseLimit,
   parseSerial,
@@ -157,9 +158,13 @@ export async function saveAdminApp(rawId: string, _prev: FormState, formData: Fo
   if (!choice.ok) {
     return { error: choice.error };
   }
+  const shown = checkVisibility(text(formData, "visibility"));
+  if (!shown.ok) {
+    return { error: shown.error };
+  }
   const result = await adminUpdateApp(
     appId,
-    { title, description, installDir: dir.installDir, minCore: core.minCore, hidden: formData.get("hidden") === "on" },
+    { title, description, installDir: dir.installDir, minCore: core.minCore, visibility: shown.visibility },
     choice.ids,
   );
   if (result.error) {

@@ -30,7 +30,8 @@ SPUN gives each app an id of six lowercase letters and digits, such as `abc123`.
 
 Each user may publish a limited number of apps. The limit is on your account page. An admin sets it. If you have reached it, "New app" says so.
 
-- Hide in the catalogue: the catalogue lists, on the web and on the Next, leave the app out. Search still finds it, and its own page, downloads and dependencies still work. Use it for the parts of a large app: the main app is in the catalogue, and its parts are hidden apps that it depends on.
+- Visibility: listed, unlisted or secret. A listed app is in the catalogue lists and search, on the web and on the Next. An unlisted app is in neither, but other publishers find it in the dependency picker. Use it for the parts of a large app: the main app is listed, and its parts are unlisted apps that it depends on. A secret app is in neither, and only you find it in the web search and the dependency picker. Other publishers can pick it only if they know its exact id or alias.
+- In every state, a direct link works: the app's page, downloads, `.spun get` with its id or alias, and installs as a dependency.
 
 The catalogue lists an app only when it has at least one release that is not deleted.
 
@@ -64,7 +65,7 @@ A file at the root of the zip with a name ending `.dot` is a dot command. After 
 
 An app can depend on other apps on SPUN, yours or another publisher's. Before `.spun` installs or updates your app, it installs each dependency that is not installed, and updates each one that has a newer release. It does the same for the dependencies of a dependency. An app with no files of its own and only dependencies works as a group: one install gets them all. Give such an app a small zip, for example a text file that says what the group holds.
 
-Choose the dependencies on the Dependencies tab of your app's page. Pick from your other apps, or search for a public app of any publisher by its title, description or id, then save. A dependency with no suggested install directory goes to the directory of the app that lists it. Aliases do not work here. An app cannot depend on itself or on a deleted app. An app can have up to 255 dependencies.
+Choose the dependencies on the Dependencies tab of your app's page. Pick from your other apps, or search for a public app of any publisher by its title, description, id or alias, then save. A search by title or description finds listed and unlisted apps, and your own secret ones. An exact id or alias finds any public app. A dependency with no suggested install directory goes to the directory of the app that lists it. An app cannot depend on itself or on a deleted app. An app can have up to 255 dependencies.
 
 Set the minimum core version of your app on the Details tab of its page. `.spun` does not install any apps that depend on a newer core. An app that lists yours as a dependency depends on the minimum core version of yours too.
 

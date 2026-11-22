@@ -124,7 +124,7 @@ const appFieldsInput = {
   installDir: z.string().optional().describe(MCP_FIELDS.installDir),
   minCore: z.string().optional().describe(MCP_FIELDS.minCore),
   categories: z.array(z.number().int()).optional().describe(MCP_FIELDS.categories),
-  hidden: z.boolean().optional().describe(MCP_FIELDS.hidden),
+  visibility: z.string().optional().describe(MCP_FIELDS.visibility),
 };
 
 type McpContext = { user: ApiUser; grantId: string };

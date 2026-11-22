@@ -16,7 +16,7 @@ export type AppRevalidation = { app: Problem | null; releases: ReleaseRevalidati
 
 export async function revalidateApp(appId: AppId): Promise<AppRevalidation | null> {
   const [app] = await db()
-    .select({ title: apps.title, description: apps.description, installDir: apps.installDir, minCore: apps.minCore, owner: users.username })
+    .select({ title: apps.title, description: apps.description, installDir: apps.installDir, minCore: apps.minCore, visibility: apps.visibility, owner: users.username })
     .from(apps)
     .innerJoin(users, eq(users.id, apps.userId))
     .where(and(eq(apps.id, appId), isNull(apps.deletedAt)));
@@ -29,6 +29,7 @@ export async function revalidateApp(appId: AppId): Promise<AppRevalidation | nul
     installDir: app.installDir ?? "",
     minCore: formatMinCore(app.minCore),
     categories: (await appCategoryList(appId)).map((category) => category.id),
+    visibility: app.visibility,
   });
   const overrides = await appDotOverrides(appId);
   const rows = await db()

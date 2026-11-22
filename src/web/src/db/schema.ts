@@ -6,6 +6,7 @@ import {
   index,
   int,
   mediumtext,
+  mysqlEnum,
   mysqlTable,
   primaryKey,
   smallint,
@@ -16,6 +17,7 @@ import {
   varchar,
 } from "drizzle-orm/mysql-core";
 import type { AppId } from "../lib/apps";
+import { VISIBILITIES } from "../lib/rules";
 
 // Property names must match what @auth/drizzle-adapter expects.
 export const users = mysqlTable("users", {
@@ -87,8 +89,9 @@ export const apps = mysqlTable("apps", {
   // The oldest Next core the app runs on, as (major << 16) | (minor << 8) | sub. Null: any.
   minCore: int("min_core", { unsigned: true }),
   downloads: int("downloads", { unsigned: true }).notNull().default(0),
-  // A hidden app is left out of the catalogue lists, but search and its own page still find it.
-  hidden: boolean("hidden").notNull().default(false),
+  // listed: in the lists and search. unlisted: neither, but the dependency picker finds it.
+  // secret: only its owner's searches find it. A direct link works for all three.
+  visibility: mysqlEnum("visibility", VISIBILITIES).notNull().default("listed"),
   // Soft delete: the row stays, so the id is never reused.
   deletedAt: timestamp("deleted_at"),
 });

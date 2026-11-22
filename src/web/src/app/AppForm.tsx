@@ -7,12 +7,24 @@ import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import type { LiveCategory } from "@/lib/categories";
-import { DESCRIPTION_MAX, INSTALL_DIR_MAX, TITLE_MAX, suggestInstallDir } from "@/lib/rules";
+import { DESCRIPTION_MAX, INSTALL_DIR_MAX, TITLE_MAX, suggestInstallDir, type Visibility } from "@/lib/rules";
 import { createApp, updateApp, type FormState } from "./actions";
 import { Field, FieldRow, RequiredNote } from "./Field";
 
+const VISIBILITY_CHOICES: { value: Visibility; label: string }[] = [
+  { value: "listed", label: "Listed: in the catalogue lists and search, on the web and on the Next." },
+  {
+    value: "unlisted",
+    label: "Unlisted: not in the lists or search. Other publishers find it in the dependency picker. Use it for the parts of a larger app.",
+  },
+  {
+    value: "secret",
+    label: "Secret: not in the lists or search. Only you find it in search and in the dependency picker; other publishers can pick it only by its exact id or alias.",
+  },
+];
+
 type Props = {
-  app?: { id: string; title: string; description: string; installDir?: string | null; minCore?: string | null; hidden?: boolean };
+  app?: { id: string; title: string; description: string; installDir?: string | null; minCore?: string | null; visibility?: Visibility };
   categories: LiveCategory[];
   selected?: number[];
   save?: (prev: FormState, formData: FormData) => Promise<FormState>;
@@ -102,18 +114,22 @@ export function AppForm({ app, categories, selected = [], save }: Props) {
         <Form.Control data-testid="app-min-core" name="minCore" defaultValue={app?.minCore ?? ""} />
       </Field>
       <Field
-        controlId="hidden"
-        label="Catalogue"
-        help="A hidden app is not in the catalogue lists. Search and its own page still find it, and other apps can depend on it. Use it for parts of a larger app."
+        controlId="visibility"
+        label="Visibility"
+        help="A direct link to the app, its page, downloads and installs by id or alias work in all three."
       >
-        <Form.Check
-          data-testid="app-hidden"
-          type="checkbox"
-          id="hidden"
-          name="hidden"
-          label="Hide in the catalogue"
-          defaultChecked={app?.hidden ?? false}
-        />
+        {VISIBILITY_CHOICES.map((choice) => (
+          <Form.Check
+            key={choice.value}
+            data-testid={`app-visibility-${choice.value}`}
+            type="radio"
+            id={`visibility-${choice.value}`}
+            name="visibility"
+            value={choice.value}
+            label={choice.label}
+            defaultChecked={(app?.visibility ?? "listed") === choice.value}
+          />
+        ))}
       </Field>
       <FieldRow>
         <Button data-testid="app-submit" type="submit" disabled={pending}>

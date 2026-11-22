@@ -10,7 +10,8 @@ import { Screenshot } from "./Screenshot";
 
 // The same page for / (slug null) and for each category URL.
 export async function Catalogue({ slug, page, query }: { slug: string | null; page: number; query: string }) {
-  const view = await catalogueView(slug, page, query);
+  const user = await currentUser();
+  const view = await catalogueView(slug, page, query, user?.id ?? null);
   if (!view) {
     notFound();
   }

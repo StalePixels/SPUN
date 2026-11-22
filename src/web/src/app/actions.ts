@@ -33,7 +33,7 @@ function appFields(formData: FormData): AppFields {
       .getAll("categories")
       .filter((value) => typeof value === "string")
       .map(Number),
-    hidden: formData.get("hidden") === "on",
+    visibility: text(formData, "visibility"),
   };
 }
 
@@ -128,7 +128,7 @@ export async function findDepends(rawId: string, query: string): Promise<Depends
   if (!appId || !(await ownedApp(user.id, appId))) {
     return [];
   }
-  return searchDepends(appId, query);
+  return searchDepends(user.id, appId, query);
 }
 
 export async function saveDepends(rawId: string, _prev: FormState, formData: FormData): Promise<FormState> {

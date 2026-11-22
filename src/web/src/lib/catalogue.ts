@@ -1,12 +1,12 @@
 import "server-only";
-import { and, asc, desc, eq, exists, isNull, max, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, inArray, isNull, max, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 import { aliases, appCategories, apps, releases, savedApps, users } from "@/db/schema";
 import { parseAppId, type AppId } from "./apps";
 import { appCategoryList, appCategoryMap, liveCategories, liveCategory, type Category } from "./categories";
 import { db } from "./db";
 import { liveFeature } from "./featured";
-import { CATALOGUE_PAGE_SIZE, FEATURED } from "./rules";
+import { CATALOGUE_PAGE_SIZE, FEATURED, type Visibility } from "./rules";
 import { appScreenshots, mainScreenshots, type Screenshot } from "./screenshots";
 
 export type CatalogueRow = {
@@ -66,6 +66,12 @@ function likePattern(text: string): string {
   return `%${text.toLowerCase().replace(/[\\%_]/g, "\\$&")}%`;
 }
 
+// Searches find secret apps of the user who searches; viewerId null: nobody's.
+export function shownIn(states: Visibility[], viewerId: string | null) {
+  const shown = inArray(apps.visibility, states);
+  return viewerId === null ? shown : or(shown, and(eq(apps.visibility, "secret"), eq(apps.userId, viewerId)));
+}
+
 // A copy of SPUNServer's FIND rule (src/server/src/mysqlCatalogue.ts), so the
 // web and the Next find the same apps for the same text.
 export function matches(query: string) {
@@ -85,11 +91,13 @@ async function withDetails(rows: Omit<CatalogueRow, "categories" | "screenshot">
 }
 
 // One row more than a page, so the caller knows if there is a next page. Newest release
-// first, as on the Next, and without hidden apps; a search is in title order and finds hidden apps too.
+// first, as on the Next; a search is in title order. Both show listed apps only, and a
+// search also shows the viewer's own secret apps.
 export async function cataloguePage(
   page: number,
   categoryId: number | null,
   query: string,
+  viewerId: string | null,
 ): Promise<{ rows: CatalogueRow[]; more: boolean }> {
   const rows = await db()
     .select({
@@ -107,7 +115,7 @@ export async function cataloguePage(
       and(
         isPublic(),
         categoryId === null ? undefined : inCategory(categoryId),
-        query === "" ? eq(apps.hidden, false) : matches(query),
+        query === "" ? eq(apps.visibility, "listed") : and(shownIn(["listed"], viewerId), matches(query)),
       ),
     )
     .orderBy(
@@ -209,13 +217,18 @@ export type CatalogueView = {
 };
 
 // For the HTML and the Markdown catalogue. Null for an unknown or deleted slug.
-export async function catalogueView(slug: string | null, page: number, query: string): Promise<CatalogueView | null> {
+export async function catalogueView(
+  slug: string | null,
+  page: number,
+  query: string,
+  viewerId: string | null,
+): Promise<CatalogueView | null> {
   const category = slug === null ? null : await liveCategory(slug);
   if (slug !== null && !category) {
     return null;
   }
   const categories = await liveCategories();
-  const { rows, more } = await cataloguePage(page, category?.id ?? null, query);
+  const { rows, more } = await cataloguePage(page, category?.id ?? null, query, viewerId);
   return { category, categories, rows, more };
 }
 

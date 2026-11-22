@@ -188,6 +188,8 @@ export function problemMessage(problem: Problem): string {
       return "Enter the core version as major.minor.sub, for example 3.01.10.";
     case "minCore.range":
       return "The major and minor numbers go from 0 to 15, and the sub number from 0 to 255.";
+    case "visibility.unknown":
+      return "Choose listed, unlisted or secret.";
     case "limit.notNumber":
       return "Enter a whole number.";
     case "limit.missing":

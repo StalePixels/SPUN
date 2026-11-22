@@ -104,7 +104,7 @@ export function apiAppFields(body: Record<string, unknown>): AppFields {
     installDir: textField(body.installDir),
     minCore: textField(body.minCore),
     categories: Array.isArray(body.categories) ? body.categories.filter((value) => Number.isInteger(value)) : [],
-    hidden: body.hidden === true,
+    visibility: textField(body.visibility),
   };
 }
 

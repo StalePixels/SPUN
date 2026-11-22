@@ -114,7 +114,7 @@ test("the publisher picks dependencies and republishes in the app page", async (
   // The client's test app: a second new app would pass the client's app limit.
   const mine = settings.testApp;
   const other = await otherApps(3);
-  const [needed, hidden, gone] = other.ids;
+  const [needed, unreleased, gone] = other.ids;
   await insertRelease(needed, 1, "1.0");
   await insertRelease(gone, 1, "1.0");
   const search = async (text: string) => {
@@ -132,7 +132,7 @@ test("the publisher picks dependencies and republishes in the app page", async (
     await expect(page.getByTestId(`depends-picked-${mine}`)).toBeVisible();
 
     // Another publisher's app is found only once it has a live release.
-    await search(hidden);
+    await search(unreleased);
     await expect(page.getByTestId("depends-found-none")).toBeVisible();
     await search(needed.toUpperCase());
     await page.getByTestId(`depends-add-${needed}`).click();

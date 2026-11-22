@@ -18,7 +18,7 @@ import { makeZip, sampleEntries, tempFiles } from "../support/zips";
 
 const client = accounts.client;
 
-test("create an app, then edit its description and hide it", async ({ page, apps }) => {
+test("create an app, then edit its description and its visibility", async ({ page, apps }) => {
   const id = await apps.create("Create", "First description");
   expect(await appRow(id)).toMatchObject({ deleted_at: null });
   await page.goto(`/publish/apps/${id}/details`);
@@ -30,12 +30,15 @@ test("create an app, then edit its description and hide it", async ({ page, apps
   await page.reload();
   await expect(page.getByTestId("app-description")).toHaveValue("Changed description");
 
-  await page.getByTestId("app-hidden").check();
-  await clickHydrated(page.getByTestId("app-submit"));
-  await expect(page.getByTestId("form-saved")).toBeVisible();
-  expect(await appRow(id)).toMatchObject({ hidden: 1 });
-  await page.reload();
-  await expect(page.getByTestId("app-hidden")).toBeChecked();
+  await expect(page.getByTestId("app-visibility-listed")).toBeChecked();
+  for (const visibility of ["unlisted", "secret"]) {
+    await page.getByTestId(`app-visibility-${visibility}`).check();
+    await clickHydrated(page.getByTestId("app-submit"));
+    await expect(page.getByTestId("form-saved")).toBeVisible();
+    expect(await appRow(id)).toMatchObject({ visibility });
+    await page.reload();
+    await expect(page.getByTestId(`app-visibility-${visibility}`)).toBeChecked();
+  }
 
   await page.goto("/publish");
   await expect(page.getByTestId(`app-${id}`)).toBeVisible();

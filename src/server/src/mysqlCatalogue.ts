@@ -15,11 +15,11 @@ import {
 const PUBLIC = `a.deleted_at IS NULL
   AND EXISTS (SELECT 1 FROM releases WHERE app_id = a.id AND deleted_at IS NULL)`;
 
-// A hidden app is left out of the lists, but SPFIND, SPINFO and downloads still find it.
+// Lists and SPFIND show listed apps only; SPINFO and downloads work in every visibility.
 const LISTED = `${PUBLIC}
-  AND NOT a.hidden`;
+  AND a.visibility = 'listed'`;
 
-const MATCH = `${PUBLIC}
+const MATCH = `${LISTED}
   AND (LOWER(a.title) LIKE ? OR LOWER(a.description) LIKE ?)`;
 
 const FOUND = `SELECT a.id, u.username, a.title, r.serial, r.version, a.downloads

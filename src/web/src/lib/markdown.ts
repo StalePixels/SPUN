@@ -32,6 +32,7 @@ import {
   OAUTH_REFRESH_SECONDS,
 } from "./rules";
 import { MCP_TOOL_OF_ROUTE } from "./mcptext";
+import { currentUser } from "./session";
 
 function escapeText(text: string): string {
   return text.replace(/[\\`*_[\]<>#|~]/g, "\\$&");
@@ -167,7 +168,7 @@ function llmsText(categories: Category[]): string {
     "",
     "## Catalogue",
     "",
-    `- ${link("All apps", "/catalogue.md")}: every public app that is not hidden, newest release first, with its publisher, latest version, release date, download total and categories. 20 apps to a page; \`?page=N\` gives page N.`,
+    `- ${link("All apps", "/catalogue.md")}: every listed public app, newest release first, with its publisher, latest version, release date, download total and categories. 20 apps to a page; \`?page=N\` gives page N.`,
     "",
     "## Categories",
     "",
@@ -175,7 +176,7 @@ function llmsText(categories: Category[]): string {
     "",
     "## Search",
     "",
-    "- `/catalogue.md?q={text}`: the apps whose title or description contains the text, in any case. `/catalogue/{category}.md?q={text}` searches in one category. `?page=N` works here too.",
+    "- `/catalogue.md?q={text}`: the listed apps whose title or description contains the text, in any case. `/catalogue/{category}.md?q={text}` searches in one category. `?page=N` works here too.",
     "",
     "## App pages",
     "",
@@ -312,7 +313,7 @@ function apiText(): string {
     "",
     "### GET /api/apps/{id}",
     "",
-    "One of the user's apps: its title, description, suggested install directory (`null` when there is none), minimum core version (`minCore`, as `major.minor.sub`, `null` when there is none), whether it is hidden in the catalogue lists, category ids and dependencies (see `PUT /api/apps/{id}/depends`), all its releases, newest first, deleted ones too, and its screenshots. `deletedDay` is the day a release was deleted, or `null`. `404`, `app.notFound`: no such app, it is deleted, or it is another user's.",
+    "One of the user's apps: its title, description, suggested install directory (`null` when there is none), minimum core version (`minCore`, as `major.minor.sub`, `null` when there is none), its visibility (`listed`, `unlisted` or `secret`), category ids and dependencies (see `PUT /api/apps/{id}/depends`), all its releases, newest first, deleted ones too, and its screenshots. `deletedDay` is the day a release was deleted, or `null`. `404`, `app.notFound`: no such app, it is deleted, or it is another user's.",
     "",
     "```json",
     "{",
@@ -321,7 +322,7 @@ function apiText(): string {
     '  "description": "What it does.",',
     '  "installDir": "/apps/myapp",',
     '  "minCore": "3.01.10",',
-    '  "hidden": false,',
+    '  "visibility": "listed",',
     '  "categories": [1],',
     '  "depends": ["def456"],',
     '  "releases": [{ "serial": 1, "version": "1.0", "releaseDate": "2026-10-02", "deletedDay": null }],',
@@ -334,7 +335,7 @@ function apiText(): string {
     "Makes an app. The body is JSON:",
     "",
     "```json",
-    '{ "title": "My App", "description": "What it does.", "installDir": "/apps/myapp", "minCore": "3.01.10", "categories": [1], "hidden": false }',
+    '{ "title": "My App", "description": "What it does.", "installDir": "/apps/myapp", "minCore": "3.01.10", "categories": [1], "visibility": "listed" }',
     "```",
     "",
     `- \`title\`: 1 to ${TITLE_MAX} characters of printable ASCII (space to \`~\`).`,
@@ -342,17 +343,17 @@ function apiText(): string {
     `- \`installDir\`: the directory where SPUN on the Next installs the app the first time. The user can change it, and it is not used after the first install. If it is missing or empty, the server uses the install directory of the chosen categories. The server stores it in one form: \`\\\` becomes \`/\`, it starts with \`/\`, repeated slashes become one, and a slash at the end goes, so \`apps\\myapp\\\` is stored as \`/apps/myapp\`. Up to ${INSTALL_DIR_MAX} characters in that form. It is printable ASCII (space to \`}\`), and it cannot have a colon (so no drive letter), a \`.\` or \`..\` part, a part that ends with a dot or a space, or any of \`" * ? < > | ~\`. It cannot be \`/\`, or be in or under ${INSTALL_DIR_BANNED.slice(1).map((dir) => `\`${dir}\``).join(", ")}, in any case.`,
     "- `minCore`: the oldest Next core that the app runs on, as `major.minor.sub`, for example `3.01.10`. The major and minor numbers go from 0 to 15 and have one or two digits. The sub number goes from 0 to 255 and has one to three digits. If it is missing or empty, the app runs on any core. SPUN on the Next does not install any apps that depend on a newer core, directly or through a dependency.",
     "- `categories`: category ids from `GET /api/categories`, at least one. Unknown ids are left out.",
-    "- `hidden`: `true` or `false`; missing, it is `false`. A hidden app is not in the catalogue lists, on the web or on the Next. Search still finds it, and its own page, downloads and dependencies still work. Use it for the parts of a larger app.",
+    "- `visibility`: `listed`, `unlisted` or `secret`; missing or empty, it is `listed`. A listed app is in the catalogue lists and search, on the web and on the Next. An unlisted app is in neither, but the dependency picker on the web finds it; use it for the parts of a larger app. A secret app is in neither, and only its owner finds it in the web search and the dependency picker; others can pick it only by its exact app id or alias. A direct link, downloads, installs and dependencies work for all three.",
     "",
     "A field that is missing or of the wrong type counts as empty, as does a body that is not a JSON object.",
     "",
     'The answer is `201` and `{ "id": "abc123" }`. An app is public when it has a release that is not deleted.',
     "",
-    "Errors, all `400`: `title.length`, `title.invalidCharacters`, `description.length`, `description.invalidCharacters`, `installDir.drive`, `installDir.invalidCharacters`, `installDir.dots`, `installDir.partEnd`, `installDir.banned`, `installDir.length`, `minCore.format`, `minCore.range`, `category.missing`, and `app.limitReached` when the user has as many apps as their limit permits (`limit` gives the limit).",
+    "Errors, all `400`: `title.length`, `title.invalidCharacters`, `description.length`, `description.invalidCharacters`, `installDir.drive`, `installDir.invalidCharacters`, `installDir.dots`, `installDir.partEnd`, `installDir.banned`, `installDir.length`, `minCore.format`, `minCore.range`, `category.missing`, `visibility.unknown`, and `app.limitReached` when the user has as many apps as their limit permits (`limit` gives the limit).",
     "",
     "### PUT /api/apps/{id}",
     "",
-    "Changes an app's title, description, suggested install directory, minimum core version, categories and hidden flag. The body is the same JSON as for `POST /api/apps`, with all six fields: a field left out is made empty or `false`. The answer is `200` and `{}`. Errors: those of `POST /api/apps` except `app.limitReached`, and `404`, `app.notFound`.",
+    "Changes an app's title, description, suggested install directory, minimum core version, categories and visibility. The body is the same JSON as for `POST /api/apps`, with all six fields: a field left out is made empty, and a missing visibility is `listed`. The answer is `200` and `{}`. Errors: those of `POST /api/apps` except `app.limitReached`, and `404`, `app.notFound`.",
     "",
     "### PUT /api/apps/{id}/depends",
     "",
@@ -521,7 +522,8 @@ export async function catalogueResponse(slug: string | null, request: Request): 
   };
   const page = parsePage(value("page"));
   const query = parseQuery(value("q"));
-  const view = await catalogueView(slug, page, query);
+  const user = await currentUser();
+  const view = await catalogueView(slug, page, query, user?.id ?? null);
   return markdownResponse(view ? catalogueMarkdown(view, page, query) : null);
 }
 

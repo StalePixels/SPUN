@@ -59,7 +59,7 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
         description: "Made by the API",
         installDir: "/apps/myapp",
         minCore: "3.01.10",
-        hidden: false,
+        visibility: "listed",
         categories: [first],
         depends: [],
         releases: [],
@@ -83,14 +83,23 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
     const none = await signedJson(page.request, key, "GET", `/api/apps/${id}`);
     expect(none.body.minCore).toBeNull();
 
-    const hide = await signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
+    for (const visibility of ["unlisted", "secret"]) {
+      const shown = await signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
+        title: edited,
+        categories: [first],
+        visibility,
+      });
+      expect(shown).toEqual({ status: 200, body: {} });
+      expect((await signedJson(page.request, key, "GET", `/api/apps/${id}`)).body.visibility).toBe(visibility);
+      expect(await appRow(id)).toMatchObject({ visibility });
+    }
+    const unknown = await signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
       title: edited,
       categories: [first],
-      hidden: true,
+      visibility: "private",
     });
-    expect(hide).toEqual({ status: 200, body: {} });
-    expect((await signedJson(page.request, key, "GET", `/api/apps/${id}`)).body.hidden).toBe(true);
-    expect(await appRow(id)).toMatchObject({ hidden: 1 });
+    expect(unknown).toEqual({ status: 400, body: { error: { code: "visibility.unknown" } } });
+    expect((await appRow(id)).visibility, "a refused edit changes nothing").toBe("secret");
 
     const refused = await signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
       title: "",
@@ -109,7 +118,7 @@ test("create, read, edit and delete an app through the API", async ({ page }) =>
     });
     expect(moved).toEqual({ status: 200, body: {} });
     expect((await appRow(id)).install_dir).toBe("/Games/My App");
-    expect((await appRow(id)).hidden, "hidden left out is false").toBe(0);
+    expect((await appRow(id)).visibility, "visibility left out is listed").toBe("listed");
     const banned = await signedJson(page.request, key, "PUT", `/api/apps/${id}`, {
       title: edited,
       description: "",
@@ -264,7 +273,7 @@ test("save, list and unsave an app through the API; an app that is not public ca
   try {
     const shown = await insertApp(other, "E2E saved by the API");
     await insertRelease(shown, 1, "1.0");
-    const hidden = await insertApp(other, "E2E not public");
+    const notPublic = await insertApp(other, "E2E not public");
 
     expect(await signedJson(page.request, key, "PUT", `/api/saved/${shown}`)).toEqual({ status: 200, body: {} });
     expect(await isSaved(client.id, shown)).toBe(true);
@@ -279,9 +288,9 @@ test("save, list and unsave an app through the API; an app that is not public ca
     const after = await signedJson(page.request, key, "GET", "/api/saved");
     expect((after.body.saved as { id: string }[]).map((app) => app.id)).not.toContain(shown);
 
-    const refused = await signedJson(page.request, key, "PUT", `/api/saved/${hidden}`);
+    const refused = await signedJson(page.request, key, "PUT", `/api/saved/${notPublic}`);
     expect(refused).toEqual({ status: 404, body: { error: { code: "app.notFound" } } });
-    expect(await isSaved(client.id, hidden)).toBe(false);
+    expect(await isSaved(client.id, notPublic)).toBe(false);
   } finally {
     await removeTestUser(other);
   }
