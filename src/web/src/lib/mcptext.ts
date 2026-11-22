@@ -1,6 +1,7 @@
 import {
   CHANGELOG_MAX,
   DEPENDS_MAX,
+  DEPENDS_SEARCH_MAX,
   DESCRIPTION_MAX,
   INSTALL_DIR_BANNED,
   INSTALL_DIR_MAX,
@@ -19,6 +20,7 @@ export const MCP_TOOLS = {
   listApps: "list_apps",
   getApp: "get_app",
   getRelease: "get_release",
+  searchDepends: "search_depends",
   listSaved: "list_saved",
   createApp: "create_app",
   updateApp: "update_app",
@@ -42,6 +44,7 @@ export const MCP_TOOL_OF_ROUTE: Record<string, (typeof MCP_TOOLS)[keyof typeof M
   "POST /api/apps": MCP_TOOLS.createApp,
   "PUT /api/apps/{id}": MCP_TOOLS.updateApp,
   "PUT /api/apps/{id}/depends": MCP_TOOLS.setDepends,
+  "GET /api/apps/{id}/depends/search": MCP_TOOLS.searchDepends,
   "POST /api/apps/{id}/republish": MCP_TOOLS.republishApp,
   "DELETE /api/apps/{id}": MCP_TOOLS.deleteApp,
   "POST /api/apps/{id}/releases": MCP_TOOLS.uploadRelease,
@@ -75,6 +78,8 @@ export const MCP_FIELDS = {
   categories: "Category ids from list_categories, at least one. Unknown ids are left out.",
   visibility: "listed, unlisted or secret. Left out or empty, it is listed.",
   depends: `App ids of other apps on SPUN that are not deleted, any user's, up to ${DEPENDS_MAX}. Not aliases, and not the app itself. An empty or missing list removes every dependency.`,
+  dependsQuery:
+    "The search text: part of an app's title or description, or an exact app id or alias. Capitals do not matter. Left out or empty, nothing is found.",
   version: `The new release's version: 1 to ${VERSION_MAX} characters from A-Z, a-z, 0-9 and _ . , # -. It must differ from every earlier version of the app, deleted releases included; capitals do not count.`,
   changelog: `The changelog: up to ${CHANGELOG_MAX} characters of printable ASCII and line feeds. Left out or empty, there is none.`,
   releaseDate: "The release date, YYYY-MM-DD, for a historic release. It cannot be after today. Left out or empty, it is the upload date.",
@@ -83,7 +88,7 @@ export const MCP_FIELDS = {
 const APP_FIELD_RULES = [
   `title is 1 to ${TITLE_MAX} characters of printable ASCII (space to ~). description is up to ${DESCRIPTION_MAX} characters of printable ASCII and line feeds; it can be empty.`,
   "categories takes ids from list_categories, at least one; unknown ids are left out.",
-  "visibility is listed, unlisted or secret; left out or empty, it is listed (visibility.unknown for any other value). A listed app is in the catalogue lists and search, on the web and on the Next. An unlisted app is in neither, but the dependency picker on the web finds it; use it for the parts of a larger app. A secret app is in neither, and only its owner finds it in the web search and the dependency picker; others can pick it only by its exact app id or alias. A direct link, downloads, installs and dependencies work for all three.",
+  "visibility is listed, unlisted or secret; left out or empty, it is listed (visibility.unknown for any other value). A listed app is in the catalogue lists and search, on the web and on the Next. An unlisted app is in neither, but its owner finds it in the web search and other publishers find it in the dependency picker on the web; use it for the parts of a larger app. A secret app is in neither, and only its owner finds it in the web search and the dependency picker; others can pick it only by its exact app id or alias. A direct link, downloads, installs and dependencies work for all three.",
   "installDir is the directory where SPUN on the Next installs the app the first time. The user can change it on the Next, and it is not used after the first install. Leave it out, or empty, to use the install directory of the chosen categories with a folder for the app under it, named from the title: Jet Set Willy in a category at /games gives /games/jet-set-willy.",
   `SPUN stores installDir in one form: \\ becomes /, it starts with /, repeated slashes become one, and a slash at the end goes, so apps\\myapp\\ is stored as /apps/myapp. It is refused when, in that form, it is over ${INSTALL_DIR_MAX} characters (installDir.length); has a colon, so a drive letter (installDir.drive); has a character that is not printable ASCII (space to }) or is one of " * ? < > | ~ (installDir.invalidCharacters); has a . or .. part (installDir.dots); has a part that ends with a dot or a space, such as /games./x (installDir.partEnd); or is /, or is in or under ${INSTALL_DIR_BANNED.slice(1).join(", ")}, in any case (installDir.banned).`,
   "minCore is the oldest Next core that the app runs on, as major.minor.sub, for example 3.01.10: major and minor from 0 to 15 with one or two digits, sub from 0 to 255 with one to three digits (minCore.format, minCore.range). Left out or empty, the app runs on any core. SPUN on the Next does not install any apps that depend on a newer core, directly or through a dependency.",
@@ -151,6 +156,13 @@ export const MCP_DESCRIPTIONS: Record<keyof typeof MCP_TOOLS, string> = {
     "path is the zip's path on SPUNServer, the SPUN download server, not on the SPUN site. files lists the names in the zip; it is null for a deleted release, or when the zip cannot be read. depends lists the app's dependencies when the release was made; they never change after that.",
     "A file at the root of the zip whose name ends .dot, in any case, is a dot command. After SPUN on the Next installs or updates the app, it moves each one to C:/dot/ without the extension: wifi.dot goes to C:/dot/wifi. dotMoves lists each such move as { file, to }; it is empty when files is null.",
     "Errors: app.notFound (no such app, it is deleted, or it is another user's) and release.notFound (the app has no release with this serial).",
+  ].join("\n\n"),
+  searchDepends: [
+    "Searches the public apps on SPUN, any user's, for dependencies of one of the user's apps, as the dependency picker on the SPUN site does. Use it to find the app ids that set_depends takes.",
+    "Input: id, the app id, and q, the search text.",
+    `Text in the title or description finds listed and unlisted apps, and all the user's own apps. An exact app id or alias finds any public app, secret ones too. The app itself is never found. Up to ${DEPENDS_SEARCH_MAX} apps, by title.`,
+    'Returns { "apps": [{ "id": "def456", "title": "A Library", "username": "someone", "deleted": false }] }. username is the publisher.',
+    "Error app.notFound: no such app, it is deleted, or it is another user's.",
   ].join("\n\n"),
   listSaved: [
     "Lists the apps the user saved, newest save first. Only public apps are listed; the user's own apps and other users' apps can both be saved.",

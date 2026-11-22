@@ -15,7 +15,7 @@ const VISIBILITY_CHOICES: { value: Visibility; label: string }[] = [
   { value: "listed", label: "Listed: in the catalogue lists and search, on the web and on the Next." },
   {
     value: "unlisted",
-    label: "Unlisted: not in the lists or search. Other publishers find it in the dependency picker. Use it for the parts of a larger app.",
+    label: "Unlisted: not in the lists. Only you find it in search; other publishers find it in the dependency picker. Use it for the parts of a larger app.",
   },
   {
     value: "secret",

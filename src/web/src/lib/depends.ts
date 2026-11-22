@@ -99,6 +99,17 @@ export async function ownDependsChoices(ownerId: string, appId: AppId): Promise<
   return rows.map(dependsApp);
 }
 
+export async function searchOwnDepends(
+  userId: string,
+  appId: AppId,
+  query: string,
+): Promise<{ error: Problem } | { apps: DependsApp[] }> {
+  if (!(await ownedApp(userId, appId))) {
+    return { error: { code: "app.notFound" } };
+  }
+  return { apps: await searchDepends(userId, appId, query) };
+}
+
 // Public apps found as the catalogue finds them: listed and unlisted ones, and the owner's
 // secret ones. An exact id or alias finds any public app, secret ones too.
 export async function searchDepends(ownerId: string, appId: AppId, query: string): Promise<DependsApp[]> {

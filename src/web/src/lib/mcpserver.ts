@@ -22,7 +22,7 @@ import { addApp, deleteOwnApp, editApp, ownAppView, ownedApp, parseAppId, withCa
 import { liveCategories } from "./categories";
 import { ownAppRows, savedAppRows } from "./catalogue";
 import { db } from "./db";
-import { setOwnDepends } from "./depends";
+import { searchOwnDepends, setOwnDepends } from "./depends";
 import { bearerToken, checkMcpCall, wwwAuthenticate, type McpDeps, type McpGrant } from "./mcpgate";
 import {
   MCP_DESCRIPTIONS,
@@ -171,6 +171,19 @@ function mcpServer({ user, grantId }: McpContext): McpServer {
       }
       const result = await ownReleaseView(user, target.appId, target.serial);
       return "error" in result ? toolProblem(result.error) : toolValue(result.value);
+    }),
+  );
+  server.registerTool(
+    MCP_TOOLS.searchDepends,
+    {
+      description: MCP_DESCRIPTIONS.searchDepends,
+      inputSchema: z.object({ id: appIdInput, q: z.string().optional().describe(MCP_FIELDS.dependsQuery) }),
+      annotations: READ_ONLY,
+    },
+    safe(async ({ id, q }) => {
+      const appId = parseAppId(id);
+      const result = appId ? await searchOwnDepends(user.id, appId, q ?? "") : { error: { code: "app.notFound" } as const };
+      return "error" in result ? toolProblem(result.error) : toolValue({ apps: result.apps });
     }),
   );
   server.registerTool(

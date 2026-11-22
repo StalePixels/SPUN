@@ -38,7 +38,7 @@ import { CHANGELOG_MAX, MCP_UPLOAD_TICKET_SECONDS } from "../../src/lib/rules";
 
 const SPUN_VERSION = readFileSync(path.join(__dirname, "..", "..", "..", "client", "VERSION"), "utf8").trim();
 
-const READ_TOOLS = ["get_app", "get_release", "list_apps", "list_categories", "list_saved"];
+const READ_TOOLS = ["get_app", "get_release", "list_apps", "list_categories", "list_saved", "search_depends"];
 // Each write tool with its destructiveHint and idempotentHint.
 const WRITE_TOOLS: Record<string, [boolean, boolean]> = {
   create_app: [false, false],

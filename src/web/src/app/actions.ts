@@ -3,8 +3,8 @@
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
-import { addApp, deleteOwnApp, editApp, ownedApp, parseAppId, type AppFields } from "@/lib/apps";
-import { searchDepends, setOwnDepends, type DependsApp } from "@/lib/depends";
+import { addApp, deleteOwnApp, editApp, parseAppId, type AppFields } from "@/lib/apps";
+import { searchOwnDepends, setOwnDepends, type DependsApp } from "@/lib/depends";
 import { dependsFromText, lineFeeds, parseSerial, parseSlot, parseTermsId } from "@/lib/rules";
 import { deleteOwnRelease, editChangelog, republishOwnRelease, uploadOwnRelease } from "@/lib/releases";
 import { saveApp, unsaveApp } from "@/lib/saved";
@@ -125,10 +125,11 @@ export async function uploadRelease(
 export async function findDepends(rawId: string, query: string): Promise<DependsApp[]> {
   const appId = parseAppId(rawId);
   const user = await requirePublisher();
-  if (!appId || !(await ownedApp(user.id, appId))) {
+  if (!appId) {
     return [];
   }
-  return searchDepends(user.id, appId, query);
+  const result = await searchOwnDepends(user.id, appId, query);
+  return "error" in result ? [] : result.apps;
 }
 
 export async function saveDepends(rawId: string, _prev: FormState, formData: FormData): Promise<FormState> {

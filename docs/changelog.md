@@ -42,6 +42,11 @@
   dependency picker; others find it there only by its exact id or alias.
   A direct link, downloads and installs work in every state. The API and
   MCP take it as `visibility`.
+- A logged-in user's search of the web catalogue also finds all their
+  own apps, unlisted and secret ones too.
+- The dependency picker's search is in the API, as
+  `GET /api/apps/{id}/depends/search?q=<text>`, and in the MCP tool
+  `search_depends`.
 - Publishers set the minimum core version of their apps, as
   `major.minor.sub`, for example `3.01.10`. Empty means any core. Admins
   edit it with the other app fields. The API (`POST /api/apps` and

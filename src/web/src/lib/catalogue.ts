@@ -66,10 +66,10 @@ function likePattern(text: string): string {
   return `%${text.toLowerCase().replace(/[\\%_]/g, "\\$&")}%`;
 }
 
-// Searches find secret apps of the user who searches; viewerId null: nobody's.
+// Searches also find every app of the user who searches, in any state; viewerId null: nobody's.
 export function shownIn(states: Visibility[], viewerId: string | null) {
   const shown = inArray(apps.visibility, states);
-  return viewerId === null ? shown : or(shown, and(eq(apps.visibility, "secret"), eq(apps.userId, viewerId)));
+  return viewerId === null ? shown : or(shown, eq(apps.userId, viewerId));
 }
 
 // A copy of SPUNServer's FIND rule (src/server/src/mysqlCatalogue.ts), so the
@@ -92,7 +92,7 @@ async function withDetails(rows: Omit<CatalogueRow, "categories" | "screenshot">
 
 // One row more than a page, so the caller knows if there is a next page. Newest release
 // first, as on the Next; a search is in title order. Both show listed apps only, and a
-// search also shows the viewer's own secret apps.
+// search also shows all the viewer's own apps.
 export async function cataloguePage(
   page: number,
   categoryId: number | null,
