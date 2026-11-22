@@ -83,6 +83,7 @@ People read the changelog on the Next, an 8-bit machine, so write it for the Nex
 - Plain ASCII only, no UTF-8. The CMS takes printable ASCII and line feeds, up to 1024 characters.
 - No markdown.
 - No links.
+- No line feeds to wrap text. `.spun` and the CMS wrap lines by themselves, so a line feed in the middle of a sentence breaks the line early on the Next. Use a line feed only to start a new item.
 
 ## What the CMS checks before it accepts a release
 
