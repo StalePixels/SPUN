@@ -8,3 +8,6 @@ tools/nbnget
 /.env
 .DS_Store
 /docker/*.env
+/sql
+/env
+/notes

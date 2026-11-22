@@ -1,4 +1,4 @@
-# The category filter of the .spun GUI (scratchpad/docs/design_category-filter.md),
+# The category filter of the .spun GUI (notes/design_category-filter.md),
 # through gui-test.py's proxy (@PORT@) to the test server. mame-category.sh fills
 # in @SPUN@ and @PORT@. gui-test.py expands "@ROWS T COMMAND" (also
 # "SPCAT SLUG PAGE [TEXT]"), "@CATS T SEL" (the category picker), "@PICK T SLUG"

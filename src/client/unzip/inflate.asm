@@ -1,5 +1,5 @@
 ; inflate.asm: DEFLATE decoder for the ZX Spectrum Next, called by unzip.c
-; through unzip_stub.asm. See scratchpad/docs/design_inline-inflate.md.
+; through unzip_stub.asm. See notes/design_inline-inflate.md.
 ;
 ; Ported to z88dk z80asm from gunzip by Laurens Holst (Grauw), as heavily
 ; modified by Wouter Vermaelen:
