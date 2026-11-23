@@ -80,6 +80,8 @@ export type ProblemCode =
   | "visibility.unknown"
   | "limit.notNumber"
   | "limit.missing"
+  | "uploadLimit.missing"
+  | "uploadLimit.range"
   | "user.notFound"
   | "admin.lastAdmin"
   | "api.badKey"

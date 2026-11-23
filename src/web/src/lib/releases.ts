@@ -11,12 +11,12 @@ import {
   checkVersion,
   checkVersionUnused,
   isoDay,
-  MAX_UPLOAD_BYTES,
   releaseFileName,
   SERIAL_MAX,
 } from "./rules";
 import { binScreenshots, unbinScreenshots } from "./screenshots";
 import { apiLimits } from "./apigate";
+import { uploadLimit } from "./limits";
 import { countHit } from "./redis";
 import { binRelease, readRelease, releasePath, removeFile, unbinRelease, writeRelease } from "./storage";
 import { checkUploadRate } from "./uploadlimit";
@@ -56,6 +56,7 @@ export async function checkUpload(
   changelog: string,
   file: UploadFile | null,
   overrides: string[],
+  maxBytes: number,
 ): Promise<UploadCheck> {
   const versionError = checkVersion(version);
   if (versionError) {
@@ -72,10 +73,10 @@ export async function checkUpload(
   if (!file || file.data.length === 0) {
     return { ok: false, error: { code: "file.missing" } };
   }
-  if (file.data.length > MAX_UPLOAD_BYTES) {
-    return { ok: false, error: { code: "file.tooLarge" } };
+  if (file.data.length > maxBytes) {
+    return { ok: false, error: { code: "file.tooLarge", max: maxBytes } };
   }
-  const zip = await checkZip(file.data);
+  const zip = await checkZip(file.data, maxBytes);
   if (!zip.ok) {
     return { ok: false, error: zip.error };
   }
@@ -128,6 +129,7 @@ export async function uploadOwnRelease(
     formText(form, "changelog"),
     await formFile(form.get("file")),
     await appDotOverrides(appId),
+    await uploadLimit(userId),
   );
   if (!checked.ok) {
     return { error: checked.error };
@@ -172,6 +174,7 @@ export async function republishOwnRelease(
     fields.changelog,
     { name: releaseFileName(appId, latest.serial), data },
     await appDotOverrides(appId),
+    await uploadLimit(userId),
   );
   if (!checked.ok) {
     return { error: checked.error };
@@ -352,7 +355,7 @@ export async function ownReleaseView(
   }
   const { app, release } = found;
   const data = release.deletedAt ? null : await readRelease(releasePath(user.username, appId, serial));
-  const zip = data ? await checkZip(data) : null;
+  const zip = data ? await checkZip(data, await uploadLimit(user.id)) : null;
   return {
     value: {
       appTitle: app.title,

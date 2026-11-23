@@ -46,7 +46,12 @@ export async function deleteApiKey(userId: string, keyId: string): Promise<void>
 
 export async function apiKeyUser(keyId: string): Promise<ApiKeyUser | null> {
   const [row] = await db()
-    .select({ id: users.id, username: users.username, acceptedTermsId: users.acceptedTermsId })
+    .select({
+      id: users.id,
+      username: users.username,
+      acceptedTermsId: users.acceptedTermsId,
+      uploadLimitMb: users.uploadLimitMb,
+    })
     .from(apiKeys)
     .innerJoin(users, eq(users.id, apiKeys.userId))
     .where(
@@ -57,5 +62,7 @@ export async function apiKeyUser(keyId: string): Promise<ApiKeyUser | null> {
         isNotNull(users.username),
       ),
     );
-  return row?.username ? { id: row.id, username: row.username, acceptedTermsId: row.acceptedTermsId } : null;
+  return row?.username
+    ? { id: row.id, username: row.username, acceptedTermsId: row.acceptedTermsId, uploadLimitMb: row.uploadLimitMb }
+    : null;
 }

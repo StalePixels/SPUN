@@ -26,9 +26,10 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      // Above the 16 MB screenshot limit plus multipart overhead, so the CMS
-      // itself rejects larger files (and zips over 4 MB) with its own message.
-      bodySizeLimit: "17mb",
+      // Above the largest zip a user can have as an own limit
+      // (UPLOAD_LIMIT_MB_MAX in src/lib/rules.ts) plus multipart overhead,
+      // so the CMS itself rejects larger files with its own message.
+      bodySizeLimit: "81mb",
     },
   },
 };

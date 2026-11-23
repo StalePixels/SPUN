@@ -40,7 +40,7 @@ The catalogue lists an app only when it has at least one release that is not del
 A release is one zip file with a version. Open your app in `/publish` and use "Upload a release" on the Releases tab.
 
 - Version: 1 to 16 characters from letters, digits and `_ . , # -`. No spaces. For example `1.1-beta`.
-- Zip file: up to 4 MB. The files in it add up to at most 16 MB when unpacked.
+- Zip file: up to 4 MB, or up to your own limit when an admin has set one for your account. The form shows your limit. The files in the zip add up to at most 16 MB when unpacked.
 - Changelog: optional, up to 1024 characters of printable ASCII and line breaks.
 - Historic release: tick it if you upload an old version, and enter its original release date. Without it, the release date is the upload date. A release date cannot be in the future.
 

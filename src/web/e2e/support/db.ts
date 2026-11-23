@@ -71,8 +71,8 @@ export async function insertDepends(appId: string, dependsOn: string): Promise<v
 }
 
 export async function userByUsername(username: string) {
-  const [row] = await query<{ id: string; is_admin: number; app_limit: number | null }>(
-    "select id, is_admin, app_limit from users where username = ?",
+  const [row] = await query<{ id: string; is_admin: number; app_limit: number | null; upload_limit_mb: number | null }>(
+    "select id, is_admin, app_limit, upload_limit_mb from users where username = ?",
     [username],
   );
   if (!row) throw new Error(`No user ${username} in the database.`);
@@ -81,6 +81,10 @@ export async function userByUsername(username: string) {
 
 export async function setUserAppLimit(userId: string, limit: number | null): Promise<void> {
   await query("update users set app_limit = ? where id = ?", [limit, userId]);
+}
+
+export async function setUserUploadLimit(userId: string, mb: number | null): Promise<void> {
+  await query("update users set upload_limit_mb = ? where id = ?", [mb, userId]);
 }
 
 export async function defaultAppLimit(): Promise<string | null> {

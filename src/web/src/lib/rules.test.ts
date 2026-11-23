@@ -33,6 +33,11 @@ import {
   checkReleaseDate,
   checkReleaseText,
   parseLimit,
+  parseUploadLimit,
+  uploadLimitBytes,
+  releaseBodyMax,
+  megabytesText,
+  MAX_UPLOAD_BYTES,
   checkDescription,
   DESCRIPTION_MAX,
   lineFeeds,
@@ -209,6 +214,33 @@ describe("formatDay", () => {
     expect(formatDay("2026-09-26")).toBe("26 Sep 2026");
     expect(formatDay("1982-01-01")).toBe("1 Jan 1982");
     expect(formatDay("1999-12-31")).toBe("31 Dec 1999");
+  });
+});
+
+describe("zip size limit", () => {
+  it("takes a whole number of MB above the default, up to 80", () => {
+    expect(parseUploadLimit(" 5 ")).toEqual({ ok: true, mb: 5 });
+    expect(parseUploadLimit("80")).toEqual({ ok: true, mb: 80 });
+  });
+
+  it("refuses an empty value, the default or less, more than 80, and fractions", () => {
+    expect(parseUploadLimit("")).toEqual({ ok: false, error: { code: "uploadLimit.missing" } });
+    const range = { ok: false, error: { code: "uploadLimit.range", min: 5, max: 80 } };
+    expect(parseUploadLimit("4")).toEqual(range);
+    expect(parseUploadLimit("81")).toEqual(range);
+    expect(parseUploadLimit("4.5")).toEqual(range);
+    expect(parseUploadLimit("ten")).toEqual(range);
+  });
+
+  it("gives the user's own limit in bytes, or the default", () => {
+    expect(uploadLimitBytes(null)).toBe(MAX_UPLOAD_BYTES);
+    expect(uploadLimitBytes(10)).toBe(10 * 1024 * 1024);
+    expect(megabytesText(uploadLimitBytes(10))).toBe("10 MB");
+  });
+
+  it("allows 64 KB of form fields in a release body, within the upper bound", () => {
+    expect(releaseBodyMax(1000, null)).toBe(1000 + 64 * 1024);
+    expect(releaseBodyMax(1000, 2000)).toBe(2000);
   });
 });
 

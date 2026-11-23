@@ -14,16 +14,19 @@ import {
   API_IP_PER_MINUTE,
   API_JSON_BODY_MAX,
   API_KEY_PER_MINUTE,
-  API_RELEASE_BODY_MAX,
   API_REQUEST_WINDOW_SECONDS,
   API_SCREENSHOT_BODY_MAX,
   mustAcceptTerms,
+  releaseBodyMax,
+  UPLOAD_LIMIT_MB_MAX,
+  uploadLimitBytes,
   UPLOADS_PER_HOUR,
 } from "./rules";
 
 export type ApiLimits = {
   jsonBody: number;
-  releaseBody: number;
+  // Null: each user's release body limit comes from their zip limit alone.
+  releaseBody: number | null;
   screenshotBody: number;
   ipPerMinute: number;
   keyPerMinute: number;
@@ -43,7 +46,7 @@ export type ApiCall = {
 
 export type ApiUser = { id: string; username: string };
 
-export type ApiKeyUser = ApiUser & { acceptedTermsId: number | null };
+export type ApiKeyUser = ApiUser & { acceptedTermsId: number | null; uploadLimitMb: number | null };
 
 export type ApiDeps = {
   nowMs(): number;
@@ -62,9 +65,13 @@ export type GateResult = { ok: true; user: ApiUser } | ({ ok: false } & ApiRefus
 type SignedResult = { ok: true; user: ApiKeyUser } | ({ ok: false } & ApiRefusal);
 
 function limitFrom(env: Record<string, string | undefined>, name: string, fallback: number): number {
+  return optionalLimitFrom(env, name) ?? fallback;
+}
+
+function optionalLimitFrom(env: Record<string, string | undefined>, name: string): number | null {
   const value = env[name];
   if (value === undefined || value === "") {
-    return fallback;
+    return null;
   }
   if (!/^[0-9]+$/.test(value)) {
     throw new Error(`${name} must be a whole number. See .env.example.`);
@@ -75,7 +82,7 @@ function limitFrom(env: Record<string, string | undefined>, name: string, fallba
 export function apiLimits(env: Record<string, string | undefined> = process.env): ApiLimits {
   return {
     jsonBody: limitFrom(env, "API_JSON_BODY_MAX", API_JSON_BODY_MAX),
-    releaseBody: limitFrom(env, "API_RELEASE_BODY_MAX", API_RELEASE_BODY_MAX),
+    releaseBody: optionalLimitFrom(env, "API_RELEASE_BODY_MAX"),
     screenshotBody: limitFrom(env, "API_SCREENSHOT_BODY_MAX", API_SCREENSHOT_BODY_MAX),
     ipPerMinute: limitFrom(env, "API_IP_PER_MINUTE", API_IP_PER_MINUTE),
     keyPerMinute: limitFrom(env, "API_KEY_PER_MINUTE", API_KEY_PER_MINUTE),
@@ -83,8 +90,15 @@ export function apiLimits(env: Record<string, string | undefined> = process.env)
   };
 }
 
-function bodyLimit(limits: ApiLimits, kind: BodyKind): number {
-  return { json: limits.jsonBody, release: limits.releaseBody, screenshot: limits.screenshotBody }[kind];
+export function releaseBodyLimit(limits: ApiLimits, uploadLimitMb: number | null): number {
+  return releaseBodyMax(uploadLimitBytes(uploadLimitMb), limits.releaseBody);
+}
+
+function bodyLimit(limits: ApiLimits, kind: BodyKind, uploadLimitMb: number | null): number {
+  if (kind === "release") {
+    return releaseBodyLimit(limits, uploadLimitMb);
+  }
+  return kind === "json" ? limits.jsonBody : limits.screenshotBody;
 }
 
 function refuse(status: number, error: Problem, retryAfter?: number): { ok: false } & ApiRefusal {
@@ -108,14 +122,14 @@ export async function rateCheck(
 }
 
 // A chunked body has no Content-Length, on any method, so its size cannot be checked before it is read.
-function checkSize(call: ApiCall, options: ApiOptions, limits: ApiLimits): GateResult | null {
+function checkSize(call: ApiCall, options: ApiOptions, limits: ApiLimits, uploadLimitMb: number | null): GateResult | null {
   const length = call.header("content-length");
   if (length === null) {
     return ["POST", "PUT"].includes(call.method.toUpperCase()) || call.header("transfer-encoding") !== null
       ? refuse(411, { code: "api.lengthRequired" })
       : null;
   }
-  const max = bodyLimit(limits, options.body);
+  const max = bodyLimit(limits, options.body, uploadLimitMb);
   return Number(length) > max ? refuse(413, { code: "api.bodyTooLarge", max }) : null;
 }
 
@@ -156,8 +170,10 @@ async function checkSignature(call: ApiCall, deps: ApiDeps): Promise<SignedResul
   return { ok: true, user };
 }
 
+// The user is not known before the signature check, so a release body is first held to the largest
+// limit any user can have, then to the user's own.
 export async function checkApiCall(call: ApiCall, options: ApiOptions, deps: ApiDeps): Promise<GateResult> {
-  const size = checkSize(call, options, deps.limits);
+  const size = checkSize(call, options, deps.limits, UPLOAD_LIMIT_MB_MAX);
   if (size) {
     return size;
   }
@@ -168,6 +184,10 @@ export async function checkApiCall(call: ApiCall, options: ApiOptions, deps: Api
   const signed = await checkSignature(call, deps);
   if (!signed.ok) {
     return signed;
+  }
+  const userSize = checkSize(call, options, deps.limits, signed.user.uploadLimitMb);
+  if (userSize) {
+    return userSize;
   }
   const keyId = call.header("x-spun-key") ?? "";
   const keyWait = await rateCheck(deps, `key:${keyId}`, deps.limits.keyPerMinute, 60);

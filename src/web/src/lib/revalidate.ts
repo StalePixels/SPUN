@@ -7,7 +7,7 @@ import { db } from "./db";
 import { formatMinCore } from "./mincore";
 import type { Problem } from "./problems";
 import { appDotOverrides, checkUpload } from "./releases";
-import { releaseFileName } from "./rules";
+import { releaseFileName, uploadLimitBytes } from "./rules";
 import { readRelease, releasePath } from "./storage";
 
 export type ReleaseRevalidation = { serial: number; version: string; error: Problem | null };
@@ -16,7 +16,7 @@ export type AppRevalidation = { app: Problem | null; releases: ReleaseRevalidati
 
 export async function revalidateApp(appId: AppId): Promise<AppRevalidation | null> {
   const [app] = await db()
-    .select({ title: apps.title, description: apps.description, installDir: apps.installDir, minCore: apps.minCore, visibility: apps.visibility, owner: users.username })
+    .select({ title: apps.title, description: apps.description, installDir: apps.installDir, minCore: apps.minCore, visibility: apps.visibility, owner: users.username, ownerUploadLimitMb: users.uploadLimitMb })
     .from(apps)
     .innerJoin(users, eq(users.id, apps.userId))
     .where(and(eq(apps.id, appId), isNull(apps.deletedAt)));
@@ -46,6 +46,7 @@ export async function revalidateApp(appId: AppId): Promise<AppRevalidation | nul
       release.changelog ?? "",
       data ? { name: releaseFileName(appId, release.serial), data } : null,
       overrides,
+      uploadLimitBytes(app.ownerUploadLimitMb),
     );
     results.push({ serial: release.serial, version: release.version, error: checked.ok ? null : checked.error });
   }

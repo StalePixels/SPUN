@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { apiLimits } from "./apigate";
 import { tokenHash } from "./oauth";
-import { API_IP_PER_MINUTE, API_RELEASE_BODY_MAX, API_SCREENSHOT_BODY_MAX, MCP_UPLOAD_TICKET_SECONDS } from "./rules";
+import {
+  API_IP_PER_MINUTE,
+  API_RELEASE_BODY_MAX,
+  API_SCREENSHOT_BODY_MAX,
+  MCP_UPLOAD_TICKET_SECONDS,
+  RELEASE_FIELDS_BYTES,
+} from "./rules";
 import {
   makeTicket,
   parseTicket,
@@ -33,7 +39,7 @@ function fakeDeps() {
   let now = START_MS;
   const terms = { current: null as number | null };
   const store = new Map<string, { value: string; expires: number }>();
-  const users = new Map<string, TicketUser>([["user-1", { username: "Fanny", disabled: false, acceptedTermsId: null }]]);
+  const users = new Map<string, TicketUser>([["user-1", { username: "Fanny", disabled: false, acceptedTermsId: null, uploadLimitMb: null }]]);
   const grants = new Map<string, TicketGrant>([
     ["grant-1", { deletedAt: null, refreshExpiresAt: new Date(START_MS + 30 * 24 * 60 * 60 * 1000) }],
   ]);
@@ -189,6 +195,18 @@ describe("takeTicket", () => {
     });
   });
 
+  it("holds a release body to the user's own zip limit", async () => {
+    fake.users.set("user-1", { username: "Fanny", disabled: false, acceptedTermsId: null, uploadLimitMb: 10 });
+    const max = 10 * 1024 * 1024 + RELEASE_FIELDS_BYTES;
+    const release = await makeTicket(RELEASE, fake.deps);
+    expect(await takeTicket(call({ "content-length": String(max + 1) }), release.token, fake.deps)).toEqual({
+      ok: false,
+      status: 413,
+      error: { code: "api.bodyTooLarge", max },
+    });
+    expect(await takeTicket(call({ "content-length": String(max) }), release.token, fake.deps)).toMatchObject({ ok: true });
+  });
+
   it("limits requests per address before it reads a ticket, and keeps the ticket", async () => {
     const { token } = await makeTicket(RELEASE, fake.deps);
     for (let i = 0; i < API_IP_PER_MINUTE; i++) {
@@ -205,8 +223,8 @@ describe("takeTicket", () => {
   });
 
   it.each([
-    ["a disabled user", { username: "Fanny", disabled: true, acceptedTermsId: null }],
-    ["a user with no username", { username: null, disabled: false, acceptedTermsId: null }],
+    ["a disabled user", { username: "Fanny", disabled: true, acceptedTermsId: null, uploadLimitMb: null }],
+    ["a user with no username", { username: null, disabled: false, acceptedTermsId: null, uploadLimitMb: null }],
   ])("uses up the ticket of %s and gives 404 upload.badTicket", async (_name, user) => {
     const { token } = await makeTicket(RELEASE, fake.deps);
     fake.users.set("user-1", user);
@@ -244,7 +262,7 @@ describe("takeTicket", () => {
       status: 403,
       error: { code: "api.termsNotAccepted" },
     });
-    fake.users.set("user-1", { username: "Fanny", disabled: false, acceptedTermsId: 7 });
+    fake.users.set("user-1", { username: "Fanny", disabled: false, acceptedTermsId: 7, uploadLimitMb: null });
     const again = await makeTicket(RELEASE, fake.deps);
     expect(await takeTicket(call(), again.token, fake.deps)).toMatchObject({ ok: true });
   });

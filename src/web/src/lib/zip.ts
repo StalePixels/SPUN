@@ -1,6 +1,6 @@
 import yauzl from "yauzl";
 import type { Problem } from "./problems";
-import { MAX_UNPACKED_BYTES, MAX_UPLOAD_BYTES } from "./rules";
+import { MAX_UNPACKED_BYTES } from "./rules";
 
 type ZipProblem = "file.notZip" | "file.incompatible";
 
@@ -128,11 +128,11 @@ export type ZipCheck = { ok: true; entries: string[] } | { ok: false; error: Pro
 
 // Reads the central directory only. No entry is decompressed. yauzl checks the
 // structure; it is not asked for names, as it would take the Unicode Path field.
-export function checkZip(data: Buffer): Promise<ZipCheck> {
-  if (data.length > MAX_UPLOAD_BYTES) {
+export function checkZip(data: Buffer, maxBytes: number): Promise<ZipCheck> {
+  if (data.length > maxBytes) {
     return Promise.resolve({
       ok: false,
-      error: { code: "file.tooLarge" },
+      error: { code: "file.tooLarge", max: maxBytes },
     });
   }
   return new Promise((resolve) => {

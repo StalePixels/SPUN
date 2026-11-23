@@ -33,6 +33,10 @@
 - Publishers set the minimum core version of their apps.
 - The per-address rate limits find the real client address behind more
   than one proxy.
+- An admin can give a user a zip size limit of their own, from 5 to 80 MB.
+- A `file.tooLarge` error gives the limit in bytes in `max`.
+- `API_RELEASE_BODY_MAX`, when set, is the largest release body for every
+  user. Unset, each user's limit is their zip limit plus 64 KB.
 
 ## 0.9.1 - 20261117
 

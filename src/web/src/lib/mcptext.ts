@@ -117,7 +117,7 @@ export function uploadCurl(kind: "release" | "screenshot", url: string): string 
 
 export const MCP_UPLOAD_FIELDS = {
   release: {
-    file: `Required. The zip, up to ${MAX_UPLOAD_TEXT}.`,
+    file: `Required. The zip, up to ${MAX_UPLOAD_TEXT}, or up to the user's own zip limit when an admin has set one.`,
   },
   screenshot: {
     file: `Required. A PNG, JPEG, GIF or WebP image of up to ${MAX_IMAGE_PIXELS_TEXT}, or a ready NXI file with a name that ends .nxi, up to ${MAX_SCREENSHOT_TEXT}.`,
@@ -246,7 +246,7 @@ export const MCP_DESCRIPTIONS: Record<keyof typeof MCP_TOOLS, string> = {
     VERSION_RULES,
     RELEASE_DATE_RULES,
     CHANGELOG_RULES,
-    `The zip: up to ${MAX_UPLOAD_TEXT}, and the Next must be able to unzip it (file.incompatible). Its files may add up to at most ${MAX_UNPACKED_TEXT} unpacked (file.unpackedTooLarge). Each name in it must be printable ASCII (space to }) without any of " * < > ? | ~, and no part of a name may end with a dot or a space (file.badNames). No entry may carry a second, Unicode name that differs from its own (file.twoNames). No macOS files: nothing in __MACOSX, no .DS_Store, no file whose name starts with ._ (file.macFiles). The files must be at the root of the zip, not all in one directory (file.oneDirectory). For these errors, names lists what to fix.`,
+    `The zip: up to ${MAX_UPLOAD_TEXT}, or up to the user's own zip limit when an admin has set one (file.tooLarge, max gives the limit in bytes), and the Next must be able to unzip it (file.incompatible). Its files may add up to at most ${MAX_UNPACKED_TEXT} unpacked (file.unpackedTooLarge). Each name in it must be printable ASCII (space to }) without any of " * < > ? | ~, and no part of a name may end with a dot or a space (file.badNames). No entry may carry a second, Unicode name that differs from its own (file.twoNames). No macOS files: nothing in __MACOSX, no .DS_Store, no file whose name starts with ._ (file.macFiles). The files must be at the root of the zip, not all in one directory (file.oneDirectory). For these errors, names lists what to fix.`,
     "A file at the root of the zip whose name ends .dot, in any case, is a dot command. After SPUN on the Next installs or updates the app, it moves each one to C:/dot/ without the extension: wifi.dot goes to C:/dot/wifi. The names of the dot commands the Next already has, and spun, are reserved (file.dotCommandTaken), and such a name may not end with a dot or a space (file.dotNameEnd).",
     'The URL answers as the API does: 201 and { "serial": 1, "dotMoves": [{ "file": "wifi.dot", "to": "C:/dot/wifi" }] }, the new release serial and each dot command that SPUN on the Next moves to C:/dot/ after install. Tell the user about each move. An error is a status from 400 up and { "error": { "code": ... } }: version.taken, file.missing, file.tooLarge, file.notZip and the file errors above, app.releasesFull, upload.tooMany (429; wait gives the seconds until uploads work again: tell the user, and do not try again before then), app.notFound, and upload.badTicket (404: the URL is unknown, used or expired, the user can no longer publish, or the user disconnected this client).',
     "Errors of this tool: app.notFound (no such app, it is deleted, or it is another user's), version.length, version.invalidCharacters, releaseDate.invalid, releaseDate.future, changelog.length and changelog.invalidCharacters.",

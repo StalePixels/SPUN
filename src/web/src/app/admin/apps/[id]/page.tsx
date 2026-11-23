@@ -15,6 +15,7 @@ import {
 } from "@/lib/admin";
 import { parseAppId } from "@/lib/apps";
 import { appCategoryList, liveCategories } from "@/lib/categories";
+import { uploadLimit } from "@/lib/limits";
 import { formatMinCore } from "@/lib/mincore";
 import { formatDay, isoDay } from "@/lib/rules";
 import { appScreenshots } from "@/lib/screenshots";
@@ -137,7 +138,7 @@ export default async function AdminAppPage({ params }: { params: Promise<{ id: s
             Upload a release
           </div>
           <div className="card-body">
-            <UploadForm appId={app.id} upload={uploadAdminRelease.bind(null, app.id)} />
+            <UploadForm appId={app.id} maxBytes={await uploadLimit(app.ownerId)} upload={uploadAdminRelease.bind(null, app.id)} />
           </div>
         </div>
       )}

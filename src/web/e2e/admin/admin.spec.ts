@@ -3,6 +3,7 @@ import {
   defaultAppLimit,
   setDefaultAppLimit,
   setUserAppLimit,
+  setUserUploadLimit,
   userByUsername,
 } from "../support/db";
 import { test as base, clickHydrated, deleteAppInUi, expect, formatDay, todayUtc, waitForHydration } from "../support/pages";
@@ -13,7 +14,7 @@ const client = accounts.client;
 
 type StartState = { defaultLimit: string | null; clientUser: Awaited<ReturnType<typeof userByUsername>> };
 
-// The default app limit applies to every user, and the client's own limit is
+// The default app limit applies to every user, and the client's own limits are
 // changed here: both go back to their values from the start of the run, even
 // when a test fails or times out. A worker fixture has its own timeout; an
 // afterAll hook would share the timeout of the test that just failed.
@@ -27,6 +28,7 @@ const test = base.extend<object, { start: StartState }>({
       await provide(start);
       await setDefaultAppLimit(start.defaultLimit);
       await setUserAppLimit(start.clientUser.id, start.clientUser.app_limit);
+      await setUserUploadLimit(start.clientUser.id, start.clientUser.upload_limit_mb);
     },
     { scope: "worker", auto: true, timeout: 30_000 },
   ],
@@ -158,4 +160,35 @@ test("users: set the client's own limit to 2, then clear it back to the default"
   await expect(number).toBeDisabled();
   await page.goto("/admin/users");
   await expect(row.getByTestId("user-limit-default")).toBeVisible();
+});
+
+test("users: set the client's own zip size limit to 10 MB, then clear it back to the default", async ({ page, start }) => {
+  const { clientUser } = start;
+  const toggle = page.getByTestId("user-own-upload-limit-toggle");
+  const number = page.getByTestId("user-upload-limit");
+  const save = page.getByTestId("user-submit");
+
+  await page.goto(`/admin/users/${clientUser.id}`);
+  await waitForHydration(toggle);
+  await toggle.check();
+  await number.fill("");
+  await save.click();
+  await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "uploadLimit.missing");
+  expect(await userByUsername(client.username)).toMatchObject({ upload_limit_mb: clientUser.upload_limit_mb });
+
+  await number.fill("10");
+  await save.click();
+  await expect(page.getByTestId("form-saved")).toBeVisible();
+  expect(await userByUsername(client.username)).toMatchObject({ upload_limit_mb: 10 });
+  await page.reload();
+  await waitForHydration(toggle);
+  await expect(toggle, "after a load").toBeChecked();
+  await expect(number).toHaveValue("10");
+
+  await toggle.uncheck();
+  await expect(number).toBeDisabled();
+  await save.click();
+  await expect(page.getByTestId("form-saved")).toBeVisible();
+  expect(await userByUsername(client.username)).toMatchObject({ upload_limit_mb: null });
+  await expect(toggle, "after clearing").not.toBeChecked();
 });

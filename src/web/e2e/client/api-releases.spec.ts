@@ -8,6 +8,7 @@ import {
   releaseRow,
   removeApps,
   removeTestUser,
+  setUserUploadLimit,
   userByUsername,
 } from "../support/db";
 import { binFile, expect, fileSize, releaseFile, test, todayUtc, uniqueTitle } from "../support/pages";
@@ -135,11 +136,31 @@ test("the API refuses a zip the Next cannot unzip, one with bad names and one ov
     const big = makeZip([{ name: "BIG.BIN", data: Buffer.alloc(MAX_UPLOAD_BYTES) }]);
     expect(await upload(page, key, id, { version: "1.0" }, big)).toEqual({
       status: 400,
-      body: { error: { code: "file.tooLarge" } },
+      body: { error: { code: "file.tooLarge", max: MAX_UPLOAD_BYTES } },
     });
     expect(await releaseRow(id, 1)).toBeUndefined();
     expect(existsSync(releaseFile(client.username, id, 1))).toBe(false);
   } finally {
+    await removeApps([id]);
+  }
+});
+
+test("with an own zip limit of 5 MB, the API takes a zip over 4 MB and refuses one over 5 MB", async ({ page }) => {
+  const user = await userByUsername(client.username);
+  const key = await makeApiKey(page);
+  const id = await createApp(page, key);
+  await setUserUploadLimit(user.id, 5);
+  try {
+    const tooBig = makeZip([{ name: "BIG.BIN", data: Buffer.alloc(5 * 1024 * 1024) }]);
+    expect(await upload(page, key, id, { version: "1.0" }, tooBig)).toEqual({
+      status: 400,
+      body: { error: { code: "file.tooLarge", max: 5 * 1024 * 1024 } },
+    });
+    const big = makeZip([{ name: "BIG.BIN", data: Buffer.alloc(MAX_UPLOAD_BYTES + 512 * 1024) }]);
+    expect(await upload(page, key, id, { version: "1.0" }, big)).toEqual({ status: 201, body: { serial: 1, dotMoves: [] } });
+    expect(fileSize(releaseFile(client.username, id, 1))).toBe(big.length);
+  } finally {
+    await setUserUploadLimit(user.id, user.upload_limit_mb);
     await removeApps([id]);
   }
 });

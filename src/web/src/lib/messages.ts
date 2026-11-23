@@ -5,7 +5,8 @@ import {
   MAX_IMAGE_PIXELS_TEXT,
   MAX_SCREENSHOT_TEXT,
   MAX_UNPACKED_TEXT,
-  MAX_UPLOAD_TEXT,
+  MAX_UPLOAD_BYTES,
+  megabytesText,
 } from "./rules";
 
 // Behaviour and tests never depend on this wording.
@@ -131,7 +132,7 @@ export function problemMessage(problem: Problem): string {
     case "file.missing":
       return "Choose a zip file to upload.";
     case "file.tooLarge":
-      return `The file is larger than ${MAX_UPLOAD_TEXT}.`;
+      return `The file is larger than ${megabytesText(problem.max ?? MAX_UPLOAD_BYTES)}.`;
     case "file.notZip":
       return "The file is not a readable zip. It can be damaged, cut short, or not a zip.";
     case "file.incompatible":
@@ -194,6 +195,10 @@ export function problemMessage(problem: Problem): string {
       return "Enter a whole number.";
     case "limit.missing":
       return "Enter the number of apps this user can publish.";
+    case "uploadLimit.missing":
+      return "Enter the largest zip size, in MB, that this user can upload.";
+    case "uploadLimit.range":
+      return `Enter a whole number of MB from ${problem.min} to ${problem.max}.`;
     case "user.notFound":
       return "User not found.";
     case "admin.lastAdmin":

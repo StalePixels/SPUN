@@ -5,7 +5,7 @@ import { FormError } from "../../../FormError";
 import { useActionState, useState } from "react";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
-import { MAX_UPLOAD_BYTES, MAX_UPLOAD_TEXT, VERSION_MAX } from "@/lib/rules";
+import { megabytesText, VERSION_MAX } from "@/lib/rules";
 import { uploadRelease, type UploadState } from "../../../actions";
 import { ChangelogField } from "../../../ChangelogField";
 import { Field, FieldRow, RequiredNote } from "../../../Field";
@@ -14,9 +14,11 @@ import { Field, FieldRow, RequiredNote } from "../../../Field";
 // back to unticked together.
 export function UploadForm({
   appId,
+  maxBytes,
   upload,
 }: {
   appId: string;
+  maxBytes: number;
   upload?: (prev: UploadState, formData: FormData) => Promise<UploadState>;
 }) {
   const [state, formAction, pending] = useActionState<UploadState, FormData>(
@@ -57,7 +59,7 @@ export function UploadForm({
         </fieldset>
       </FieldRow>
       <ChangelogField testId="upload-changelog" />
-      <Field controlId="file" label="Zip file" required help={`Up to ${MAX_UPLOAD_TEXT}.`}>
+      <Field controlId="file" label="Zip file" required help={`Up to ${megabytesText(maxBytes)}.`}>
         <Form.Control data-testid="upload-file"
           type="file"
           name="file"
@@ -66,11 +68,11 @@ export function UploadForm({
           isInvalid={tooLarge}
           onChange={(event) => {
             const file = (event.target as HTMLInputElement).files?.[0];
-            setTooLarge(!!file && file.size > MAX_UPLOAD_BYTES);
+            setTooLarge(!!file && file.size > maxBytes);
           }}
         />
         <Form.Control.Feedback type="invalid" data-testid="upload-too-large">
-          The file is larger than {MAX_UPLOAD_TEXT}.
+          The file is larger than {megabytesText(maxBytes)}.
         </Form.Control.Feedback>
       </Field>
       <FieldRow>

@@ -7,6 +7,8 @@ import {
   API_KEY_PER_MINUTE,
   API_RELEASE_BODY_MAX,
   API_SCREENSHOT_BODY_MAX,
+  RELEASE_FIELDS_BYTES,
+  UPLOAD_LIMIT_MB_MAX,
   UPLOADS_PER_HOUR,
 } from "./rules";
 
@@ -22,6 +24,7 @@ function fakeDeps(liveKeys: string[] = [KEY_ID, OTHER_KEY_ID]) {
   let now = START_MS;
   // No T&C version is live unless a test sets one.
   const terms = { current: null as number | null, accepted: null as number | null };
+  const user = { uploadLimitMb: null as number | null };
   const store = new Map<string, { value: number; expires: number }>();
   const live = (name: string) => {
     const entry = store.get(name);
@@ -31,7 +34,7 @@ function fakeDeps(liveKeys: string[] = [KEY_ID, OTHER_KEY_ID]) {
     nowMs: () => now,
     serverKey: () => SERVER_KEY,
     limits: apiLimits({}),
-    findKeyUser: async (keyId) => (liveKeys.includes(keyId) ? { ...USER, acceptedTermsId: terms.accepted } : null),
+    findKeyUser: async (keyId) => (liveKeys.includes(keyId) ? { ...USER, acceptedTermsId: terms.accepted, uploadLimitMb: user.uploadLimitMb } : null),
     currentTermsId: async () => terms.current,
     claimOnce: async (name, ttl) => {
       if (live(name)) return false;
@@ -48,6 +51,7 @@ function fakeDeps(liveKeys: string[] = [KEY_ID, OTHER_KEY_ID]) {
   return {
     deps,
     terms,
+    user,
     advance(seconds: number) {
       now += seconds * 1000;
     },
@@ -95,6 +99,7 @@ function signedCall(clock: { nowSeconds(): number }, input: CallInput = {}): Api
 }
 
 const JSON_CALL: ApiOptions = { body: "json" };
+const RELEASE_CALL: ApiOptions = { body: "release" };
 
 describe("checkApiCall: signature", () => {
   let clock: ReturnType<typeof fakeDeps>;
@@ -229,6 +234,40 @@ describe("checkApiCall: body size", () => {
     });
   });
 
+  it("holds a release body to the user's own zip limit", async () => {
+    clock.user.uploadLimitMb = 10;
+    const max = 10 * 1024 * 1024 + RELEASE_FIELDS_BYTES;
+    const at = signedCall(clock, { method: "POST", headers: { "content-length": String(max) } });
+    expect((await checkApiCall(at, RELEASE_CALL, clock.deps)).ok).toBe(true);
+    const over = signedCall(clock, { method: "POST", headers: { "content-length": String(max + 1) } });
+    expect(await checkApiCall(over, RELEASE_CALL, clock.deps)).toEqual({
+      ok: false,
+      status: 413,
+      error: { code: "api.bodyTooLarge", max },
+    });
+  });
+
+  it("refuses a release body over the largest own limit before the signature check", async () => {
+    const max = UPLOAD_LIMIT_MB_MAX * 1024 * 1024 + RELEASE_FIELDS_BYTES;
+    const over = signedCall(clock, { method: "POST", keyId: "0000000000000000", headers: { "content-length": String(max + 1) } });
+    expect(await checkApiCall(over, RELEASE_CALL, clock.deps)).toEqual({
+      ok: false,
+      status: 413,
+      error: { code: "api.bodyTooLarge", max },
+    });
+  });
+
+  it("caps every user's release body at API_RELEASE_BODY_MAX when the environment sets it", async () => {
+    clock.user.uploadLimitMb = 10;
+    clock.deps.limits = apiLimits({ API_RELEASE_BODY_MAX: "5000000" });
+    const over = signedCall(clock, { method: "POST", headers: { "content-length": "5000001" } });
+    expect(await checkApiCall(over, RELEASE_CALL, clock.deps)).toEqual({
+      ok: false,
+      status: 413,
+      error: { code: "api.bodyTooLarge", max: 5000000 },
+    });
+  });
+
   it("gives 411 api.lengthRequired for a POST or PUT without Content-Length", async () => {
     for (const method of ["POST", "PUT"]) {
       expect(await checkApiCall(signedCall(clock, { method }), JSON_CALL, clock.deps)).toEqual({
@@ -348,7 +387,7 @@ describe("apiLimits", () => {
   it("gives the defaults when the environment sets nothing", () => {
     expect(apiLimits({})).toEqual({
       jsonBody: API_JSON_BODY_MAX,
-      releaseBody: API_RELEASE_BODY_MAX,
+      releaseBody: null,
       screenshotBody: API_SCREENSHOT_BODY_MAX,
       ipPerMinute: API_IP_PER_MINUTE,
       keyPerMinute: API_KEY_PER_MINUTE,

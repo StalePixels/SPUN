@@ -24,10 +24,12 @@ The default app limit is the number of apps a user can publish when the user has
 
 A user's page shows the email address, the registration date and the status. From it you can:
 
-- Change the app limit and the admin flag.
+- Change the app limit, the zip size limit and the admin flag.
 - Rename the user.
 - Disable or enable the user.
 - Delete the user.
+
+The zip size limit is the largest release zip the user can upload, in whole MB, from 5 to 80. Without one, the default of 4 MB applies. It applies to the user's uploads in the web form and the API, to an admin upload to one of the user's apps, and to Revalidate on those apps. The 16 MB limit on the unpacked files stays the same for every user. The files in a zip over 16 MB almost always add up to more than 16 MB, so such a zip fails that check.
 
 ### Usernames
 

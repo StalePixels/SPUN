@@ -316,10 +316,22 @@ function registerWriteTools(server: McpServer, user: ApiUser): void {
 
 async function findTicketUser(userId: string): Promise<TicketUser | null> {
   const [row] = await db()
-    .select({ username: users.username, disabledAt: users.disabledAt, acceptedTermsId: users.acceptedTermsId })
+    .select({
+      username: users.username,
+      disabledAt: users.disabledAt,
+      acceptedTermsId: users.acceptedTermsId,
+      uploadLimitMb: users.uploadLimitMb,
+    })
     .from(users)
     .where(eq(users.id, userId));
-  return row ? { username: row.username, disabled: row.disabledAt !== null, acceptedTermsId: row.acceptedTermsId } : null;
+  return row
+    ? {
+        username: row.username,
+        disabled: row.disabledAt !== null,
+        acceptedTermsId: row.acceptedTermsId,
+        uploadLimitMb: row.uploadLimitMb,
+      }
+    : null;
 }
 
 async function findTicketGrant(grantId: string): Promise<TicketGrant | null> {

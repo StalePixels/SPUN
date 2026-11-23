@@ -46,6 +46,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
           <UserForm
             userId={user.id}
             appLimit={user.appLimit === null ? "" : String(user.appLimit)}
+            uploadLimitMb={user.uploadLimitMb === null ? "" : String(user.uploadLimitMb)}
             isAdmin={user.isAdmin}
             defaultLimit={<DefaultAppLimit limit={defaultLimit} />}
           />

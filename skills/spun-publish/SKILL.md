@@ -99,7 +99,7 @@ Check the zip and the version before you upload. The CMS refuses a release that 
 
 The Next unzips each release itself, with its own unzipper. The CMS refuses a zip that this unzipper cannot unzip (`file.incompatible`) or that is not a readable zip (`file.notZip`):
 
-- At most 4 MB (`file.tooLarge`).
+- At most 4 MB, or the account's own limit when an admin has set one (`file.tooLarge`; `max` gives the limit in bytes).
 - The files in it add up to at most 16 MB unpacked (`file.unpackedTooLarge`).
 - One file, not split across several disks or parts.
 - Fewer than 65535 entries.

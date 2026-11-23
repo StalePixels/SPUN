@@ -36,6 +36,8 @@ export const users = mysqlTable("users", {
   isAdmin: boolean("is_admin").notNull().default(false),
   // Null means the default_app_limit setting applies.
   appLimit: int("app_limit", { unsigned: true }),
+  // The largest release zip the user can upload, in MB. Null means MAX_UPLOAD_BYTES applies.
+  uploadLimitMb: int("upload_limit_mb", { unsigned: true }),
   // Set means the user is disabled: no login, but their apps stay public.
   disabledAt: timestamp("disabled_at"),
   // The T&C version the user accepted last. Null: none yet.

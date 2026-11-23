@@ -9,6 +9,9 @@ export const CHANGELOG_MAX = 1024;
 export const SERIAL_MAX = 0xffff;
 export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 export const MAX_UPLOAD_TEXT = "4 MB";
+// A user's own zip limit, in MB, is above MAX_UPLOAD_BYTES.
+export const UPLOAD_LIMIT_MB_MIN = MAX_UPLOAD_BYTES / (1024 * 1024) + 1;
+export const UPLOAD_LIMIT_MB_MAX = 80;
 export const MAX_UNPACKED_BYTES = 16 * 1024 * 1024;
 export const MAX_UNPACKED_TEXT = "16 MB";
 export const SCREENSHOT_SLOTS = 5;
@@ -17,9 +20,11 @@ export const MAX_SCREENSHOT_TEXT = "16 MB";
 export const MAX_IMAGE_PIXELS = 4_000_000;
 export const MAX_IMAGE_PIXELS_TEXT = "4 megapixels";
 
-// API defaults, for production. A value of the same name in .env overrides each.
+// API defaults, for production. A value of the same name in .env overrides each,
+// except API_RELEASE_BODY_MAX: set in .env, it is an upper bound on every user's release body.
 export const API_JSON_BODY_MAX = 64 * 1024;
-export const API_RELEASE_BODY_MAX = MAX_UPLOAD_BYTES + 64 * 1024;
+export const RELEASE_FIELDS_BYTES = 64 * 1024;
+export const API_RELEASE_BODY_MAX = MAX_UPLOAD_BYTES + RELEASE_FIELDS_BYTES;
 export const API_SCREENSHOT_BODY_MAX = MAX_SCREENSHOT_BYTES + 64 * 1024;
 export const API_IP_PER_MINUTE = 60;
 export const API_KEY_PER_MINUTE = 60;
@@ -577,6 +582,32 @@ export function parseLimit(input: string): LimitInput {
     return { ok: false, error: { code: "limit.notNumber" } };
   }
   return { ok: true, limit: Number(value) };
+}
+
+export type UploadLimitInput = { ok: true; mb: number } | { ok: false; error: Problem };
+
+export function parseUploadLimit(input: string): UploadLimitInput {
+  const value = input.trim();
+  if (value === "") {
+    return { ok: false, error: { code: "uploadLimit.missing" } };
+  }
+  if (!/^\d+$/.test(value) || Number(value) < UPLOAD_LIMIT_MB_MIN || Number(value) > UPLOAD_LIMIT_MB_MAX) {
+    return { ok: false, error: { code: "uploadLimit.range", min: UPLOAD_LIMIT_MB_MIN, max: UPLOAD_LIMIT_MB_MAX } };
+  }
+  return { ok: true, mb: Number(value) };
+}
+
+export function uploadLimitBytes(userMb: number | null): number {
+  return userMb === null ? MAX_UPLOAD_BYTES : userMb * 1024 * 1024;
+}
+
+export function megabytesText(bytes: number): string {
+  return `${bytes / (1024 * 1024)} MB`;
+}
+
+export function releaseBodyMax(zipBytes: number, upperBound: number | null): number {
+  const max = zipBytes + RELEASE_FIELDS_BYTES;
+  return upperBound === null ? max : Math.min(max, upperBound);
 }
 
 export function appLimitFor(userLimit: number | null, defaultLimit: number | null): number | null {

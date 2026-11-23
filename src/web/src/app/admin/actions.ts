@@ -52,6 +52,7 @@ import {
 import { parseAppId } from "@/lib/apps";
 import { liveCategories } from "@/lib/categories";
 import type { DependsApp } from "@/lib/depends";
+import { appUploadLimit } from "@/lib/limits";
 import { parseMinCore } from "@/lib/mincore";
 import { appDotOverrides, checkUpload, formFile } from "@/lib/releases";
 import { checkScreenshot } from "@/lib/screenshots";
@@ -74,6 +75,7 @@ import {
   lineFeeds,
   parseLimit,
   parseSerial,
+  parseUploadLimit,
   parseSlot,
   parseSpecificity,
 } from "@/lib/rules";
@@ -109,8 +111,16 @@ export async function saveUser(userId: string, _prev: FormState, formData: FormD
   if (formData.get("ownLimit") === "on" && limit.limit === null) {
     return { error: { code: "limit.missing" } };
   }
+  const uploadLimit =
+    formData.get("ownUploadLimit") === "on"
+      ? parseUploadLimit(String(formData.get("uploadLimitMb") ?? ""))
+      : ({ ok: true, mb: null } as const);
+  if (!uploadLimit.ok) {
+    return { error: uploadLimit.error };
+  }
   const result = await adminUpdateUser(userId, {
     appLimit: limit.limit,
+    uploadLimitMb: uploadLimit.mb,
     isAdmin: formData.get("isAdmin") === "on",
   });
   if (result.error) {
@@ -190,6 +200,7 @@ export async function uploadAdminRelease(
     text(formData, "changelog"),
     await formFile(formData.get("file")),
     await appDotOverrides(appId),
+    await appUploadLimit(appId),
   );
   if (!checked.ok) {
     return { error: checked.error };

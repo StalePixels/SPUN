@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { uploadLimit } from "@/lib/limits";
 import { formatDay } from "@/lib/rules";
 import { AppTabs, loadOwnApp } from "./AppTabs";
 import { RepublishForm } from "./RepublishForm";
 import { UploadForm } from "./UploadForm";
 
 export default async function AppPage({ params }: { params: Promise<{ id: string }> }) {
-  const { app } = await loadOwnApp(params);
+  const { user, app } = await loadOwnApp(params);
   const latest = app.releases.find((release) => !release.deletedDay);
   return (
     <>
@@ -42,7 +43,7 @@ export default async function AppPage({ params }: { params: Promise<{ id: string
           Upload a release
         </div>
         <div className="card-body">
-          <UploadForm appId={app.id} />
+          <UploadForm appId={app.id} maxBytes={await uploadLimit(user.id)} />
         </div>
       </div>
 

@@ -9,17 +9,20 @@ import Form from "react-bootstrap/Form";
 import type { FormState } from "../../../actions";
 import { FieldRow } from "../../../Field";
 import { saveUser } from "../../actions";
+import { MAX_UPLOAD_TEXT, UPLOAD_LIMIT_MB_MAX, UPLOAD_LIMIT_MB_MIN } from "@/lib/rules";
 
-// The form resets after a successful save. The box is uncontrolled, so the reset shows the
-// stored state, and ownLimit follows the reset for the number field.
+// The form resets after a successful save. The boxes are uncontrolled, so the reset shows the
+// stored state, and ownLimit and ownUploadLimit follow the reset for the number fields.
 export function UserForm({
   userId,
   appLimit,
+  uploadLimitMb,
   isAdmin,
   defaultLimit,
 }: {
   userId: string;
   appLimit: string;
+  uploadLimitMb: string;
   isAdmin: boolean;
   defaultLimit: React.ReactNode;
 }) {
@@ -29,8 +32,17 @@ export function UserForm({
   );
   const [ownLimit, setOwnLimit] = useState(appLimit !== "");
   const toggle = useRef<HTMLInputElement>(null);
+  const [ownUploadLimit, setOwnUploadLimit] = useState(uploadLimitMb !== "");
+  const uploadToggle = useRef<HTMLInputElement>(null);
   return (
-    <ActionForm action={formAction} state={state} onReset={() => setOwnLimit(toggle.current?.defaultChecked ?? false)}>
+    <ActionForm
+      action={formAction}
+      state={state}
+      onReset={() => {
+        setOwnLimit(toggle.current?.defaultChecked ?? false);
+        setOwnUploadLimit(uploadToggle.current?.defaultChecked ?? false);
+      }}
+    >
       <FormError problem={state.error} />
       {state.saved && <Alert variant="success" data-testid="form-saved">Saved.</Alert>}
       <FieldRow>
@@ -51,6 +63,35 @@ export function UserForm({
           <Form.Group controlId="appLimit">
             <Form.Label>Number of apps</Form.Label>
             <Form.Control data-testid="user-app-limit" name="appLimit" type="number" min={0} defaultValue={appLimit} className="w-auto" />
+          </Form.Group>
+        </fieldset>
+      </FieldRow>
+      <FieldRow>
+        <Form.Check
+          type="checkbox"
+          id="ownUploadLimit"
+          data-testid="user-own-upload-limit-toggle"
+          name="ownUploadLimit"
+          label="Own zip size limit"
+          ref={uploadToggle}
+          defaultChecked={uploadLimitMb !== ""}
+          onChange={(event) => setOwnUploadLimit(event.target.checked)}
+        />
+        <Form.Text as="div">
+          Otherwise the default applies: {MAX_UPLOAD_TEXT}.
+        </Form.Text>
+        <fieldset disabled={!ownUploadLimit} className={`ms-4 mt-2${ownUploadLimit ? "" : " opacity-50"}`}>
+          <Form.Group controlId="uploadLimitMb">
+            <Form.Label>Largest zip, in MB</Form.Label>
+            <Form.Control
+              data-testid="user-upload-limit"
+              name="uploadLimitMb"
+              type="number"
+              min={UPLOAD_LIMIT_MB_MIN}
+              max={UPLOAD_LIMIT_MB_MAX}
+              defaultValue={uploadLimitMb}
+              className="w-auto"
+            />
           </Form.Group>
         </fieldset>
       </FieldRow>

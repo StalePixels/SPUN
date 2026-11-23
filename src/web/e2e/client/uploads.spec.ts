@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { Page } from "@playwright/test";
-import { releaseRow } from "../support/db";
+import { releaseRow, setUserUploadLimit, userByUsername } from "../support/db";
 import {
   expect,
   fileSize,
@@ -228,6 +228,27 @@ test("a zip over 4 MB: the browser blocks it, and so does the server", async ({ 
 
   await forceUploadSubmit(page);
   await expectRefused(page, id, "file.tooLarge");
+});
+
+test("with an own zip limit of 5 MB, a zip over 4 MB uploads and one over 5 MB is blocked", async ({ page, apps }) => {
+  const user = await userByUsername(client.username);
+  await setUserUploadLimit(user.id, 5);
+  try {
+    const id = await apps.create("OwnLimit");
+    const tooBig = makeZip([{ name: "BIG.BIN", data: randomBytes(5 * 1024 * 1024) }]);
+    await fillUpload(page, { version: "1.0", file: files.write("too-big.zip", tooBig) });
+    await expect(page.getByTestId("upload-too-large")).toBeVisible();
+    await forceUploadSubmit(page);
+    await expectRefused(page, id, "file.tooLarge");
+
+    const big = makeZip([{ name: "BIG.BIN", data: randomBytes(MAX_UPLOAD_BYTES + 512 * 1024) }]);
+    await page.reload();
+    await uploadRelease(page, { version: "1.0", file: files.write("big.zip", big) });
+    await expect(page).toHaveURL(new RegExp(`/publish/apps/${id}/releases/1$`));
+    expect(fileSize(releaseFile(client.username, id, 1))).toBe(big.length);
+  } finally {
+    await setUserUploadLimit(user.id, user.upload_limit_mb);
+  }
 });
 
 test("an empty (0-byte) file is refused by the server", async ({ page, apps }) => {

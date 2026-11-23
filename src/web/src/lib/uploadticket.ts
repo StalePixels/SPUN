@@ -1,4 +1,4 @@
-import { rateCheck, type ApiLimits, type ApiRefusal, type ApiUser } from "./apigate";
+import { rateCheck, releaseBodyLimit, type ApiLimits, type ApiRefusal, type ApiUser } from "./apigate";
 import { newSecret, tokenHash } from "./oauth";
 import type { Problem } from "./problems";
 import { APP_ID_RE, MCP_UPLOAD_TICKET_SECONDS, mustAcceptTerms, SCREENSHOT_SLOTS } from "./rules";
@@ -9,7 +9,12 @@ export type UploadTicket =
   | ({ userId: string; grantId: string; appId: string; kind: "release"; slot: null } & ReleaseText)
   | { userId: string; grantId: string; appId: string; kind: "screenshot"; slot: number };
 
-export type TicketUser = { username: string | null; disabled: boolean; acceptedTermsId: number | null };
+export type TicketUser = {
+  username: string | null;
+  disabled: boolean;
+  acceptedTermsId: number | null;
+  uploadLimitMb: number | null;
+};
 
 export type TicketGrant = { deletedAt: Date | null; refreshExpiresAt: Date };
 
@@ -108,7 +113,10 @@ export async function takeTicket(call: TicketCall, token: string, deps: TicketDe
   if (!waiting) {
     return BAD_TICKET;
   }
-  const max = waiting.kind === "release" ? deps.limits.releaseBody : deps.limits.screenshotBody;
+  const max =
+    waiting.kind === "release"
+      ? releaseBodyLimit(deps.limits, (await deps.findUser(waiting.userId))?.uploadLimitMb ?? null)
+      : deps.limits.screenshotBody;
   if (Number(length) > max) {
     return refuse(413, { code: "api.bodyTooLarge", max });
   }
