@@ -12,7 +12,7 @@ export const DEPENDS_MAX = 255;
 export const LOG_NAME_MAX = 32;
 export const LOG_VALUE_MAX = 255;
 export const LOG_ROWS_MAX = 16;
-export const LOG_NAMES: ReadonlySet<string> = new Set(["version", "baddep"]);
+export const LOG_NAMES: ReadonlySet<string> = new Set(["version", "baddep", "espat"]);
 
 // Always lowercase: an AppId only comes from parseAppId.
 export type AppId = string & { readonly __brand: "AppId" };

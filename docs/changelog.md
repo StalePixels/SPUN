@@ -4,55 +4,31 @@
 
 ### `.spun`
 
-- `.spun` can be built with its own name, server, port and colour, for
-  your own SPUN server. See "Building `.spun` for your own server" in
-  `docs/CMS.md`.
-- Apps do not install when they depend on a newer Next core, directly or
-  through a dependency. The check covers the whole dependency
-  tree and comes before any question or new directory, so a refusal
-  changes nothing. `update` skips these apps with a warning.
-- The unzip shows the progress of each file, for example
-  `DATA.BIN 128K/28.4M`.
-- Download and unzip show their progress on the command line too, on one
-  line that each update writes over. `-q` hides it.
-- While a download or unzip runs in the browser, the status line has the
-  bar colour across the screen and the buttons disappear.
-- `get` and `update` no longer stop at `scroll?` when their output is
-  longer than the screen.
+- `.spun` can be built with its own name, server, port and colour.
+- Apps that depend on a newer Next core do not install. `update` skips
+  them with a warning.
+- Download and unzip show their progress.
+- The browser hides its buttons while a download or unzip runs.
+- `get` and `update` no longer stop at `scroll?`.
+- `.spun` sends the ESP's AT firmware version to the server.
 
 ### SPUNServer
 
-- `SPLIST`, `SPCAT` and `SPFIND` show listed apps only. `SPINFO` and
-  downloads work for apps in every visibility.
-- `SPINFO` sends an app's minimum core version, when it has one.
+- `SPLIST`, `SPCAT` and `SPFIND` show listed apps only.
+- `SPINFO` sends an app's minimum core version.
+- An unknown command no longer closes the session.
+- A command line with a control character closes the session.
+- The log is JSON lines.
+- `LOG espat` records the ESP's AT firmware version.
 
 ### CMS
 
-- The colour of the `spun` theme can be set to match a `.spun` build.
-- The app page has tabs: Releases, Dependencies, Screenshots, Details
-  and Delete. Each tab has its own URL.
-- Dependencies are chosen from a list of the publisher's other apps, or
-  found with a search of the public apps by title, description, id or
-  alias, in place of a field of app ids. The admin app page has the same
-  picker.
-- An app's visibility is listed, unlisted or secret. A listed app is in
-  the catalogue lists and search, on the web and on the Next. An unlisted
-  app is in neither, but the dependency picker finds it. A secret app is
-  in neither, and only its owner finds it in the web search and the
-  dependency picker; others find it there only by its exact id or alias.
-  A direct link, downloads and installs work in every state. The API and
-  MCP take it as `visibility`.
-- A logged-in user's search of the web catalogue also finds all their
-  own apps, unlisted and secret ones too.
-- The dependency picker's search is in the API, as
-  `GET /api/apps/{id}/depends/search?q=<text>`, and in the MCP tool
-  `search_depends`.
-- Publishers set the minimum core version of their apps, as
-  `major.minor.sub`, for example `3.01.10`. Empty means any core. Admins
-  edit it with the other app fields. The API (`POST /api/apps` and
-  `PUT /api/apps/{id}`, field `minCore`) and the MCP tools `create_app`
-  and `update_app` take it, and `GET /api/apps/{id}` and `get_app` return
-  it.
+- The `spun` theme colour can match a `.spun` build.
+- The app page has tabs.
+- Dependencies are chosen from a list or a search.
+- Apps are listed, unlisted or secret.
+- A logged-in user's search also finds their own unlisted and secret apps.
+- Publishers set the minimum core version of their apps.
 - The per-address rate limits find the real client address behind more
   than one proxy.
 

@@ -9,9 +9,9 @@
 #define BANK_GUI        (44<<1)
 #define BANK_SPRITES    (43<<1)
 #define BANK_APP        (42<<1)
+#define BANK_SCREEN     (41<<1)
 
-// The GUI, screen, UI and network code share one bank
-#define BANK_SCREEN     BANK_GUI
+// The GUI, UI and network code share one bank
 #define BANK_UI         BANK_GUI
 #define BANK_NET        BANK_GUI
 

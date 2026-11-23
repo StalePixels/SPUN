@@ -104,14 +104,20 @@ $(TMP_DIR)/BANK_deps.o: $(call lst_files,BANK_deps/deps.lst) $(DEPS) | dirs
 		--datasegBANK_45 --bsssegBANK_45   \
 		@BANK_deps/deps.lst -o$@
 
-# BANK_GUI: the GUI's own code, the screen set-up (layers, font, NextZXOS's back), the modal boxes
-# and the network code. The NBNtools code's BSS (nbnBuff) stays in main, where main and every bank reach it
-$(TMP_DIR)/BANK_gui.o: $(call lst_files,BANK_gui/gui.lst) $(call lst_files,BANK_screen/screen.lst) $(call lst_files,BANK_ui/ui.lst) \
-		BANK_screen/specp437_128-255.bin $(DEPS) | dirs
+# BANK_GUI: the GUI's own code, the modal boxes and the network code. The NBNtools code's BSS (nbnBuff)
+# stays in main, where main and every bank reach it
+$(TMP_DIR)/BANK_gui.o: $(call lst_files,BANK_gui/gui.lst) $(call lst_files,BANK_ui/ui.lst) $(DEPS) | dirs
 	$(CC) $(CCFLAGS) -c \
 		--codesegBANK_44 --constsegBANK_44 \
 		--datasegBANK_44 --bsssegBANK_44   \
-		@BANK_gui/gui.lst @BANK_screen/screen.lst @BANK_ui/ui.lst -o$@
+		@BANK_gui/gui.lst @BANK_ui/ui.lst -o$@
+
+# BANK_SCREEN: the screen set-up (layers, font, NextZXOS's back) and the splash
+$(TMP_DIR)/BANK_screen.o: $(call lst_files,BANK_screen/screen.lst) BANK_screen/specp437_128-255.bin $(DEPS) | dirs
+	$(CC) $(CCFLAGS) -c \
+		--codesegBANK_41 --constsegBANK_41 \
+		--datasegBANK_41 --bsssegBANK_41   \
+		@BANK_screen/screen.lst -o$@
 
 $(TMP_DIR)/BANK_net.o: $(call lst_files,BANK_net/net.lst) $(DEPS) | dirs
 	$(CC) $(CCFLAGS) -c \
@@ -140,10 +146,11 @@ bank_45: $(TMP_DIR)/BANK_deps.o
 bank_44: $(TMP_DIR)/BANK_gui.o $(TMP_DIR)/BANK_net.o $(TMP_DIR)/BANK_net_nbn.o
 bank_43: $(TMP_DIR)/BANK_sprites.o
 bank_42: $(TMP_DIR)/BANK_app.o
+bank_41: $(TMP_DIR)/BANK_screen.o
 
-banks: bank_46 bank_45 bank_44 bank_43 bank_42
+banks: bank_46 bank_45 bank_44 bank_43 bank_42 bank_41
 
-BANK_OBJS := $(addprefix $(TMP_DIR)/BANK_,net.o net_nbn.o packages.o deps.o gui.o sprites.o app.o)
+BANK_OBJS := $(addprefix $(TMP_DIR)/BANK_,net.o net_nbn.o packages.o deps.o gui.o screen.o sprites.o app.o)
 
 # Run inside $(UNZIP): INCLUDE resolves from the current directory
 $(UNZIP)/inflate_PAGEA.bin $(UNZIP)/inflate_PAGEC.bin: $(UNZIP)/inflate.asm $(UNZIP)/inflate_job.inc

@@ -1,6 +1,6 @@
 ; Tiles 0-31 would be the system variables at $5C00, so they are never written. DivMMC is over the
 ; ROM in a dot command, so the copy from ROM 3 unmaps it (port $E3) and runs from this bank at $C000.
-SECTION BANK_44
+SECTION BANK_41
 
 PUBLIC _font_load
 

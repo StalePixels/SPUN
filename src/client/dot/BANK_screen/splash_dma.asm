@@ -1,6 +1,6 @@
 ; void splash_dma(uint16_t from) __z88dk_fastcall
 ; The DMA's other registers are set by splash.c; the DMA stops at the end of each block.
-SECTION BANK_44
+SECTION BANK_41
 
 PUBLIC _splash_dma
 EXTERN _splashLength

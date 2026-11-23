@@ -7,7 +7,7 @@ This page is for the person who hosts SPUN. It covers the two servers, the datab
 `docker/compose.yml` runs one Compose project, `spun`, with four services:
 
 - `cms`: the web site and the API (Next.js, source in `src/web`). Publishers upload releases here and admins manage the site here.
-- `spun-server`: SPUNServer (source in `src/server`). The `.spun` dot command on a Next connects to it. It uses the NBN protocol of NBNtools, on port 48128. The `.spun` client has this port compiled in, so change it with `SPUN_PORT` only if you also build a client for it.
+- `spun-server`: SPUNServer (source in `src/server`). The `.spun` dot command on a Next connects to it. It uses the NBN protocol of NBNtools, on port 48128. The `.spun` client has this port compiled in, so change it with `SPUN_PORT` only if you also build a client for it. Its log is JSON lines from pino; to read it as text, pipe it through `npx pino-pretty`, for example `docker compose logs spun-server | npx pino-pretty`.
 - `mariadb`: the database.
 - `redis`: the claim set of each user, request counters and the nonces of signed API requests.
 

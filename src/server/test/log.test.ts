@@ -101,6 +101,14 @@ describe("LOG", () => {
     assert.equal(rows()[0].value, "ZX Spectrum  Next KS2");
   });
 
+  test("stores an espat line, the ESP's AT+GMR version line, as sent", async () => {
+    const client = await connect();
+    client.send("LOG espat=AT version:1.1.0.0(May 11 2016 18:09:56)\n");
+    await answers(client);
+    assert.equal(rows()[0].name, "espat");
+    assert.equal(rows()[0].value, "AT version:1.1.0.0(May 11 2016 18:09:56)");
+  });
+
   test("LOGs on one connection share an id; another connection has a different one", async () => {
     const first = await connect();
     first.send("LOG version=1\nLOG version=2\n");
