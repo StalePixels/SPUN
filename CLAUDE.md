@@ -76,6 +76,7 @@ of `.spun` uses.
   There are no migrations until after the first proper deploy.
 - A delete sets `deleted_at` and keeps the row, so ids and serials are never
   reused.
+- A code change updates every test it affects, in the same change.
 - Tests check behaviour and state (URL, rows, files, element state,
   `data-error` codes) and find elements by `data-testid`, so UI wording can
   change without breaking a test.

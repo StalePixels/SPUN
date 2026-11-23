@@ -43,9 +43,9 @@ status=0
 run=$(sed -n 's/^run dir *//p' "$work/run.out")
 python3 "$here/gui-test.py" pointers "$work/spun-gui.scn" "$run" || status=1
 
-# Every page came from the server when it was shown, and the search with no
-# text sent no SPFIND
-want=$(printf '%s\n' "SPLIST 1" "SPLIST 2" "SPLIST 1" "SPFIND 1 zebra" "SPLIST 1" "SPLIST 1")
+# The self-update's SPINFO comes first. Every page came from the server when it
+# was shown, and the search with no text sent no SPFIND
+want=$(printf '%s\n' "SPINFO spun 1" "SPLIST 1" "SPLIST 2" "SPLIST 1" "SPFIND 1 zebra" "SPLIST 1" "SPLIST 1")
 got=$(sed -n 's/^[0-9.]* \(SP.*\)/\1/p' "$work/commands.log")
 echo "commands sent: $(printf '%s' "$got" | tr '\n' ',')"
 if [ "$got" != "$want" ]; then

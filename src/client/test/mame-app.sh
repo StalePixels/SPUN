@@ -86,11 +86,12 @@ print(f'bank5     NextZXOS\'s tile definition area $5D00-${vars_ - 1:04X} (up to
 sys.exit(0 if same else 1)
 PY
 
+# The self-update's SPINFO comes first.
 # Each page is asked for when it is shown. Thumbnails come only for the slots
 # that SPINFO lists, and not again after a changelog; gui023 gets none
 thumbs=$(printf 'GET <user>/thumb/gui024/%s\n' 1 2 3 5)
 all=$(printf 'GET <user>/thumb/gui022/%s\n' 1 2 3 4 5)
-want=$(printf '%s\n' "SPLIST 1" "SPINFO gui024 1" "$thumbs" "SPCLOG gui024 3" "SPINFO gui024 1" \
+want=$(printf '%s\n' "SPINFO spun 1" "SPLIST 1" "SPINFO gui024 1" "$thumbs" "SPCLOG gui024 3" "SPINFO gui024 1" \
     "GET <user>/nxi/gui024/1" "SPINFO gui024 1" "$thumbs" "GET <user>/nxi/gui024/2" "SPINFO gui024 1" "$thumbs" \
     "SPCLOG gui024 2" "SPINFO gui024 1" "SPLIST 1" "SPINFO gui023 1" "SPLIST 1" "SPINFO gui022 1" "$all" "SPLIST 1")
 got=$(sed -En 's/^[0-9.]* (SP.*|GET .*)/\1/p' "$work/commands.log" | sed 's|^GET [^/]*/|GET <user>/|')

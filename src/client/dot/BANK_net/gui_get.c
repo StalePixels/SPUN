@@ -16,7 +16,7 @@ struct l2_place {
     uint8_t ty;
 };
 
-static struct l2_target *target;
+static struct l2_target target;
 static struct l2_place at;
 static uint8_t paletteByte;
 static uint8_t *store;
@@ -30,15 +30,15 @@ static void map(void) {
 static void put(unsigned char byte) __z88dk_fastcall {
     uint16_t col;
 
-    if(target->width) {
-        if(at.ty == target->height) return;
-        col = target->x + at.tx;
+    if(target.width) {
+        if(at.ty == target.height) return;
+        col = target.x + at.tx;
         if(at.page != (col >> 5)) {
             at.page = col >> 5;
             map();
         }
-        *((uint8_t *)0x4000 + ((col & 31) << 8) + target->y + at.ty) = byte;
-        if(++at.tx == target->width) {
+        *((uint8_t *)0x4000 + ((col & 31) << 8) + target.y + at.ty) = byte;
+        if(++at.tx == target.width) {
             at.tx = 0;
             at.ty++;
         }
@@ -89,7 +89,7 @@ static void cache_read(void) {
         errno = 0;
         got = esxdos_f_read(file_in, CACHE_AT, CACHE_END - CACHE_AT);
         if(errno || !got) return;
-        if(!target->width && at.palette != NXI_PALETTE) ZXN_NEXTREGA(0x40, at.palette >> 1);
+        if(!target.width && at.palette != NXI_PALETTE) ZXN_NEXTREGA(0x40, at.palette >> 1);
         map();
         for(byte = CACHE_AT; got; got--) put(*byte++);
     }
@@ -104,7 +104,7 @@ static void block(uint16_t length) __z88dk_fastcall {
 
     memcpy(&start, &at, sizeof(at));
     while(1) {
-        if(!target->width && at.palette != NXI_PALETTE) ZXN_NEXTREGA(0x40, at.palette >> 1);
+        if(!target.width && at.palette != NXI_PALETTE) ZXN_NEXTREGA(0x40, at.palette >> 1);
         map();
         store = CACHE_AT;
         ZXN_WRITE_MMU3(_z_extra_table[0]);
@@ -142,7 +142,7 @@ unsigned char *gui_get(struct l2_target *file) {
     uint32_t blocks;
     uint16_t remainder;
 
-    target = file;
+    target = *file;
     at.palette = file->width ? NXI_PALETTE : 0;
     at.page = file->width ? file->x >> 5 : 0;
     at.pixel = (uint8_t *)0x4000;

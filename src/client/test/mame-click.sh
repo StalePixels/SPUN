@@ -46,11 +46,12 @@ run=$(sed -n 's/^run dir *//p' "$work/run.out")
 
 python3 "$here/gui-test.py" pointers "$work/spun-click.scn" "$run" || status=1
 
+# The self-update's SPINFO comes first.
 # A click in the search field with the pointer hidden, and the clicks that close
 # the field, send no search. The app page asks for the app (SPINFO) and the list
 # again after it, and each picker is one SPCATS. The click on Quit sends nothing.
 app=$(python3 "$here/gui-test.py" appof "$SPUN_TEST_SERVER" "$SPUN_TEST_PORT" "SPLIST 1" 12)
-want=$(printf '%s\n' "SPLIST 1" "SPINFO $app 1" "SPLIST 1" \
+want=$(printf '%s\n' "SPINFO spun 1" "SPLIST 1" "SPINFO $app 1" "SPLIST 1" \
     "SPCATS 1" "SPCAT games 1" "SPCATS 1" "SPCAT games 1" "SPCATS 1" "SPLIST 1")
 got=$(sed -n 's/^[0-9.]* \(SP.*\)/\1/p' "$work/commands.log")
 echo "commands sent: $(printf '%s' "$got" | tr '\n' ',')"

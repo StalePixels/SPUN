@@ -42,10 +42,11 @@ status=0
 (cd "$PINESY_HARNESS" && ./run.py "$work/spun-category.scn") | tee "$work/run.out" || status=$?
 run=$(sed -n 's/^run dir *//p' "$work/run.out")
 
+# The self-update's SPINFO comes first.
 # Leaving the picker with Edit, BREAK or Back (key C does nothing there) shows the catalogue again (SPLIST 1), and
 # a cancelled search field sends nothing. The last SPLIST 1 is Help closing, which
 # shows the page again
-want=$(printf '%s\n' "SPLIST 1" "SPCATS 1" "SPLIST 1" "SPCATS 1" "SPLIST 1" "SPCATS 1" \
+want=$(printf '%s\n' "SPINFO spun 1" "SPLIST 1" "SPCATS 1" "SPLIST 1" "SPCATS 1" "SPLIST 1" "SPCATS 1" \
     "SPCAT games 1" "SPCAT games 1 zebra" "SPCATS 1" "SPFIND 1 zebra" "SPLIST 1" \
     "SPCATS 1" "SPLIST 1" "SPLIST 1")
 got=$(sed -n 's/^[0-9.]* \(SP.*\)/\1/p' "$work/commands.log")
