@@ -11,6 +11,8 @@
 - The browser hides its buttons while a download or unzip runs.
 - `get` and `update` no longer stop at `scroll?`.
 - `.spun` sends the ESP's AT firmware version to the server.
+- `.spun` waits up to 10 seconds for each reply from the server, not
+  0.4 seconds, before "Timeout awaiting byte".
 
 ### SPUNServer
 
