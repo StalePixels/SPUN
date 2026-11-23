@@ -14,7 +14,10 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "verbatimModuleSyntax": true,
-    "types": ["node"]
+    "types": ["node"],
+    // The vendored NBNtools engine imports pino. tsc looks for it from
+    //    ../vendor, where nothing is installed, so point it at ours.
+    "paths": { "pino": ["./node_modules/pino/pino.d.ts"] }
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

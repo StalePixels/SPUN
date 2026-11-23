@@ -535,7 +535,12 @@ describe("the old verbs", () => {
   before(connect);
   after(() => client.close());
 
+  // The NBN engine keeps the session for two unknown commands, and closes it on the third.
   test("FIND and INFO are unknown commands, as in the NBN engine", async () => {
+    await expectError("FIND 1 zebra\n", "BadCommand_ERROR");
+    await expectOpen();
+    await expectError("INFO abc123\n", "BadCommand_ERROR");
+    await expectOpen();
     await expectError("FIND 1 zebra\n", "BadCommand_ERROR");
     await client.drain();
     assert.equal(client.closed, true);
