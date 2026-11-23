@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.2 - Unreleased
+## 0.9.2 - 20261123
 
 ### `.spun`
 
@@ -28,6 +28,8 @@
 - The `spun` theme colour can match a `.spun` build.
 - The app page has tabs.
 - Dependencies are chosen from a list or a search.
+- The API and MCP have the dependency search:
+  `GET /api/apps/{id}/depends/search` and `search_depends`.
 - Apps are listed, unlisted or secret.
 - A logged-in user's search also finds their own unlisted and secret apps.
 - Publishers set the minimum core version of their apps.
