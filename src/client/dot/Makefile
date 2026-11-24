@@ -49,14 +49,14 @@ Z88DK_RUN = docker run --rm --user $(shell id -u):$(shell id -g) -e HOME=/tmp -v
 
 ZOPT ?= --max-allocs-per-node200000
 CC=$(call Z88DK_RUN,$(CURDIR)) zcc
-CCFLAGS=+zxn -vn -startup=$(CRT) -clib=sdcc_iy -SO3 $(ZOPT) --opt-code-size -pragma-include:$(CURDIR)/zpragma.inc '-DSPUN_VERSION=\"$(VERSION)\"' '-DSPUN_NAME=\"$(NAME)\"' \
-	'-DSPUN_DISPLAY=\"$(DISPLAY_NAME)\"' '-DSPUN_UPDATE_ID=\"$(UPDATE_ID)\"' '-DSPUN_PALETTE=$(PALETTE)'
+CCFLAGS=+zxn -vn -startup=$(CRT) -clib=sdcc_iy -SO3 $(ZOPT) --opt-code-size -pragma-include:$(CURDIR)/zpragma.inc '-DSPUN_VERSION="$(VERSION)"' '-DSPUN_NAME="$(NAME)"' \
+	'-DSPUN_DISPLAY="$(DISPLAY_NAME)"' '-DSPUN_UPDATE_ID="$(UPDATE_ID)"' '-DSPUN_PALETTE=$(PALETTE)'
 LDFLAGS=-m
 # Main ends below the stack, which starts at $BFD8 (zpragma.inc) with 1K reserved;
 # above it are the mouse variables and the IM2 table (gui/isr.asm).
 # appmake fails the build if data or BSS reaches the fence.
 CZFLAGS=-Cz"--fullsize --main-fence 0xBBD8"
-DEFINES='-DSPUN_SERVER=\"$(SERVER)\"' '-DSPUN_PORT=\"$(PORT)\"' -Ddotn -DUNZIP_BANK=$(UNZIP_BANK) -Cm-DUNZIP_BANK=$(UNZIP_BANK) -Ca-I$(abspath $(UNZIP))
+DEFINES='-DSPUN_SERVER="$(SERVER)"' '-DSPUN_PORT="$(PORT)"' -Ddotn -DUNZIP_BANK=$(UNZIP_BANK) -Cm-DUNZIP_BANK=$(UNZIP_BANK) -Ca-I$(abspath $(UNZIP))
 
 MKDIR := mkdir -p
 RM := rm -rfv
