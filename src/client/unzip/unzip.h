@@ -19,6 +19,13 @@
 #define OVERWRITE_ONCE      'o'
 #define OVERWRITE_ALL       'a'
 #define OVERWRITE_CANCEL    'c'
+#define OVERWRITE_SKIP      's'
+
+// unzip's flags. Without UNZIP_ASK_EACH it asks about every file that exists before it writes any
+#define UNZIP_YES           0x01
+#define UNZIP_JUNK          0x02
+#define UNZIP_NO_MAC        0x04
+#define UNZIP_ASK_EACH      0x08
 
 #define PROGRESS_DOWNLOAD   0
 #define PROGRESS_UNZIP      1
@@ -28,6 +35,7 @@ extern void progress_end(void);
 
 extern unsigned char overwrite_ask(const char *name);
 
-extern unsigned char unzip(const char *zip_path, const char *dir_path, bool yes);
+extern unsigned char unzip(const char *zip_path, const char *dir_path, unsigned char flags);
+extern unsigned char unzip_view(const char *zip_path, unsigned char flags, void (*entry)(const char *name, unsigned long size));
 
 #endif

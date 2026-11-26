@@ -133,7 +133,7 @@ unsigned char install(char *id, bool yes) {
     if((error = _farWithPointer(BANK_NET, (far_ptr_fn_t)download, id))) NBN_Fail(error);
 
     if(!quiet) printf("Installing to %s\n", installDir);
-    result = unzip(zipPath, installDir, yes || overwriteAll);
+    result = unzip(zipPath, installDir, yes || overwriteAll ? UNZIP_YES : 0);
     progress_end();
     if(result == UNZIP_E_NOMEM) NBN_Fail(err_no_memory);
     if(result == UNZIP_E_READ || result == UNZIP_E_CREATE || result == UNZIP_E_WRITE) {

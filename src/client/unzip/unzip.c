@@ -18,6 +18,7 @@ static uint16_t entries;
 static uint32_t cd_offset;
 static uint32_t cd_pos;
 static unsigned char zip;
+static unsigned char opts;
 static bool overwrite_all;
 
 static uint16_t get16(const unsigned char *p) {
@@ -114,8 +115,12 @@ static unsigned char check_entry(void) {
     return UNZIP_OK;
 }
 
-// A .dot file at the root of the zip is a dot command, for C:/dot without its extension. The
-// name goes in tail, which is free once the directory is found
+// .spun installs a .dot file at the root of the zip as a dot command, in C:/dot without its
+// extension. The name goes in tail, which is free once the directory is found. .spunzip is a
+// plain unzip and builds with UNZIP_NO_DOTS
+#ifdef UNZIP_NO_DOTS
+#define dot_target() false
+#else
 static bool dot_target(void) {
     const char *name = path + dir_len + 1;
     uint16_t len = strlen(name);
@@ -125,6 +130,34 @@ static bool dot_target(void) {
     memcpy(tail + 7, name, len - 4);
     tail[len + 3] = 0;
     return true;
+}
+#endif
+
+static char *base_name(void) {
+    char *p = path + dir_len + 1;
+    char *base = p;
+
+    for (; *p; p++) if (*p == '/' || *p == '\\') base = p + 1;
+    return base;
+}
+
+// With junked paths a directory entry has nothing to make. Mac resources are the __MACOSX
+// folder, AppleDouble ._ files and the Finder's .DS_Store
+static bool skip_entry(void) {
+    const char *base = base_name();
+
+    if ((opts & UNZIP_JUNK) && !*base) return true;
+    if (!(opts & UNZIP_NO_MAC)) return false;
+    return !strncmp(path + dir_len + 1, "__MACOSX/", 9) || (base[0] == '.' && base[1] == '_') ||
+        !strcmp(base, ".DS_Store");
+}
+
+static void junk_entry(void) {
+    const char *base;
+
+    if (!(opts & UNZIP_JUNK)) return;
+    base = base_name();
+    memmove(path + dir_len + 1, base, strlen(base) + 1);
 }
 
 static void entry_progress(uint32_t done) {
@@ -136,20 +169,21 @@ void inflate_progress(void) {
     entry_progress(job.out_count);
 }
 
+// Returns OVERWRITE_ONCE or OVERWRITE_ALL to write the entry, OVERWRITE_SKIP or OVERWRITE_CANCEL
 static unsigned char check_existing(void) {
     const char *target = dot_target() ? (const char *)tail : path;
     unsigned char answer;
 
-    if (overwrite_all || path[strlen(path) - 1] == '/') return UNZIP_OK;
+    if (overwrite_all || path[strlen(path) - 1] == '/') return OVERWRITE_ONCE;
     errno = 0;
     esx_f_stat(target, &st);
-    if (errno) return UNZIP_OK;
+    if (errno) return OVERWRITE_ONCE;
     answer = overwrite_ask(target);
-    if (answer == OVERWRITE_CANCEL) return UNZIP_E_ABORT;
     if (answer == OVERWRITE_ALL) overwrite_all = true;
-    return UNZIP_OK;
+    return answer;
 }
 
+#ifndef UNZIP_NO_DOTS
 // Both files are open before tail, which holds the target's name, becomes the copy buffer
 static unsigned char copy_dot(void) {
     unsigned char in, out;
@@ -188,6 +222,7 @@ static unsigned char move_dot(void) {
     esx_f_rename(path, tail);
     return errno ? UNZIP_E_CREATE : UNZIP_OK;
 }
+#endif
 
 static unsigned char make_dirs(char *end) {
     char *p;
@@ -241,13 +276,15 @@ static unsigned char extract_entry(void) {
     return r;
 }
 
-unsigned char unzip(const char *zip_path, const char *dir_path, bool yes) {
+unsigned char unzip(const char *zip_path, const char *dir_path, unsigned char flags) {
     unsigned char r;
+    unsigned char answer;
     unsigned char pages = 0;
     uint16_t e;
     int error;
 
-    overwrite_all = yes;
+    opts = flags;
+    overwrite_all = flags & UNZIP_YES;
     dir_len = strlen(dir_path);
     while (dir_len && dir_path[dir_len - 1] == '/') dir_len--;
     if (dir_len + 2 >= sizeof(path)) return UNZIP_E_PATH;
@@ -261,9 +298,10 @@ unsigned char unzip(const char *zip_path, const char *dir_path, bool yes) {
     r = find_directory();
     cd_pos = cd_offset;
     for (e = 0; r == UNZIP_OK && e < entries; e++) {
-        r = next_entry();
-        if (r == UNZIP_OK) r = check_entry();
-        if (r == UNZIP_OK) r = check_existing();
+        if ((r = next_entry()) || skip_entry()) continue;
+        if ((r = check_entry())) break;
+        junk_entry();
+        if (!(flags & UNZIP_ASK_EACH) && check_existing() == OVERWRITE_CANCEL) r = UNZIP_E_ABORT;
     }
 
     if (r == UNZIP_OK && (pages = unzip_pages_alloc(&job)) < UNZIP_PAGES) r = UNZIP_E_NOMEM;
@@ -271,20 +309,51 @@ unsigned char unzip(const char *zip_path, const char *dir_path, bool yes) {
     if (r == UNZIP_OK) {
         cd_pos = cd_offset;
         for (e = 0; r == UNZIP_OK && e < entries; e++) {
-            r = next_entry();
-            if (r != UNZIP_OK) break;
+            if ((r = next_entry()) || skip_entry()) continue;
+            junk_entry();
+            if (flags & UNZIP_ASK_EACH) {
+                answer = check_existing();
+                if (answer == OVERWRITE_CANCEL) r = UNZIP_E_ABORT;
+                if (answer == OVERWRITE_CANCEL || answer == OVERWRITE_SKIP) continue;
+            }
             entry_progress(0);
             r = extract_entry();
         }
+#ifndef UNZIP_NO_DOTS
         cd_pos = cd_offset;
         for (e = 0; r == UNZIP_OK && e < entries; e++) {
-            r = next_entry();
-            if (r == UNZIP_OK && dot_target()) r = move_dot();
+            if ((r = next_entry()) || skip_entry()) continue;
+            junk_entry();
+            if (dot_target()) r = move_dot();
         }
+#endif
     }
 
     error = errno;
     unzip_pages_free(&job, pages);
+    esx_f_close(zip);
+    errno = r ? error : 0;
+    return r;
+}
+
+unsigned char unzip_view(const char *zip_path, unsigned char flags, void (*entry)(const char *name, unsigned long size)) {
+    unsigned char r;
+    uint16_t e;
+    int error;
+
+    opts = flags;
+    dir_len = 0;
+    errno = 0;
+    zip = esx_f_open(zip_path, ESX_MODE_READ | ESX_MODE_OPEN_EXIST);
+    if (errno) return UNZIP_E_READ;
+
+    r = find_directory();
+    cd_pos = cd_offset;
+    for (e = 0; r == UNZIP_OK && e < entries; e++) {
+        if ((r = next_entry()) || skip_entry()) continue;
+        entry(path + 1, get32(hdr + 24));
+    }
+    error = errno;
     esx_f_close(zip);
     errno = r ? error : 0;
     return r;

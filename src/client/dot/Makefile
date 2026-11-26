@@ -30,8 +30,11 @@ TMP_DIR ?= $(dir $(BUILD_DIR))TMP-$(patsubst BUILD-%,%,$(notdir $(BUILD_DIR)))
 
 VERSION := $(shell cat ../VERSION)
 
-# The release zip: the dot command as <name>.dot, then these files, all at the zip's root
+# The release zip: the dot command as <name>.dot, then these files, all at the zip's root.
+# Only the spun build's zip has spunzip.dot too
 ZIP := $(BUILD_DIR)/$(NAME)-$(VERSION).zip
+SPUNZIP_DIR := ../spunzip
+ZIP_SPUNZIP := $(if $(filter spun,$(NAME)),spunzip)
 BAS := $(BUILD_DIR)/$(NAME).bas
 ZIP_FILES := $(BUILD_DIR)/README.txt $(BUILD_DIR)/$(NAME).gde $(BAS)
 TXT2BAS ?= txt2bas
@@ -193,12 +196,16 @@ $(BUILD_DIR)/README.txt: ../zip/README.txt $(NAMED_DEPS) | dirs
 $(BUILD_DIR)/$(NAME).gde: ../zip/spun.gde $(NAMED_DEPS) | dirs
 	$(NAMED) $< > $@
 
-zip: binaries $(ZIP_FILES)
+spunzip:
+	$(MAKE) -C $(SPUNZIP_DIR)
+
+zip: binaries $(ZIP_SPUNZIP) $(ZIP_FILES)
 	$(RM) $(BUILD_DIR)/zip $(ZIP)
 	$(MKDIR) $(BUILD_DIR)/zip
 	cp $(BUILD_DIR)/$(NAME) $(BUILD_DIR)/zip/$(NAME).dot
+	$(if $(ZIP_SPUNZIP),cp $(SPUNZIP_DIR)/BUILD/spunzip $(BUILD_DIR)/zip/spunzip.dot)
 	cp $(ZIP_FILES) $(BUILD_DIR)/zip/
-	cd $(BUILD_DIR)/zip && zip -X -q $(abspath $(ZIP)) $(NAME).dot $(notdir $(ZIP_FILES))
+	cd $(BUILD_DIR)/zip && zip -X -q $(abspath $(ZIP)) $(NAME).dot $(addsuffix .dot,$(ZIP_SPUNZIP)) $(notdir $(ZIP_FILES))
 	$(RM) $(BUILD_DIR)/zip
 
 posix: $(POSIX_DIR)/$(NAME)
@@ -221,4 +228,4 @@ $(POSIX_DIR)/help.c: help.txt $(NAMED_DEPS)
 
 .DELETE_ON_ERROR:
 
-.PHONY: all clean dirs banks bank_46 bank_45 bank_44 bank_43 bank_42 dotn binaries zip posix
+.PHONY: all clean dirs banks bank_46 bank_45 bank_44 bank_43 bank_42 dotn binaries spunzip zip posix

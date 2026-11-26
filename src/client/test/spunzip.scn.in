@@ -1,0 +1,79 @@
+# .spunzip's switches, and the stock .unzip as a control. mame-spunzip.sh
+# makes the zips and the files that are already there, and checks the files.
+# SFIRST.ZIP has a stored member of 33001 bytes first, then a deflated one;
+# DFIRST.ZIP has them the other way round. Each case has its own directory.
+# Line 20 traps every dot command error: it saves an empty file named
+# /zt/err and the line number, then goes to the next line (CONTINUE would run
+# the dot command again). Of the .spunzip lines, 40 (q at the prompt) and 180
+# (a zip whose method is implode) must fail, and no other. The stock .unzip
+# fails on SFIRST at line 240.
+# The prompts come first, so the keys have fixed times: line 30 answers
+# y, n and a for P1 to P3 (P4 and P5 then go without asking), line 40
+# answers q for P1. Every file of ASK.ZIP is already in both directories.
+# Line 90 (-o) and line 100 (--quiet) write over files that are there, with
+# no prompt; a prompt would wait for a key and stop the run.
+# Paths that name the drive are quoted: a bare colon would end the statement.
+# The stock .unzip runs last, DFIRST first: on SFIRST it writes 233 bytes of
+# the first file and resets the machine.
+put @SPUNZIP@ /dot/SPUNZIP
+put @WORK@/ASK.ZIP /zt/a/ASK.ZIP
+put @WORK@/old/P1.TXT /zt/a/P1.TXT
+put @WORK@/old/P2.TXT /zt/a/P2.TXT
+put @WORK@/old/P3.TXT /zt/a/P3.TXT
+put @WORK@/old/P4.TXT /zt/a/P4.TXT
+put @WORK@/old/P5.TXT /zt/a/P5.TXT
+put @WORK@/ASK.ZIP /zt/aq/ASK.ZIP
+put @WORK@/old/P1.TXT /zt/aq/P1.TXT
+put @WORK@/old/P2.TXT /zt/aq/P2.TXT
+put @WORK@/old/P3.TXT /zt/aq/P3.TXT
+put @WORK@/old/P4.TXT /zt/aq/P4.TXT
+put @WORK@/old/P5.TXT /zt/aq/P5.TXT
+put @WORK@/SFIRST.ZIP /zt/s/SFIRST.ZIP
+put @WORK@/DFIRST.ZIP /zt/d/DFIRST.ZIP
+put @WORK@/SFIRST.ZIP /zt/qs/SFIRST.ZIP
+put @WORK@/DFIRST.ZIP /zt/qd/DFIRST.ZIP
+put @WORK@/SFIRST.ZIP /zt/o/SFIRST.ZIP
+put @WORK@/old/A_S.BIN /zt/o/A_S.BIN
+put @WORK@/old/B_D.BIN /zt/o/B_D.BIN
+put @WORK@/DFIRST.ZIP /zt/q/DFIRST.ZIP
+put @WORK@/old/A_S.BIN /zt/q/A_S.BIN
+put @WORK@/old/B_D.BIN /zt/q/B_D.BIN
+put @WORK@/JUNK.ZIP /zt/j/JUNK.ZIP
+put @WORK@/SFIRST.ZIP /zt/v/SFIRST.ZIP
+put @WORK@/MAC.ZIP /zt/mn/MAC.ZIP
+put @WORK@/MAC.ZIP /zt/mm/MAC.ZIP
+put @WORK@/SFIRST.ZIP /zt/x/SFIRST.ZIP
+put @WORK@/DFIRST.ZIP /zt/c/DFIRST.ZIP
+put @WORK@/IMPL.ZIP /zt/i/IMPL.ZIP
+put @WORK@/MAC.ZIP /zt/mu/MAC.ZIP
+put @WORK@/DFIRST.ZIP /zt/nd/DFIRST.ZIP
+put @WORK@/SFIRST.ZIP /zt/ns/SFIRST.ZIP
+autostart ON ERROR ERROR TO e,l: SAVE "c:/zt/err"+STR$ l CODE 0,1: GO TO l+10
+autostart .spunzip /zt/a/ASK.ZIP /zt/a
+autostart .spunzip /zt/aq/ASK.ZIP /zt/aq
+autostart .spunzip /zt/s/SFIRST.ZIP /zt/s
+autostart .spunzip /zt/d/DFIRST.ZIP /zt/d
+autostart .spunzip "c:/zt/qs/SFIRST.ZIP" "c:/zt/qs"
+autostart .spunzip "c:/zt/qd/DFIRST.ZIP" "c:/zt/qd"
+autostart .spunzip -o /zt/o/SFIRST.ZIP /zt/o
+autostart .spunzip --quiet /zt/q/DFIRST.ZIP /zt/q
+autostart .spunzip -j /zt/j/JUNK.ZIP /zt/j
+autostart .spunzip --view /zt/v/SFIRST.ZIP /zt/v
+autostart .spunzip /zt/mn/MAC.ZIP /zt/mn
+autostart .spunzip -m /zt/mm/MAC.ZIP /zt/mm
+autostart .spunzip /zt/x/SFIRST /zt/x
+autostart CD "c:/zt/c"
+autostart .spunzip DFIRST.ZIP
+autostart .spunzip /zt/i/IMPL.ZIP /zt/i
+autostart CD "c:/zt/mu"
+autostart .unzip MAC.ZIP
+autostart CD "c:/zt/nd"
+autostart .unzip DFIRST.ZIP
+autostart CD "c:/zt/ns"
+autostart .unzip SFIRST.ZIP
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+key 10 y
+key 12 n
+key 14 a
+key 17 q
+seconds 90
