@@ -17,19 +17,24 @@ export default async function AdminPage() {
   return (
     <>
       <Breadcrumbs items={[{ label: "Admin" }]} />
-      <h1 className="h3 mb-3">Admin</h1>
-      <div className="list-group mb-4">
-        {SECTIONS.map((section) => (
-          <Link
-            key={section.href}
-            data-testid={`admin-link-${section.href.split("/").pop()}`}
-            href={section.href}
-            className="list-group-item list-group-item-action"
-          >
-            <i className={`bi ${section.icon} me-2`} />
-            {section.label}
-          </Link>
-        ))}
+      <div className="card mb-4">
+        <div className="card-header">
+          <i className="bi bi-gear me-1" />
+          Sections
+        </div>
+        <div className="list-group list-group-flush">
+          {SECTIONS.map((section) => (
+            <Link
+              key={section.href}
+              data-testid={`admin-link-${section.href.split("/").pop()}`}
+              href={section.href}
+              className="list-group-item list-group-item-action"
+            >
+              <i className={`bi ${section.icon} me-2`} />
+              {section.label}
+            </Link>
+          ))}
+        </div>
       </div>
     </>
   );

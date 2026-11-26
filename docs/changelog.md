@@ -10,6 +10,10 @@
   have the time of their zip file; other rows from before 0.9.3 have
   1970-01-01 00:00:01 UTC.
 - Apps with releases on the same date list the newest upload first.
+- The admin app page has tabs, each with its own URL: Releases,
+  Dependencies, Screenshots, Details, Names, Owner and Delete.
+- The publish pages, the app tabs and the admin start, Users and Apps
+  pages show their lists and forms in boxes.
 
 ### SPUNServer
 

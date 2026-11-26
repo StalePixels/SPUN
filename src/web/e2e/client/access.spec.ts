@@ -47,7 +47,8 @@ test("the admin app and release pages give 404 to a user who is not an admin", a
   } finally {
     files.remove();
   }
-  for (const path of [`/admin/apps/${id}`, `/admin/apps/${id}/releases/1`]) {
+  const tabs = ["", "/depends", "/screenshots", "/details", "/names", "/owner", "/delete"];
+  for (const path of [...tabs.map((tab) => `/admin/apps/${id}${tab}`), `/admin/apps/${id}/releases/1`]) {
     const response = await page.goto(path);
     expect(response?.status(), path).toBe(404);
   }

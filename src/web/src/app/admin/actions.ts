@@ -160,8 +160,8 @@ function text(formData: FormData, name: string): string {
   return typeof value === "string" ? value : "";
 }
 
-function appPath(appId: string): string {
-  return `/admin/apps/${appId}`;
+function appPath(appId: string, tab?: "depends" | "screenshots" | "details" | "names" | "owner"): string {
+  return tab ? `/admin/apps/${appId}/${tab}` : `/admin/apps/${appId}`;
 }
 
 export async function saveAdminApp(rawId: string, _prev: FormState, formData: FormData): Promise<FormState> {
@@ -204,7 +204,7 @@ export async function saveAdminApp(rawId: string, _prev: FormState, formData: Fo
   if (result.error) {
     return { error: result.error };
   }
-  revalidatePath(appPath(appId));
+  revalidatePath(appPath(appId, "details"));
   return { saved: true };
 }
 
@@ -279,7 +279,7 @@ export async function uploadAdminScreenshot(
   if (result.error) {
     return { error: result.error };
   }
-  revalidatePath(appPath(appId));
+  revalidatePath(appPath(appId, "screenshots"));
   return {};
 }
 
@@ -289,7 +289,7 @@ export async function clearAdminScreenshot(rawId: string, rawSlot: number): Prom
   const slot = parseSlot(String(rawSlot));
   if (appId && slot) {
     await adminClearScreenshot(appId, slot);
-    revalidatePath(appPath(appId));
+    revalidatePath(appPath(appId, "screenshots"));
   }
 }
 
@@ -303,7 +303,7 @@ export async function moveAdminApp(rawId: string, _prev: FormState, formData: Fo
   if (result.error) {
     return { error: result.error };
   }
-  revalidatePath(appPath(appId));
+  revalidatePath(appPath(appId, "owner"));
   return { saved: true };
 }
 
@@ -325,7 +325,7 @@ export async function saveAdminDepends(rawId: string, _prev: FormState, formData
   if (error) {
     return { error };
   }
-  revalidatePath(appPath(appId));
+  revalidatePath(appPath(appId, "depends"));
   return { saved: true };
 }
 
@@ -339,7 +339,7 @@ export async function addAdminAlias(rawId: string, _prev: FormState, formData: F
   if (error) {
     return { error };
   }
-  revalidatePath(appPath(appId));
+  revalidatePath(appPath(appId, "names"));
   return { saved: true };
 }
 
@@ -358,7 +358,7 @@ export async function moveAdminAlias(
   if (error) {
     return { error };
   }
-  revalidatePath(appPath(appId));
+  revalidatePath(appPath(appId, "names"));
   return { saved: true };
 }
 
@@ -367,7 +367,7 @@ export async function removeAdminAlias(rawId: string, alias: string): Promise<vo
   const appId = parseAppId(rawId);
   if (appId) {
     await adminRemoveAlias(appId, alias);
-    revalidatePath(appPath(appId));
+    revalidatePath(appPath(appId, "names"));
   }
 }
 
@@ -381,7 +381,7 @@ export async function addAdminDotOverride(rawId: string, _prev: FormState, formD
   if (error) {
     return { error };
   }
-  revalidatePath(appPath(appId));
+  revalidatePath(appPath(appId, "names"));
   return { saved: true };
 }
 
@@ -390,7 +390,7 @@ export async function removeAdminDotOverride(rawId: string, name: string): Promi
   const appId = parseAppId(rawId);
   if (appId) {
     await adminRemoveDotOverride(appId, name);
-    revalidatePath(appPath(appId));
+    revalidatePath(appPath(appId, "names"));
   }
 }
 

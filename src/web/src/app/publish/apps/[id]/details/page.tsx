@@ -8,7 +8,15 @@ export default async function DetailsPage({ params }: { params: Promise<{ id: st
   return (
     <>
       <AppTabs app={app} active="details" />
-      <AppForm app={app} categories={categories} selected={app.categories} />
+      <div className="card mb-4">
+        <div className="card-header">
+          <i className="bi bi-pencil me-1" />
+          App details
+        </div>
+        <div className="card-body">
+          <AppForm app={app} categories={categories} selected={app.categories} />
+        </div>
+      </div>
     </>
   );
 }

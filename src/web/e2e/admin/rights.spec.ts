@@ -116,6 +116,8 @@ test("an admin opens, edits, uploads to, deletes and restores another user's app
   await expect(page).toHaveURL(new RegExp(`/admin/apps/${id}$`));
   await expect(page.getByTestId("admin-app-owner")).toHaveText(owner.username);
 
+  await page.getByTestId("admin-app-tab-details").click();
+  await expect(page).toHaveURL(new RegExp(`/admin/apps/${id}/details$`));
   const title = uniqueTitle("Edited");
   await page.getByTestId("app-title").fill(title);
   await clickHydrated(page.getByTestId("app-submit"));
@@ -126,7 +128,7 @@ test("an admin opens, edits, uploads to, deletes and restores another user's app
   const zip = releaseFile(owner.username, id, 1);
   expect(existsSync(zip)).toBe(true);
 
-  await page.goto(`/admin/apps/${id}`);
+  await page.goto(`/admin/apps/${id}/delete`);
   await clickHydrated(page.getByTestId("delete-app"));
   await page.getByTestId("delete-app-confirm").click();
   await expect(page.getByTestId("admin-app-deleted-note")).toBeVisible();
@@ -134,7 +136,10 @@ test("an admin opens, edits, uploads to, deletes and restores another user's app
   expect((await appRow(id))?.deleted_at).not.toBeNull();
   expect(existsSync(zip)).toBe(false);
   expect(existsSync(binFile(id, 1))).toBe(true);
+  await expect(page.getByTestId("admin-app-tab-screenshots")).toHaveCount(0);
+  await expect(page.getByTestId("admin-app-tab-delete")).toHaveText("Restore");
 
+  await page.getByTestId("admin-app-tab-delete").click();
   await clickHydrated(page.getByTestId("restore-app"));
   await expect(page.getByTestId("admin-app-deleted-note")).toHaveCount(0);
   expect((await appRow(id))?.deleted_at).toBeNull();
@@ -145,7 +150,7 @@ test("an admin opens, edits, uploads to, deletes and restores another user's app
 test("an admin saves another user's install directory through the same rules", async ({ page, people }) => {
   const owner = await people.user();
   const id = await people.app(owner, "Rights dir");
-  await page.goto(`/admin/apps/${id}`);
+  await page.goto(`/admin/apps/${id}/details`);
 
   await page.getByTestId("app-install-dir").fill("apps\\theirs\\");
   await clickHydrated(page.getByTestId("app-submit"));
@@ -174,7 +179,7 @@ test("aliases: add, refuse bad names and clashes, move to another app, remove", 
     await clickHydrated(add.getByTestId("alias-add-submit"));
   }
 
-  await page.goto(`/admin/apps/${first}`);
+  await page.goto(`/admin/apps/${first}/names`);
   await expect(page.getByTestId("aliases-none")).toBeVisible();
   await addAlias(alias.toUpperCase());
   await expect(add.getByTestId("form-saved")).toBeVisible();
@@ -208,7 +213,7 @@ test("aliases: add, refuse bad names and clashes, move to another app, remove", 
   await expect(page.getByTestId(`alias-${alias}`)).toHaveCount(0);
   expect(await aliasRow(alias)).toEqual({ alias, app_id: second });
 
-  await page.goto(`/admin/apps/${second}`);
+  await page.goto(`/admin/apps/${second}/names`);
   await clickHydrated(page.getByTestId(`alias-${alias}`).getByTestId("alias-remove"));
   await expect(page.getByTestId(`alias-${alias}`)).toHaveCount(0);
   expect(await aliasRow(alias), "a removed alias leaves no row").toBeUndefined();
@@ -228,12 +233,14 @@ test("dot command overrides: add in any case, refuse others and repeats, let upl
     await clickHydrated(add.getByTestId("dot-override-add-submit"));
   }
 
-  await page.goto(`/admin/apps/${id}`);
+  await page.goto(`/admin/apps/${id}/names`);
   await expect(page.getByTestId("dot-overrides-none")).toBeVisible();
+  await page.goto(`/admin/apps/${id}`);
   await uploadRelease(page, { version: "1.0", file: spunZip() });
   await expect(page.getByTestId("form-error").first()).toHaveAttribute("data-error", "file.dotCommandTaken");
   expect(await releaseRow(id, 1)).toBeUndefined();
 
+  await page.goto(`/admin/apps/${id}/names`);
   await addOverride("SPUN");
   await expect(add.getByTestId("form-saved")).toBeVisible();
   expect(await dotOverrideNames(id)).toEqual(["spun"]);
@@ -249,13 +256,15 @@ test("dot command overrides: add in any case, refuse others and repeats, let upl
   }
   expect(await dotOverrideNames(id)).toEqual(["spun"]);
 
+  await page.goto(`/admin/apps/${id}`);
   await uploadRelease(page, { version: "1.0", file: spunZip() });
   await expect(page).toHaveURL(new RegExp(`/admin/apps/${id}/releases/1$`));
 
-  await page.goto(`/admin/apps/${id}`);
+  await page.goto(`/admin/apps/${id}/names`);
   await clickHydrated(page.getByTestId("dot-override-spun").getByTestId("dot-override-remove"));
   await expect(page.getByTestId("dot-override-spun")).toHaveCount(0);
   expect(await dotOverrideNames(id), "a removed override leaves no row").toEqual([]);
+  await page.goto(`/admin/apps/${id}`);
   await uploadRelease(page, { version: "2.0", file: spunZip() });
   await expect(page.getByTestId("form-error").first()).toHaveAttribute("data-error", "file.dotCommandTaken");
   expect(await releaseRow(id, 2)).toBeUndefined();
@@ -274,11 +283,11 @@ test("an admin saves another user's minimum core version through the same rules,
     await clickHydrated(page.getByTestId("app-submit"));
   }
 
-  await page.goto(`/admin/apps/${id}`);
+  await page.goto(`/admin/apps/${id}/details`);
   await expect(input).toHaveValue("");
   expect(await appMinCore(id), "no minimum by default").toBeNull();
   await adminUpload(page, id, "1.0", 1);
-  await page.goto(`/admin/apps/${id}`);
+  await page.goto(`/admin/apps/${id}/details`);
   expect(await spun(`SPINFO ${id}`)).toMatchObject({ error: null, minCore: null });
 
   await save("3.1.10");
@@ -334,13 +343,14 @@ test("revalidate reruns the upload and app checks on the stored app and zips, an
     await expect(release(serial), `release ${serial}`).toHaveAttribute("data-error", "");
   }
 
+  await page.goto(`/admin/apps/${id}/names`);
   await clickHydrated(page.getByTestId("dot-override-spun").getByTestId("dot-override-remove"));
   await expect(page.getByTestId("dot-override-spun")).toHaveCount(0);
   rmSync(releaseFile(owner.username, id, 1));
   writeFileSync(releaseFile(owner.username, id, 3), "not a zip");
   await setReleaseDeleted(id, 4, true);
 
-  await page.reload();
+  await page.goto(`/admin/apps/${id}`);
   await clickHydrated(page.getByTestId("revalidate-submit"));
   await expect(result).toHaveAttribute("data-ok", "false");
   await expect(page.getByTestId("revalidate-app")).toHaveAttribute("data-error", "");
@@ -362,7 +372,7 @@ test("a move puts the zips under the new owner and changes the owner row", async
   const id = await people.app(from, "Move");
   await adminUpload(page, id, "1.0", 1);
 
-  await page.goto(`/admin/apps/${id}`);
+  await page.goto(`/admin/apps/${id}/owner`);
   await waitForHydration(page.getByTestId("move-user"));
   await page.getByTestId("move-user").selectOption(to.id);
   await clickHydrated(page.getByTestId("move-submit"));

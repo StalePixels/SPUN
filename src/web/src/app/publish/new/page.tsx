@@ -14,14 +14,21 @@ export default async function NewApp() {
   return (
     <>
       <PublishMenu active="new" />
-      <h1 className="h3 mb-3">New app</h1>
-      {canCreate ? (
-        <AppForm categories={categories} />
-      ) : (
-        <p className="mb-0" data-testid="app-limit-reached">
-          {problemMessage({ code: "app.limitReached", limit })} You have reached that limit.
-        </p>
-      )}
+      <div className="card mb-4">
+        <div className="card-header">
+          <i className="bi bi-pencil me-1" />
+          App details
+        </div>
+        <div className="card-body">
+          {canCreate ? (
+            <AppForm categories={categories} />
+          ) : (
+            <p className="mb-0" data-testid="app-limit-reached">
+              {problemMessage({ code: "app.limitReached", limit })} You have reached that limit.
+            </p>
+          )}
+        </div>
+      </div>
     </>
   );
 }

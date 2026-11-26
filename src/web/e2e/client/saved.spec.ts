@@ -47,7 +47,7 @@ test("save from the catalogue and the app page, list on /me/apps, remove; a dele
   const context = await browser.newContext({ storageState: accounts.admin.storageState });
   try {
     const admin = await context.newPage();
-    await admin.goto(`/admin/apps/${id}`);
+    await admin.goto(`/admin/apps/${id}/delete`);
     await clickHydrated(admin.getByTestId("restore-app"));
     await expect(admin.getByTestId("admin-app-deleted-note")).toHaveCount(0);
   } finally {

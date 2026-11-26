@@ -184,7 +184,7 @@ test("an app delete moves its screenshots to the bin, and a restore brings them 
   const context = await browser.newContext({ storageState: accounts.admin.storageState });
   try {
     const admin = await context.newPage();
-    await admin.goto(`/admin/apps/${id}`);
+    await admin.goto(`/admin/apps/${id}/delete`);
     await clickHydrated(admin.getByTestId("restore-app"));
     await expect(admin.getByTestId("admin-app-deleted-note")).toHaveCount(0);
   } finally {

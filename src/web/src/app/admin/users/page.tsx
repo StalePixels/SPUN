@@ -14,41 +14,46 @@ export default async function AdminUsersPage() {
   return (
     <>
       <Breadcrumbs items={[{ label: "Admin", href: "/admin" }, { label: "Users" }]} />
-      <h1 className="h3 mb-3">Users</h1>
-      <Table responsive className="mb-4">
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Registered</th>
-            <th className="text-end">Apps</th>
-            <th className="text-end">Own limit</th>
-            <th>Admin</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((user) => (
-            <tr key={user.id} data-testid={`user-${user.id}`}>
-              <td>
-                <Link href={`/admin/users/${user.id}`} data-testid="user-link">
-                  {user.username ?? <span className="text-body-secondary">Not chosen yet</span>}
-                </Link>
-              </td>
-              <td>{formatDay(isoDay(user.createdAt))}</td>
-              <td className="text-end">{Number(user.appCount)}</td>
-              <td className="text-end" data-testid="user-own-limit">
-                {user.appLimit === null ? (
-                  <span className="text-body-secondary" data-testid="user-limit-default">
-                    Default: <DefaultAppLimit limit={defaultLimit} />
-                  </span>
-                ) : (
-                  <AppLimit limit={user.appLimit} />
-                )}
-              </td>
-              <td>{user.isAdmin && <i className="bi bi-check2" aria-label="Admin" />}</td>
+      <div className="card mb-4">
+        <div className="card-header">
+          <i className="bi bi-people me-1" />
+          All users
+        </div>
+        <Table responsive className="mb-0">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Registered</th>
+              <th className="text-end">Apps</th>
+              <th className="text-end">Own limit</th>
+              <th>Admin</th>
             </tr>
-          ))}
-        </tbody>
-      </Table>
+          </thead>
+          <tbody>
+            {rows.map((user) => (
+              <tr key={user.id} data-testid={`user-${user.id}`}>
+                <td>
+                  <Link href={`/admin/users/${user.id}`} data-testid="user-link">
+                    {user.username ?? <span className="text-body-secondary">Not chosen yet</span>}
+                  </Link>
+                </td>
+                <td>{formatDay(isoDay(user.createdAt))}</td>
+                <td className="text-end">{Number(user.appCount)}</td>
+                <td className="text-end" data-testid="user-own-limit">
+                  {user.appLimit === null ? (
+                    <span className="text-body-secondary" data-testid="user-limit-default">
+                      Default: <DefaultAppLimit limit={defaultLimit} />
+                    </span>
+                  ) : (
+                    <AppLimit limit={user.appLimit} />
+                  )}
+                </td>
+                <td>{user.isAdmin && <i className="bi bi-check2" aria-label="Admin" />}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
     </>
   );
 }

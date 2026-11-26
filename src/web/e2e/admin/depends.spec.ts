@@ -20,12 +20,12 @@ test("an app's page lists the apps that depend on it, deleted ones too", async (
     await insertDepends(gone, needed);
     await markAppDeleted(gone);
 
-    await page.goto(`/admin/apps/${needed}`);
+    await page.goto(`/admin/apps/${needed}/depends`);
     await expect(page.getByTestId(`needed-by-${live}`)).toBeVisible();
     await expect(page.getByTestId(`needed-by-${gone}`)).toContainText("Deleted");
     await expect(page.getByTestId("needed-by-none")).toHaveCount(0);
 
-    await page.goto(`/admin/apps/${live}`);
+    await page.goto(`/admin/apps/${live}/depends`);
     await expect(page.getByTestId("needed-by-none")).toBeVisible();
   } finally {
     await removeTestUser(userId);
@@ -41,7 +41,7 @@ test("an admin edits another user's dependency list with the picker", async ({ p
     await insertRelease(shared, 1, "1.0");
     const card = page.getByTestId("depends");
 
-    await page.goto(`/admin/apps/${group}`);
+    await page.goto(`/admin/apps/${group}/depends`);
     await expect(card.getByTestId(`depends-own-${group}`)).toHaveCount(0);
     await clickHydrated(card.getByTestId(`depends-own-${part}`));
     await card.getByTestId("depends-search").fill(shared);
@@ -54,7 +54,7 @@ test("an admin edits another user's dependency list with the picker", async ({ p
 
     await page.reload();
     await expect(card.getByTestId(`depends-picked-${part}`)).toBeVisible();
-    await page.goto(`/admin/apps/${part}`);
+    await page.goto(`/admin/apps/${part}/depends`);
     await expect(page.getByTestId(`needed-by-${group}`)).toBeVisible();
   } finally {
     await removeTestUser(userId);
@@ -74,7 +74,7 @@ test("the admin picker finds the owner's secret apps by text, and other users' o
       await setAppVisibility(id, "secret");
     }
     const card = page.getByTestId("depends");
-    await page.goto(`/admin/apps/${group}`);
+    await page.goto(`/admin/apps/${group}/depends`);
 
     await card.getByTestId("depends-search").fill(word);
     await clickHydrated(card.getByTestId("depends-search-submit"));

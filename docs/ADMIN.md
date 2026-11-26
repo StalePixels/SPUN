@@ -53,18 +53,19 @@ The site has no "restore user". "Enable" lets the user log in again, but the app
 
 ## Apps
 
-`/admin/apps` lists every app, deleted ones too, with its title, id, owner and number of releases. An app's page, `/admin/apps/<id>`, shows its releases and has these tools:
+`/admin/apps` lists every app, deleted ones too, with its title, id, owner and number of releases. An app's page, `/admin/apps/<id>`, names the owner above its tabs. Each tab has its own URL:
 
-- **Revalidate.** It runs the checks of an app edit and of a release upload again, on the app and on the stored zip of each release that is not deleted. It reports what fails and changes nothing.
-- **Upload a release.** It works like the publisher's form, for any app.
-- **Screenshots.** Add, replace or clear a slot. This is not possible while the app is deleted.
-- **Title, description, install directory, minimum core version, categories and visibility.** The same fields as the publisher's form.
-- **Dependencies.** The same picker and checks as the publisher's form. Its list of apps to pick from is the owner's apps, and its search finds the owner's secret apps, as if the owner searched. A change reaches the Next only with the app's next release.
-- **Needed by.** The apps that list this app as a dependency, deleted ones too. The list shows the dependencies as the publishers set them now, which can differ from those of their latest releases.
-- **Aliases.** See below.
-- **Reserved dot commands.** See below.
-- **Move to another user.** It gives the app to another user who has a username. The app limit does not apply to a move. The release zips and screenshots move to the new owner's directory, so the download paths change.
-- **Delete** and **restore**. See below.
+- **Releases** lists the releases. Under the list:
+  - **Upload a release** works like the publisher's form, for any app.
+  - **Revalidate** runs the checks of an app edit and of a release upload again, on the app and on the stored zip of each release that is not deleted. It reports what fails and changes nothing.
+- **Dependencies** has the same picker and checks as the publisher's form. Its list of apps to pick from is the owner's apps, and its search finds the owner's secret apps, as if the owner searched. A change reaches the Next only with the app's next release. Under the picker, **Needed by** lists the apps that list this app as a dependency, deleted ones too. The list shows the dependencies as the publishers set them now, which can differ from those of their latest releases.
+- **Screenshots**: add, replace or clear a slot. A deleted app has no Screenshots tab.
+- **Details**: title, description, install directory, minimum core version, categories and visibility. The same fields as the publisher's form.
+- **Names**: aliases and reserved dot commands. See below.
+- **Owner**: move the app to another user who has a username. The app limit does not apply to a move. The release zips and screenshots move to the new owner's directory, so the download paths change.
+- **Delete**, or **Restore** while the app is deleted. See below.
+
+The Releases tab of a deleted app has no upload or revalidate.
 
 A release has its own page, `/admin/apps/<id>/releases/<serial>`. An admin can edit its version, release date and changelog there. A publisher can edit only the changelog. An admin can also delete and restore a release.
 
