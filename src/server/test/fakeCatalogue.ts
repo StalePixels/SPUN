@@ -132,7 +132,7 @@ export function fakeCatalogue(tables: Tables): Catalogue {
       id: app.id as AppId,
       username: username(app.userId),
       title: app.title,
-      latest: { serial: latest.serial, version: latest.version },
+      latest: { serial: latest.serial, version: latest.version, date: latest.releaseDate },
       downloads: app.downloads ?? 0,
     };
   };

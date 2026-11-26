@@ -48,10 +48,10 @@ key 30.5 {SPACE}
 key 33.5 i
 
 # Progress on the status line, during the download and during the unzip
-@TEXT 38.5 25 0 4  Downloading block 
+@TEXT 38.5 25 0 4  @TITLE@: Downloading block 
 @TEXT 38.5 30 0 0                                                                                 
 @TEXT 38.5 25 79 4  
-@TEXT 46.5 25 0 4  DATA/PART
+@TEXT 46.5 25 0 4  @TITLE@: DATA/PART
 @TEXT 46.5 30 0 0                                                                                 
 @TEXT 46.5 25 79 4  
 

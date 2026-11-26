@@ -42,20 +42,27 @@ const FIND_PAGE: FindPage = {
       id: "tst001" as AppId,
       username: user,
       title: "Test App",
-      latest: { serial: 1, version: "test-upload-01" },
+      latest: { serial: 1, version: "test-upload-01", date: "2026-09-25" },
       downloads: 0x01020304,
     },
     {
       id: "tst002" as AppId,
       username: user,
       title: "3",
-      latest: { serial: 2, version: "1.1" },
+      latest: { serial: 2, version: "1.1", date: "2026-09-26" },
       downloads: 0,
     },
   ],
 };
 
-const appEntry = (id: string, title: string, serial: number, version: string, downloads: number): string =>
+const appEntry = (
+  id: string,
+  title: string,
+  serial: number,
+  version: string,
+  downloads: number,
+  date: string,
+): string =>
   field(
     0x10,
     field(0x11, ascii(id)) +
@@ -63,13 +70,14 @@ const appEntry = (id: string, title: string, serial: number, version: string, do
       field(0x13, ascii(title)) +
       field(0x14, le(serial, 2)) +
       field(0x15, ascii(version)) +
-      field(0x16, le(downloads, 4)),
+      field(0x16, le(downloads, 4)) +
+      field(0x17, ascii(date)),
   );
 
 const FIND_HEX = reply(
   counts(2, 1, 1) +
-    appEntry("tst001", "Test App", 1, "test-upload-01", 0x01020304) +
-    appEntry("tst002", "3", 2, "1.1", 0),
+    appEntry("tst001", "Test App", 1, "test-upload-01", 0x01020304, "2026-09-25") +
+    appEntry("tst002", "3", 2, "1.1", 0, "2026-09-26"),
 );
 
 const INFO_PAGE: InfoPage = {
@@ -249,10 +257,11 @@ test("a client skips tags it does not know, short and long, at both levels", () 
           field(0xfd, "") + // a long tag with length 0
           field(0x14, le(1, 2)) +
           field(0x15, ascii("test-upload-01")) +
-          field(0x16, le(0x01020304, 4)),
+          field(0x16, le(0x01020304, 4)) +
+          field(0x17, ascii("2026-09-25")),
       ) +
       field(0x6f, "") +
-      appEntry("tst002", "3", 2, "1.1", 0),
+      appEntry("tst002", "3", 2, "1.1", 0, "2026-09-26"),
   );
   assert.deepEqual(decodeFind(bytes(withUnknown)), FIND_PAGE);
 });
@@ -297,7 +306,7 @@ const largestApp = {
   id: "zzzzzz" as AppId,
   username: "u".repeat(MAX.username),
   title: "t".repeat(MAX.title),
-  latest: { serial: 0xffff, version: "v".repeat(MAX.version) },
+  latest: { serial: 0xffff, version: "v".repeat(MAX.version), date: "2026-09-25" },
   downloads: 0xffffffff,
 };
 
@@ -309,8 +318,8 @@ test("the largest SPFIND and SPLIST pages fit in one block", () => {
       pages: 0xffff,
       apps: Array.from({ length: size }, () => largestApp),
     });
-    // 12 bytes of counts, then 90 bytes for each entry.
-    assert.equal(page.length - 5, 12 + size * 90);
+    // 12 bytes of counts, then 102 bytes for each entry.
+    assert.equal(page.length - 5, 12 + size * 102);
     assert.ok(page.length - 5 <= MAX_BLOCK_SIZE);
   }
 });

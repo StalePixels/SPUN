@@ -4,6 +4,8 @@
 # 6 moves down to APPS, ENTER opens it, SPACE chooses it, y confirms.
 # ENTER at 30 s answers scroll?. The run fails unless SPUNGETDONE is on
 # screen at the end and nothing resets the machine after boot (noreset).
+# The app's title (@TITLE@, from SPINFO) comes before the unzip, and each file of the test app's zip
+# (e2e/support/zips.ts, sampleEntries) has a line of its own with its progress.
 # The last line never ends: a PAUSE 0 there would return at once on the
 # key flag that y leaves set, and NextZXOS would show its menu.
 put @SPUN@ /dot/SPUN
@@ -21,4 +23,7 @@ key 20 {SPACE}
 key 23 y
 key 30 {ENTER}
 snap 10 15 19 22 25 29 33 40 59
+screen 30 Unzipping @TITLE@
+screen 30 README.TXT 0K/0K
+screen 30 GAME/MAIN.BAS 0K/0K
 screen 59 SPUNGETDONE

@@ -138,6 +138,7 @@ export function encodeFind(page: FindPage): Uint8Array {
       entry.u16(Tag.serial, app.latest.serial);
       entry.text(Tag.version, app.latest.version);
       entry.u32(Tag.downloads, app.downloads);
+      entry.text(Tag.date, app.latest.date);
     });
   }
   return out.reply();
@@ -300,7 +301,7 @@ export function decodeFind(bytes: Uint8Array): FindPage {
       id: "" as AppId,
       username: "",
       title: "",
-      latest: { serial: 0, version: "" },
+      latest: { serial: 0, version: "", date: "" },
       downloads: 0,
     };
     for (const { tag, value } of readFields(entry.value)) {
@@ -310,6 +311,7 @@ export function decodeFind(bytes: Uint8Array): FindPage {
       if (tag === Tag.serial) app.latest.serial = fieldNumber(value);
       if (tag === Tag.version) app.latest.version = fieldText(value);
       if (tag === Tag.downloads) app.downloads = fieldNumber(value);
+      if (tag === Tag.date) app.latest.date = fieldText(value);
     }
     apps.push(app);
   }

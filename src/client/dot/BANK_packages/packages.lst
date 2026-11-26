@@ -4,4 +4,5 @@ usage.c
 install_check.c
 gui_install.c
 updates_count.c
+rows_installed.c
 ../../unzip/unzip.c

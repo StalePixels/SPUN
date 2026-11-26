@@ -22,7 +22,7 @@ const LISTED = `${PUBLIC}
 const MATCH = `${LISTED}
   AND (LOWER(a.title) LIKE ? OR LOWER(a.description) LIKE ?)`;
 
-const FOUND = `SELECT a.id, u.username, a.title, r.serial, r.version, a.downloads
+const FOUND = `SELECT a.id, u.username, a.title, r.serial, r.version, r.release_date AS date, a.downloads
   FROM apps a
   JOIN users u ON u.id = a.user_id
   JOIN releases r ON r.app_id = a.id AND r.serial = (
@@ -39,7 +39,7 @@ const foundApp = (row: RowDataPacket): FoundApp => ({
   id: row.id as AppId,
   username: row.username,
   title: row.title,
-  latest: { serial: row.serial, version: row.version },
+  latest: { serial: row.serial, version: row.version, date: row.date },
   downloads: Number(row.downloads),
 });
 

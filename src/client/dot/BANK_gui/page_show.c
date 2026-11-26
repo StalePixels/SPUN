@@ -1,6 +1,7 @@
 #include "../common/spun.h"
 #include "../gui/gui.h"
 #include "../BANK_net/net.h"
+#include "../BANK_packages/install.h"
 #include "run.h"
 
 // Interrupts stay off for the whole request, rather than im2_off: NextZXOS's own interrupt
@@ -8,6 +9,7 @@
 void page_show(void) {
     unsigned char *error;
     uint8_t row = LIST_ROW;
+    uint8_t index;
 
     helpShown = false;
     listCount = 0;
@@ -31,8 +33,13 @@ void page_show(void) {
         tm_text(COL_ID, row++, (const unsigned char *)"All", ATTR_TEXT);
         while(row != LIST_ROW + 1 + LIST_ROWS && _far(BANK_NET, (far_fn_t)gui_next_category)) tm_text(COL_ID, row++, entryName, ATTR_TEXT);
     } else {
-        tm_text(COL_ID, HEAD_ROW, (const unsigned char *)"App    Title                            Publisher        Version     Downloads", ATTR_KEY);
+        tm_text(COL_ID, HEAD_ROW, (const unsigned char *)"App    Title                          Publisher        Version  Released   Inst", ATTR_KEY);
+        memset(rowApps, 0, sizeof(rowApps));
         while(row != LIST_ROW + LIST_ROWS && _far(BANK_NET, (far_fn_t)reply_next_app)) entry_draw(row++);
+        os_call(BANK_PACKAGES, (far_ptr_fn_t)rows_installed, NULL);
+        for(index = 0; index != row - LIST_ROW; index++) {
+            if(rowInstalled[index]) tm_text(COL_INSTALLED, LIST_ROW + index, (const unsigned char *)"\xFB", ATTR_TEXT);
+        }
     }
     listCount = row - LIST_ROW;
     if(listSel >= listCount) listSel = listCount ? listCount - 1 : 0;

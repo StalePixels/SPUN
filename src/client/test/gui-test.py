@@ -13,7 +13,8 @@ rows   copies the scenario and expands each line "@ROWS T COMMAND": it sends
        COMMAND (for example "SPLIST 2" or "SPFIND 1 zebra") to the SPUNServer
        at HOST:PORT, and writes pinesy-harness "expect" lines for time T that
        check tilemap rows 3 to 25 against the reply: the heading, one row for
-       each app as BANK_gui/entry_draw.c draws it, with the selected entry
+       each app as BANK_gui/entry_draw.c and page_show.c draw it, with the
+       checkmark on the apps of the last "@INSTALLED ID..." line, the selected entry
        (the first) in the bar colours, blank rows after the last app, and the
        status line. The tilemap is found by the title bar,
        "SPUN" at row 1 column 1 with attribute 4. A line "@POINTER T X Y"
@@ -108,9 +109,11 @@ HEAD_ROW = 3
 LIST_ROW = 4
 LIST_ROWS = 20
 STATUS_ROW = 25
-COL_ID, COL_TITLE, COL_USER, COL_VERSION, COL_DOWNLOADS = 1, 8, 41, 58, 69
-VERSION_WIDTH = 10
-HEADING = 'App    Title                            Publisher        Version     Downloads'
+COL_ID, COL_TITLE, COL_USER, COL_VERSION, COL_DATE, COL_INSTALLED = 1, 8, 39, 56, 65, 77
+TITLE_WIDTH, VERSION_WIDTH = 30, 8
+HEADING = 'App    Title                          Publisher        Version  Released   Inst'
+# The checkmark glyph, in the font's CP437 place (BANK_screen/specp437_128-255.bin)
+INSTALLED_MARK = '\xFB'
 
 TAG_TOTAL, TAG_PAGE, TAG_PAGES, TAG_APP = 0x01, 0x02, 0x03, 0x10
 TAG_APP_ID, TAG_USERNAME, TAG_TITLE, TAG_VERSION, TAG_DOWNLOADS = 0x11, 0x12, 0x13, 0x15, 0x16
@@ -208,7 +211,7 @@ def request(host, port, command):
         elif tag == TAG_PAGES:
             reply['pages'] = number(value)
         elif tag == TAG_APP:
-            app = {'id': '', 'username': '', 'title': '', 'version': '', 'downloads': 0}
+            app = {'id': '', 'username': '', 'title': '', 'version': '', 'downloads': 0, 'date': ''}
             for inner, data in fields(value):
                 if inner == TAG_APP_ID:
                     app['id'] = data.decode('latin-1')
@@ -220,6 +223,8 @@ def request(host, port, command):
                     app['version'] = data.decode('latin-1')
                 elif inner == TAG_DOWNLOADS:
                     app['downloads'] = number(data)
+                elif inner == TAG_DATE:
+                    app['date'] = data.decode('latin-1')
             reply['apps'].append(app)
     return reply
 
@@ -445,7 +450,7 @@ def status(command, reply, name=None):
     return f'Catalogue: {reply["total"]} apps, page {reply["page"]} of {reply["pages"]}'
 
 
-def rows(t, command, host, port, sel=0):
+def rows(t, command, host, port, sel=0, installed=()):
     reply = request(host, port, command)
     name = category_name(host, port, command.split(' ')[1]) if command.startswith('SPCAT ') else None
     lines = [f'# {command}: {reply["total"]} in all, page {reply["page"]} of {reply["pages"]}, '
@@ -456,10 +461,11 @@ def rows(t, command, host, port, sel=0):
             app = reply['apps'][n]
             cells = row_cells([
                 (COL_ID, app['id']),
-                (COL_TITLE, app['title']),
+                (COL_TITLE, app['title'][:TITLE_WIDTH]),
                 (COL_USER, app['username']),
                 (COL_VERSION, app['version'][:VERSION_WIDTH]),
-                (COL_DOWNLOADS, f'{app["downloads"]:10d}'),
+                (COL_DATE, app['date']),
+                (COL_INSTALLED, INSTALLED_MARK if app['id'] in installed else ''),
             ])
         else:
             cells = row_cells([])
@@ -521,10 +527,14 @@ def click(t):
 
 
 def expand(host, port):
+    installed = ()
     for line in sys.stdin:
-        if line.startswith('@ROWS '):
+        if line.startswith('@INSTALLED '):
+            installed = line.split()[1:]
+            print(f'# installed: {" ".join(installed)}')
+        elif line.startswith('@ROWS '):
             _, t, command = line.rstrip('\n').split(' ', 2)
-            print('\n'.join(rows(t, command, host, int(port))))
+            print('\n'.join(rows(t, command, host, int(port), installed=installed)))
         elif line.startswith('@CATS '):
             _, t, *rest = line.split()
             print('\n'.join(category_rows(t, host, int(port), *map(int, rest))))
@@ -560,7 +570,7 @@ def expand(host, port):
             print(f'key {float(t) + 0.5 + at * 0.2:.1f} ' + '{ENTER}')
         elif line.startswith('@ROWSEL '):
             _, t, sel, command = line.rstrip('\n').split(' ', 3)
-            print('\n'.join(rows(t, command, host, int(port), int(sel))))
+            print('\n'.join(rows(t, command, host, int(port), int(sel), installed)))
         elif line.startswith('@APP '):
             _, t, appid, *sel = line.split()
             print('\n'.join(app_page(t, host, int(port), appid, int(sel[0]) if sel else 0)))

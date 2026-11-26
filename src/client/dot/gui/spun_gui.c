@@ -6,6 +6,8 @@
 #include "../BANK_packages/install.h"
 
 unsigned char searchText[SEARCH_LENGTH + 1];
+unsigned char rowApps[LIST_ROWS][7];
+bool rowInstalled[LIST_ROWS];
 
 void spun_gui(void) {
     bool splashOn = !quiet;

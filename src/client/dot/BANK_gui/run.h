@@ -10,10 +10,12 @@
 
 #define COL_ID          1
 #define COL_TITLE       8
-#define COL_USER        41
-#define COL_VERSION     58
-#define VERSION_WIDTH   10
-#define COL_DOWNLOADS   69
+#define TITLE_WIDTH     30
+#define COL_USER        39
+#define COL_VERSION     56
+#define VERSION_WIDTH   8
+#define COL_DATE        65
+#define COL_INSTALLED   77
 
 #define INPUT_COL       9
 
@@ -52,5 +54,9 @@ uint8_t list_key(unsigned char key) __z88dk_fastcall;
 uint8_t list_click(void);
 bool app_open(void);
 void updates_offer(void);
+
+// In main memory, for BANK_packages: the app id of each row of the list, and whether it is installed
+extern unsigned char rowApps[LIST_ROWS][7];
+extern bool rowInstalled[LIST_ROWS];
 
 #endif

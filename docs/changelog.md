@@ -19,6 +19,18 @@
 
 - `SPLIST` and `SPCAT` list apps with releases on the same date
   newest upload first.
+- Each app in `SPLIST`, `SPCAT` and `SPFIND` has the date of its latest
+  release.
+
+### `.spun`
+
+- On the command line, each file of an unzip has a line of its own.
+  Only the file's progress is written over.
+- On the command line, the app's title comes before its unzip, after
+  "Unzipping". In the browser, the progress line starts with the app's
+  title.
+- The browser's list shows the release date in place of the download
+  count, and a checkmark on installed apps.
 
 ## 0.9.2 - 20261123
 

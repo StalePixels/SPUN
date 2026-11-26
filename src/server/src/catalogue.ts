@@ -20,6 +20,7 @@ export type AppId = string & { readonly __brand: "AppId" };
 export interface Latest {
   serial: number;
   version: string;
+  date: string;
 }
 
 export interface FoundApp {

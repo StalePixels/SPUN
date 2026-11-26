@@ -4,7 +4,7 @@
 void reply_app(void) {
     uint16_t end = reply_enter();
 
-    *appid = *username = *title = *version = 0;
+    *appid = *username = *title = *version = *date = 0;
     serial = 0;
     downloads = 0;
 
@@ -15,6 +15,7 @@ void reply_app(void) {
         else if(replyTag == TAG_SERIAL) serial = reply_number();
         else if(replyTag == TAG_VERSION) reply_text(version, sizeof(version));
         else if(replyTag == TAG_DOWNLOADS) downloads = reply_number();
+        else if(replyTag == TAG_DATE) reply_text(date, sizeof(date));
     }
     reply_leave(end);
 }

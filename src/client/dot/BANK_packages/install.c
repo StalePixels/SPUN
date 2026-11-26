@@ -132,7 +132,7 @@ unsigned char install(char *id, bool yes) {
     sprintf(zipPath, "C:/tmp/%s-%04x.zip", id, serial);
     if((error = _farWithPointer(BANK_NET, (far_ptr_fn_t)download, id))) NBN_Fail(error);
 
-    if(!quiet) printf("Installing to %s\n", installDir);
+    if(!quiet) printf("Installing to %s\nUnzipping %s\n", installDir, title);
     result = unzip(zipPath, installDir, yes || overwriteAll ? UNZIP_YES : 0);
     progress_end();
     if(result == UNZIP_E_NOMEM) NBN_Fail(err_no_memory);

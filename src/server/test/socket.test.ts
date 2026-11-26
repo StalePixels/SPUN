@@ -228,7 +228,8 @@ describe("SPFIND", () => {
             field(0x13, ascii("Zebra")) +
             field(0x14, le(1, 2)) +
             field(0x15, ascii("1.0")) +
-            field(0x16, le(0, 4)),
+            field(0x16, le(0, 4)) +
+            field(0x17, ascii("2026-09-01")),
         ),
     );
     assert.equal((await client.read(expected.length / 2)).toString("hex"), expected);
@@ -262,7 +263,7 @@ describe("SPFIND", () => {
   test("the latest serial skips deleted releases", async () => {
     client.send("SPFIND 1 mixed case\n");
     const page = await client.reply(decodeFind);
-    assert.deepEqual(page.apps[0].latest, { serial: 2, version: "1.1" });
+    assert.deepEqual(page.apps[0].latest, { serial: 2, version: "1.1", date: "2026-09-21" });
   });
 
   test("an entry carries the download count", async () => {

@@ -16,5 +16,6 @@ unsigned char *dep_install(char *id);
 unsigned char *dep_dir(char *id);
 unsigned char *gui_install(char *id);
 uint16_t updates_count(void);
+unsigned char *rows_installed(void);
 
 #endif
