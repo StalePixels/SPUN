@@ -82,6 +82,8 @@ export type ProblemCode =
   | "limit.missing"
   | "uploadLimit.missing"
   | "uploadLimit.range"
+  | "requestLimit.missing"
+  | "uploadRate.missing"
   | "user.notFound"
   | "admin.lastAdmin"
   | "api.badKey"

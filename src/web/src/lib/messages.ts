@@ -199,6 +199,10 @@ export function problemMessage(problem: Problem): string {
       return "Enter the largest zip size, in MB, that this user can upload.";
     case "uploadLimit.range":
       return `Enter a whole number of MB from ${problem.min} to ${problem.max}.`;
+    case "requestLimit.missing":
+      return "Enter the number of API and MCP requests a minute that this user can make.";
+    case "uploadRate.missing":
+      return "Enter the number of uploads an hour that this user can make.";
     case "user.notFound":
       return "User not found.";
     case "admin.lastAdmin":

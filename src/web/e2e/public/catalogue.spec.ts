@@ -1,7 +1,15 @@
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { Locator } from "@playwright/test";
-import { insertAlias, liveCategorySlugs } from "../support/db";
+import {
+  insertAlias,
+  insertApp,
+  insertRelease,
+  insertUser,
+  liveCategorySlugs,
+  removeTestUser,
+  setReleaseCreatedAt,
+} from "../support/db";
 import { formatDay, pathname, releaseFile, todayUtc } from "../support/pages";
 import { catalogueRow, expect, test } from "../support/publisher";
 import { accounts, settings } from "../support/settings";
@@ -228,4 +236,27 @@ test("the navbar brand goes to the front page and Catalogue to the catalogue", a
   await navbar.getByTestId("nav-catalogue").click();
   await expect(page).toHaveURL((url) => url.pathname === "/catalogue");
   await expect(page.getByTestId("catalogue-heading")).toBeVisible();
+});
+
+test("releases on the same day list newest upload first, not in title order", async ({ page }) => {
+  const userId = await insertUser(`e2eo${Date.now().toString(36).slice(-8)}`);
+  try {
+    const older = await insertApp(userId, `AAA order ${randomBytes(3).toString("hex")}`);
+    const newer = await insertApp(userId, `ZZZ order ${randomBytes(3).toString("hex")}`);
+    await insertRelease(older, 1, "1.0");
+    await insertRelease(newer, 1, "1.0");
+    // Later than any real upload today, so the two are the first rows of today's releases.
+    await setReleaseCreatedAt(older, 1, "2037-01-01 00:00:01");
+    await setReleaseCreatedAt(newer, 1, "2037-01-01 00:00:02");
+
+    await page.goto("/catalogue");
+    const ids = await page
+      .locator('[data-testid^="catalogue-app-"]')
+      .evaluateAll((rows) => rows.map((row) => row.getAttribute("data-testid")));
+    const at = (id: string) => ids.indexOf(`catalogue-app-${id}`);
+    expect(at(newer), "the newer upload is on the first page").toBeGreaterThanOrEqual(0);
+    expect(at(newer)).toBeLessThan(at(older));
+  } finally {
+    await removeTestUser(userId);
+  }
 });

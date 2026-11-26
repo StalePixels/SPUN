@@ -91,7 +91,7 @@ export function mysqlCatalogue(uri: string): Catalogue {
       const [rows] = await pool.query<RowDataPacket[]>(
         `${FOUND}
          WHERE ${LISTED}
-         ORDER BY r.release_date DESC, a.title, a.id
+         ORDER BY r.release_date DESC, r.created_at DESC, a.title, a.id
          LIMIT ? OFFSET ?`,
         [limit, offset],
       );
@@ -123,7 +123,7 @@ export function mysqlCatalogue(uri: string): Catalogue {
       const categoryId = categories[0].id;
       const pattern = likePattern(text);
       const where = text === "" ? `${LISTED} ${IN_CATEGORY}` : `${MATCH} ${IN_CATEGORY}`;
-      const order = text === "" ? "r.release_date DESC, a.title, a.id" : "a.title, a.id";
+      const order = text === "" ? "r.release_date DESC, r.created_at DESC, a.title, a.id" : "a.title, a.id";
       const args = text === "" ? [categoryId] : [pattern, pattern, categoryId];
       const [[count]] = await pool.query<RowDataPacket[]>(
         `SELECT COUNT(*) AS total FROM apps a WHERE ${where}`,

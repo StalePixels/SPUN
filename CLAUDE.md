@@ -76,6 +76,8 @@ of `.spun` uses.
   There are no migrations until after the first proper deploy.
 - A delete sets `deleted_at` and keeps the row, so ids and serials are never
   reused.
+- Every table has `created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+  for audit. A new table gets it too.
 - A code change updates every test it affects, in the same change.
 - Tests check behaviour and state (URL, rows, files, element state,
   `data-error` codes) and find elements by `data-testid`, so UI wording can

@@ -46,7 +46,11 @@ export type ApiCall = {
 
 export type ApiUser = { id: string; username: string };
 
-export type ApiKeyUser = ApiUser & { acceptedTermsId: number | null; uploadLimitMb: number | null };
+export type ApiKeyUser = ApiUser & {
+  acceptedTermsId: number | null;
+  uploadLimitMb: number | null;
+  requestsPerMinute: number | null;
+};
 
 export type ApiDeps = {
   nowMs(): number;
@@ -190,7 +194,8 @@ export async function checkApiCall(call: ApiCall, options: ApiOptions, deps: Api
     return userSize;
   }
   const keyId = call.header("x-spun-key") ?? "";
-  const keyWait = await rateCheck(deps, `key:${keyId}`, deps.limits.keyPerMinute, 60);
+  const keyLimit = signed.user.requestsPerMinute ?? deps.limits.keyPerMinute;
+  const keyWait = await rateCheck(deps, `key:${keyId}`, keyLimit, 60);
   if (keyWait !== null) {
     return refuse(429, { code: "api.tooManyRequests" }, keyWait);
   }

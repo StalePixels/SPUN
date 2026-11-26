@@ -71,8 +71,15 @@ export async function insertDepends(appId: string, dependsOn: string): Promise<v
 }
 
 export async function userByUsername(username: string) {
-  const [row] = await query<{ id: string; is_admin: number; app_limit: number | null; upload_limit_mb: number | null }>(
-    "select id, is_admin, app_limit, upload_limit_mb from users where username = ?",
+  const [row] = await query<{
+    id: string;
+    is_admin: number;
+    app_limit: number | null;
+    upload_limit_mb: number | null;
+    requests_per_minute: number | null;
+    uploads_per_hour: number | null;
+  }>(
+    "select id, is_admin, app_limit, upload_limit_mb, requests_per_minute, uploads_per_hour from users where username = ?",
     [username],
   );
   if (!row) throw new Error(`No user ${username} in the database.`);
@@ -358,6 +365,10 @@ export async function insertRelease(appId: string, serial: number, version: stri
     serial,
     version,
   ]);
+}
+
+export async function setReleaseCreatedAt(appId: string, serial: number, createdAt: string): Promise<void> {
+  await query("update releases set created_at = ? where app_id = ? and serial = ?", [createdAt, appId, serial]);
 }
 
 export type CategoryRow = {

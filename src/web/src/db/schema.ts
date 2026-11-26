@@ -38,6 +38,10 @@ export const users = mysqlTable("users", {
   appLimit: int("app_limit", { unsigned: true }),
   // The largest release zip the user can upload, in MB. Null means MAX_UPLOAD_BYTES applies.
   uploadLimitMb: int("upload_limit_mb", { unsigned: true }),
+  // API and MCP requests a minute for each of the user's keys and grants. Null means API_KEY_PER_MINUTE applies.
+  requestsPerMinute: int("requests_per_minute", { unsigned: true }),
+  // Release and screenshot uploads an hour. Null means UPLOADS_PER_HOUR applies.
+  uploadsPerHour: int("uploads_per_hour", { unsigned: true }),
   // Set means the user is disabled: no login, but their apps stay public.
   disabledAt: timestamp("disabled_at"),
   // The T&C version the user accepted last. Null: none yet.
@@ -49,6 +53,7 @@ export const settings = mysqlTable("settings", {
   slug: varchar("slug", { length: 64 }).notNull().unique(),
   description: text("description").notNull(),
   value: text("value"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const accounts = mysqlTable(
@@ -67,6 +72,7 @@ export const accounts = mysqlTable(
     scope: varchar("scope", { length: 255 }),
     id_token: text("id_token"),
     session_state: varchar("session_state", { length: 255 }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.provider, t.providerAccountId] })],
 );
@@ -77,6 +83,7 @@ export const sessions = mysqlTable("sessions", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   expires: timestamp("expires", { mode: "date" }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // CMS tables. SPUNServer reads these directly.
@@ -96,6 +103,7 @@ export const apps = mysqlTable("apps", {
   visibility: mysqlEnum("visibility", VISIBILITIES).notNull().default("listed"),
   // Soft delete: the row stays, so the id is never reused.
   deletedAt: timestamp("deleted_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // A second name for an app. Aliases and app ids share one namespace.
@@ -105,6 +113,7 @@ export const aliases = mysqlTable("aliases", {
     .$type<AppId>()
     .notNull()
     .references(() => apps.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const features = mysqlTable("features", {
@@ -146,6 +155,7 @@ export const dotOverrides = mysqlTable(
       .notNull()
       .references(() => apps.id),
     name: varchar("name", { length: 16 }).notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.appId, t.name] })],
 );
@@ -167,6 +177,7 @@ export const releases = mysqlTable(
     dependsCount: tinyint("depends_count", { unsigned: true }).notNull().default(0),
     // Soft delete: the serial is never reused; only the file goes.
     deletedAt: timestamp("deleted_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
     primaryKey({ columns: [t.appId, t.serial] }),
@@ -187,6 +198,7 @@ export const appDepends = mysqlTable(
       .$type<AppId>()
       .notNull()
       .references(() => apps.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.appId, t.dependsOn] }), index("app_depends_depends_on_idx").on(t.dependsOn)],
 );
@@ -199,6 +211,7 @@ export const categories = mysqlTable("categories", {
   specificity: smallint("specificity", { unsigned: true }).notNull().default(0),
   // A deleted category keeps its app links; the web ignores it.
   deletedAt: timestamp("deleted_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const appCategories = mysqlTable(
@@ -211,6 +224,7 @@ export const appCategories = mysqlTable(
     categoryId: int("category_id", { unsigned: true })
       .notNull()
       .references(() => categories.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.appId, t.categoryId] })],
 );
@@ -281,6 +295,7 @@ export const screenshots = mysqlTable(
     nxiCrc: int("nxi_crc", { unsigned: true }).notNull().default(0),
     // Milliseconds: the PNG URL carries it, so two replaces in one second differ.
     updatedAt: timestamp("updated_at", { mode: "date", fsp: 3 }).notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.appId, t.slot] })],
 );

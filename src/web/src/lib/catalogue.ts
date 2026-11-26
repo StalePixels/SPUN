@@ -119,7 +119,7 @@ export async function cataloguePage(
       ),
     )
     .orderBy(
-      ...(query === "" ? [desc(releases.releaseDate)] : []),
+      ...(query === "" ? [desc(releases.releaseDate), desc(releases.createdAt)] : []),
       asc(apps.title),
       asc(apps.id),
     )

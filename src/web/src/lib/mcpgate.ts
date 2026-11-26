@@ -20,6 +20,8 @@ export type McpGrant = {
   deletedAt: Date | null;
   accessExpiresAt: Date;
   acceptedTermsId: number | null;
+  // Null: the API's per-key number applies.
+  requestsPerMinute: number | null;
 };
 
 export type McpDeps = {
@@ -111,7 +113,8 @@ export async function checkMcpCall(call: McpCall, deps: McpDeps): Promise<McpGat
   if (!grantUsable(grant, now)) {
     return refuse(401, { code: "mcp.badToken" });
   }
-  const grantWait = await rateCheck(deps, `grant:${grant.id}`, deps.limits.keyPerMinute, 60, hits);
+  const grantLimit = grant.requestsPerMinute ?? deps.limits.keyPerMinute;
+  const grantWait = await rateCheck(deps, `grant:${grant.id}`, grantLimit, 60, hits);
   if (grantWait !== null) {
     return refuse(429, { code: "api.tooManyRequests" }, grantWait);
   }

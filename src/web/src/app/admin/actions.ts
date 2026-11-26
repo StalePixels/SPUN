@@ -74,6 +74,7 @@ import {
   checkVisibility,
   lineFeeds,
   parseLimit,
+  type LimitInput,
   parseSerial,
   parseUploadLimit,
   parseSlot,
@@ -118,9 +119,19 @@ export async function saveUser(userId: string, _prev: FormState, formData: FormD
   if (!uploadLimit.ok) {
     return { error: uploadLimit.error };
   }
+  const requestLimit = ownRateLimit(formData, "ownRequestLimit", "requestsPerMinute", "requestLimit.missing");
+  if (!requestLimit.ok) {
+    return { error: requestLimit.error };
+  }
+  const uploadRate = ownRateLimit(formData, "ownUploadRate", "uploadsPerHour", "uploadRate.missing");
+  if (!uploadRate.ok) {
+    return { error: uploadRate.error };
+  }
   const result = await adminUpdateUser(userId, {
     appLimit: limit.limit,
     uploadLimitMb: uploadLimit.mb,
+    requestsPerMinute: requestLimit.limit,
+    uploadsPerHour: uploadRate.limit,
     isAdmin: formData.get("isAdmin") === "on",
   });
   if (result.error) {
@@ -129,6 +140,19 @@ export async function saveUser(userId: string, _prev: FormState, formData: FormD
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${userId}`);
   return { saved: true };
+}
+
+function ownRateLimit(
+  formData: FormData,
+  toggle: string,
+  field: string,
+  missing: "requestLimit.missing" | "uploadRate.missing",
+): LimitInput {
+  if (formData.get(toggle) !== "on") {
+    return { ok: true, limit: null };
+  }
+  const parsed = parseLimit(String(formData.get(field) ?? ""));
+  return parsed.ok && parsed.limit === null ? { ok: false, error: { code: missing } } : parsed;
 }
 
 function text(formData: FormData, name: string): string {

@@ -55,7 +55,7 @@ What the site does with a release:
 
 "Republish" makes a new release from the zip of the latest release that is not deleted. It asks for a new version and a changelog, and the release date is the day you republish. Use it to send out a change to the dependencies without a new zip.
 
-You can upload 20 files an hour, releases and screenshots together. This includes uploads and republishes through the API.
+You can upload 20 files an hour, releases and screenshots together, or your own number when an admin has set one for your account. This includes uploads and republishes through the API.
 
 ### Dot commands
 

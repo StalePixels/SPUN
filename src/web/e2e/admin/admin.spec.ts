@@ -192,3 +192,47 @@ test("users: set the client's own zip size limit to 10 MB, then clear it back to
   expect(await userByUsername(client.username)).toMatchObject({ upload_limit_mb: null });
   await expect(toggle, "after clearing").not.toBeChecked();
 });
+
+test("users: set the client's own request and upload rate limits, then clear them back to the defaults", async ({ page, start }) => {
+  const { clientUser } = start;
+  const requestToggle = page.getByTestId("user-own-request-limit-toggle");
+  const requestNumber = page.getByTestId("user-request-limit");
+  const uploadToggle = page.getByTestId("user-own-upload-rate-toggle");
+  const uploadNumber = page.getByTestId("user-upload-rate");
+  const save = page.getByTestId("user-submit");
+
+  await page.goto(`/admin/users/${clientUser.id}`);
+  await waitForHydration(requestToggle);
+  await requestToggle.check();
+  await requestNumber.fill("");
+  await save.click();
+  await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "requestLimit.missing");
+
+  await requestNumber.fill("600");
+  await uploadToggle.check();
+  await uploadNumber.fill("");
+  await save.click();
+  await expect(page.getByTestId("form-error")).toHaveAttribute("data-error", "uploadRate.missing");
+  expect(await userByUsername(client.username)).toMatchObject({ requests_per_minute: null, uploads_per_hour: null });
+
+  await uploadNumber.fill("200");
+  await save.click();
+  await expect(page.getByTestId("form-saved")).toBeVisible();
+  expect(await userByUsername(client.username)).toMatchObject({ requests_per_minute: 600, uploads_per_hour: 200 });
+  await page.reload();
+  await waitForHydration(requestToggle);
+  await expect(requestToggle, "after a load").toBeChecked();
+  await expect(requestNumber).toHaveValue("600");
+  await expect(uploadToggle).toBeChecked();
+  await expect(uploadNumber).toHaveValue("200");
+
+  await requestToggle.uncheck();
+  await uploadToggle.uncheck();
+  await expect(requestNumber).toBeDisabled();
+  await expect(uploadNumber).toBeDisabled();
+  await save.click();
+  await expect(page.getByTestId("form-saved")).toBeVisible();
+  expect(await userByUsername(client.username)).toMatchObject({ requests_per_minute: null, uploads_per_hour: null });
+  await expect(requestToggle, "after clearing").not.toBeChecked();
+  await expect(uploadToggle).not.toBeChecked();
+});

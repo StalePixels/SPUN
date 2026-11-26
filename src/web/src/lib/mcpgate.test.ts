@@ -19,6 +19,7 @@ function grantFor(id: string, overrides: Partial<McpGrant> = {}): McpGrant {
     deletedAt: null,
     accessExpiresAt: new Date(START_MS + 60 * 60 * 1000),
     acceptedTermsId: null,
+    requestsPerMinute: null,
     ...overrides,
   };
 }
@@ -248,6 +249,15 @@ describe("checkMcpCall: rate limits", () => {
     expect((await checkMcpCall(call({ authorization: `Bearer ${OTHER_TOKEN}` }, "203.0.113.2"), fake.deps)).ok).toBe(true);
     fake.advance(30);
     expect((await checkMcpCall(call({}, "203.0.113.3"), fake.deps)).ok).toBe(true);
+  });
+
+  it("holds a grant to the user's own per-minute limit when one is set", async () => {
+    const fake = fakeDeps();
+    fake.grants.set(tokenHash(TOKEN), grantFor("grant-1", { requestsPerMinute: API_KEY_PER_MINUTE + 5 }));
+    for (let n = 0; n < API_KEY_PER_MINUTE + 5; n += 1) {
+      expect((await checkMcpCall(call({}, `198.51.100.${n}`), fake.deps)).ok).toBe(true);
+    }
+    expect(await checkMcpCall(call({}, "203.0.113.1"), fake.deps)).toMatchObject({ status: 429 });
   });
 
   it("counts each message of a batch against the address", async () => {

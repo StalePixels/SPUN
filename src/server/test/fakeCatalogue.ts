@@ -37,6 +37,8 @@ export interface ReleaseRow {
   serial: number;
   version: string;
   releaseDate: string;
+  // As the database column, "YYYY-MM-DD hh:mm:ss" in UTC. Unset: the value rows from before 0.9.3 have.
+  createdAt?: string;
   changelog?: string;
   // As the database column: app ids with one space between them.
   depends?: string;
@@ -92,6 +94,12 @@ export function fakeCatalogue(tables: Tables): Catalogue {
     tables.releases
       .filter((release) => release.appId === appId && !release.deleted)
       .sort((a, b) => b.serial - a.serial);
+  // As ORDER BY r.release_date DESC, r.created_at DESC on each app's latest release.
+  const newestFirst = (a: AppRow, b: AppRow): number => {
+    const [ra, rb] = [liveReleases(a.id)[0], liveReleases(b.id)[0]];
+    const created = (release: ReleaseRow): string => release.createdAt ?? "1970-01-01 00:00:01";
+    return rb.releaseDate.localeCompare(ra.releaseDate) || created(rb).localeCompare(created(ra));
+  };
 
   const liveApp = (id: string): AppRow | undefined =>
     tables.apps.find((app) => app.id === id && !app.deleted);
@@ -152,9 +160,8 @@ export function fakeCatalogue(tables: Tables): Catalogue {
     },
 
     async list(offset, limit) {
-      const date = (app: AppRow): string => liveReleases(app.id)[0].releaseDate;
       const listed = publicApps()
-        .sort((a, b) => date(b).localeCompare(date(a)) || byTitle(a, b))
+        .sort((a, b) => newestFirst(a, b) || byTitle(a, b))
         .map(found);
       return slice(listed, offset, limit);
     },
@@ -179,8 +186,7 @@ export function fakeCatalogue(tables: Tables): Catalogue {
           (app) =>
             text === "" || app.title.toLowerCase().includes(needle) || app.description.toLowerCase().includes(needle),
         );
-      const date = (app: AppRow): string => liveReleases(app.id)[0].releaseDate;
-      matches.sort((a, b) => (text === "" ? date(b).localeCompare(date(a)) : 0) || byTitle(a, b));
+      matches.sort((a, b) => (text === "" ? newestFirst(a, b) : 0) || byTitle(a, b));
       return slice(matches.map(found), offset, limit);
     },
 

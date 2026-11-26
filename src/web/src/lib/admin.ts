@@ -94,6 +94,8 @@ export async function adminGetUser(userId: string) {
       createdAt: users.createdAt,
       appLimit: users.appLimit,
       uploadLimitMb: users.uploadLimitMb,
+      requestsPerMinute: users.requestsPerMinute,
+      uploadsPerHour: users.uploadsPerHour,
       isAdmin: users.isAdmin,
       disabledAt: users.disabledAt,
     })
@@ -124,7 +126,13 @@ async function isLastAdmin(userId: string): Promise<boolean> {
 
 export async function adminUpdateUser(
   userId: string,
-  changes: { appLimit: number | null; uploadLimitMb: number | null; isAdmin: boolean },
+  changes: {
+    appLimit: number | null;
+    uploadLimitMb: number | null;
+    requestsPerMinute: number | null;
+    uploadsPerHour: number | null;
+    isAdmin: boolean;
+  },
 ): Promise<{ error?: Problem }> {
   await requireAdmin();
   if (!changes.isAdmin && (await isLastAdmin(userId))) {

@@ -295,6 +295,8 @@ function apiText(): string {
     `- ${API_KEY_PER_MINUTE} requests a minute with one key.`,
     `- ${UPLOADS_PER_HOUR} uploads an hour for each user, releases and screenshots together. The uploads of all the user's keys and of the web forms count together.`,
     "",
+    "An admin can give an account its own number of requests a minute with one key, and its own number of uploads an hour.",
+    "",
     "## Calls",
     "",
     "### GET /api/apps",

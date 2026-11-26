@@ -51,6 +51,7 @@ export async function apiKeyUser(keyId: string): Promise<ApiKeyUser | null> {
       username: users.username,
       acceptedTermsId: users.acceptedTermsId,
       uploadLimitMb: users.uploadLimitMb,
+      requestsPerMinute: users.requestsPerMinute,
     })
     .from(apiKeys)
     .innerJoin(users, eq(users.id, apiKeys.userId))
@@ -63,6 +64,12 @@ export async function apiKeyUser(keyId: string): Promise<ApiKeyUser | null> {
       ),
     );
   return row?.username
-    ? { id: row.id, username: row.username, acceptedTermsId: row.acceptedTermsId, uploadLimitMb: row.uploadLimitMb }
+    ? {
+        id: row.id,
+        username: row.username,
+        acceptedTermsId: row.acceptedTermsId,
+        uploadLimitMb: row.uploadLimitMb,
+        requestsPerMinute: row.requestsPerMinute,
+      }
     : null;
 }

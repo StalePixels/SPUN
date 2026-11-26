@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { adminGetUser, requireAdmin } from "@/lib/admin";
+import { apiLimits } from "@/lib/apigate";
 import { formatDay, isoDay } from "@/lib/rules";
 import { defaultAppLimit } from "@/lib/settings";
 import { Breadcrumbs } from "../../../Breadcrumbs";
@@ -17,6 +18,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
   }
   const name = user.username ?? "No username yet";
   const defaultLimit = await defaultAppLimit();
+  const limits = apiLimits();
   return (
     <>
       <Breadcrumbs
@@ -47,8 +49,12 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
             userId={user.id}
             appLimit={user.appLimit === null ? "" : String(user.appLimit)}
             uploadLimitMb={user.uploadLimitMb === null ? "" : String(user.uploadLimitMb)}
+            requestsPerMinute={user.requestsPerMinute === null ? "" : String(user.requestsPerMinute)}
+            uploadsPerHour={user.uploadsPerHour === null ? "" : String(user.uploadsPerHour)}
             isAdmin={user.isAdmin}
             defaultLimit={<DefaultAppLimit limit={defaultLimit} />}
+            defaultRequestsPerMinute={limits.keyPerMinute}
+            defaultUploadsPerHour={limits.uploadsPerHour}
           />
         </div>
       </div>

@@ -24,7 +24,7 @@ function fakeDeps(liveKeys: string[] = [KEY_ID, OTHER_KEY_ID]) {
   let now = START_MS;
   // No T&C version is live unless a test sets one.
   const terms = { current: null as number | null, accepted: null as number | null };
-  const user = { uploadLimitMb: null as number | null };
+  const user = { uploadLimitMb: null as number | null, requestsPerMinute: null as number | null };
   const store = new Map<string, { value: number; expires: number }>();
   const live = (name: string) => {
     const entry = store.get(name);
@@ -34,7 +34,7 @@ function fakeDeps(liveKeys: string[] = [KEY_ID, OTHER_KEY_ID]) {
     nowMs: () => now,
     serverKey: () => SERVER_KEY,
     limits: apiLimits({}),
-    findKeyUser: async (keyId) => (liveKeys.includes(keyId) ? { ...USER, acceptedTermsId: terms.accepted, uploadLimitMb: user.uploadLimitMb } : null),
+    findKeyUser: async (keyId) => (liveKeys.includes(keyId) ? { ...USER, acceptedTermsId: terms.accepted, uploadLimitMb: user.uploadLimitMb, requestsPerMinute: user.requestsPerMinute } : null),
     currentTermsId: async () => terms.current,
     claimOnce: async (name, ttl) => {
       if (live(name)) return false;
@@ -346,6 +346,21 @@ describe("checkApiCall: rate limits", () => {
     expect((await checkApiCall(otherKey, JSON_CALL, clock.deps)).ok).toBe(true);
     clock.advance(15);
     expect((await checkApiCall(signedCall(clock, { ip: "198.51.100.1" }), JSON_CALL, clock.deps)).ok).toBe(true);
+  });
+
+  it("holds each key to the user's own per-minute limit, lower or higher than the default", async () => {
+    clock.user.requestsPerMinute = 3;
+    for (let i = 0; i < 3; i++) {
+      expect((await checkApiCall(signedCall(clock, { ip: `192.0.2.${i}` }), JSON_CALL, clock.deps)).ok).toBe(true);
+    }
+    expect(await checkApiCall(signedCall(clock, { ip: "192.0.2.50" }), JSON_CALL, clock.deps)).toMatchObject({ status: 429 });
+
+    clock.advance(60);
+    clock.user.requestsPerMinute = API_KEY_PER_MINUTE + 10;
+    for (let i = 0; i < API_KEY_PER_MINUTE + 10; i++) {
+      expect((await checkApiCall(signedCall(clock, { ip: `198.51.100.${i}` }), JSON_CALL, clock.deps)).ok).toBe(true);
+    }
+    expect(await checkApiCall(signedCall(clock, { ip: "203.0.113.1" }), JSON_CALL, clock.deps)).toMatchObject({ status: 429 });
   });
 });
 

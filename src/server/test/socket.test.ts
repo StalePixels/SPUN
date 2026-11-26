@@ -105,7 +105,7 @@ const tables: Tables = {
     },
     { appId: "abc123", serial: 3, version: "1.2", releaseDate: "2026-09-22", deleted: true },
     { appId: "desc01", serial: 1, version: "0.1", releaseDate: "2026-09-01" },
-    { appId: "tst002", serial: 1, version: "1.0", releaseDate: "2026-09-01" },
+    { appId: "tst002", serial: 1, version: "1.0", releaseDate: "2026-09-01", createdAt: "2026-11-26 10:00:00" },
     { appId: "allgn1", serial: 1, version: "1.0", releaseDate: "2026-09-01", deleted: true },
     { appId: "gone01", serial: 1, version: "1.0", releaseDate: "2026-09-20" },
     ...longReleases,
@@ -315,10 +315,11 @@ describe("SPLIST", () => {
     assert.deepEqual([...listed].sort(), [...publicIds].sort());
     assert.equal(pages, Math.ceil(publicIds.length / 20));
 
-    // The date of the newest live release decides, then the title; the date of
-    // tst001's deleted serial 2 is the newest of all, and does not count.
+    // The date of the newest live release decides, then its upload time, then the title; the
+    // date of tst001's deleted serial 2 is the newest of all, and does not count. desc01 and
+    // tst002 share a date, and only tst002 has an upload time.
     assert.deepEqual(listed.slice(0, 2), ["long01", "pg0001"]);
-    assert.deepEqual(listed.slice(-4), ["tst001", "abc123", "desc01", "tst002"]);
+    assert.deepEqual(listed.slice(-4), ["tst001", "abc123", "tst002", "desc01"]);
   });
 
   test("an entry is the same as in SPFIND", async () => {

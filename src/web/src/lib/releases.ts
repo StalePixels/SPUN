@@ -97,7 +97,9 @@ export async function appDotOverrides(appId: AppId): Promise<string[]> {
 }
 
 export async function uploadRate(userId: string): Promise<Problem | null> {
-  return checkUploadRate({ nowMs: () => Date.now(), count: countHit }, userId, apiLimits().uploadsPerHour);
+  const [row] = await db().select({ perHour: users.uploadsPerHour }).from(users).where(eq(users.id, userId));
+  const limit = row?.perHour ?? apiLimits().uploadsPerHour;
+  return checkUploadRate({ nowMs: () => Date.now(), count: countHit }, userId, limit);
 }
 
 export async function formFile(value: FormDataEntryValue | null): Promise<UploadFile | null> {

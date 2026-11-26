@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.3 - Unreleased
+
+### CMS
+
+- An admin can give a user their own API and MCP request limit a
+  minute and their own upload limit an hour.
+- Every table has a `created_at` time. Releases from before 0.9.3
+  have the time of their zip file; other rows from before 0.9.3 have
+  1970-01-01 00:00:01 UTC.
+- Apps with releases on the same date list the newest upload first.
+
+### SPUNServer
+
+- `SPLIST` and `SPCAT` list apps with releases on the same date
+  newest upload first.
+
 ## 0.9.2 - 20261123
 
 ### `.spun`

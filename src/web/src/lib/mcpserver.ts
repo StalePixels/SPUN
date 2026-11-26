@@ -63,6 +63,7 @@ async function findGrant(accessHash: string): Promise<McpGrant | null> {
       deletedAt: oauthGrants.deletedAt,
       accessExpiresAt: oauthGrants.accessExpiresAt,
       acceptedTermsId: users.acceptedTermsId,
+      requestsPerMinute: users.requestsPerMinute,
     })
     .from(oauthGrants)
     .innerJoin(users, eq(users.id, oauthGrants.userId))
