@@ -99,8 +99,8 @@ export const NEXT_DOT_COMMANDS = [
   "zed",
 ];
 
-// SPUN's own dot command is reserved too: only an app with an override for it ships it.
-export const RESERVED_DOT_COMMANDS = [...NEXT_DOT_COMMANDS, "spun"];
+// SPUN's own dot commands are reserved too: only an app with an override for one ships it.
+export const RESERVED_DOT_COMMANDS = [...NEXT_DOT_COMMANDS, "spun", "spunzip"];
 
 const RESERVED_KEYS = new Set(RESERVED_DOT_COMMANDS.map((name) => name.toLowerCase()));
 

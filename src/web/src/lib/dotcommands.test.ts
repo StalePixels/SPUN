@@ -72,7 +72,7 @@ describe("checkDotOverride", () => {
     expect(checkDotOverride("")).toEqual({ ok: false, error: { code: "dotOverride.notReserved" } });
   });
 
-  it("reserves every name the Next ships, and spun", () => {
-    expect(RESERVED_DOT_COMMANDS).toEqual([...NEXT_DOT_COMMANDS, "spun"]);
+  it("reserves every name the Next ships, spun and spunzip", () => {
+    expect(RESERVED_DOT_COMMANDS).toEqual([...NEXT_DOT_COMMANDS, "spun", "spunzip"]);
   });
 });
