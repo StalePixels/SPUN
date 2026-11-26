@@ -4,28 +4,11 @@
 
 ### CMS
 
-- An admin can give a user their own API and MCP request limit a
-  minute and their own upload limit an hour.
-- Every table has a `created_at` time. Releases from before 0.9.3
-  have the time of their zip file; other rows from before 0.9.3 have
-  1970-01-01 00:00:01 UTC.
 - Apps with releases on the same date list the newest upload first.
-- The admin app page has tabs, each with its own URL: Releases,
-  Dependencies, Screenshots, Details, Names, Owner and Delete.
-- The publish pages, the app tabs and the admin start, Users and Apps
-  pages show their lists and forms in boxes.
-
-### SPUNServer
-
-- `SPLIST` and `SPCAT` list apps with releases on the same date
-  newest upload first.
-- Each app in `SPLIST`, `SPCAT` and `SPFIND` has the date of its latest
-  release.
 
 ### `.spun`
 
 - On the command line, each file of an unzip has a line of its own.
-  Only the file's progress is written over.
 - On the command line, the app's title comes before its unzip, after
   "Unzipping". In the browser, the progress line starts with the app's
   title.
