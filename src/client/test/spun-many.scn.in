@@ -1,0 +1,15 @@
+# .spun get many01 (mame-many.sh): 30 files, FILE01.BIN to FILE30.BIN, each
+# 40K when its number is a multiple of 5 and 2K otherwise. Each file has a
+# line of its own with its progress; in a 40K file the count is written over,
+# so the line ends with the final count. y at 16 s answers "Install to
+# C:/apps/many?". At the end FILE11 to FILE30 are on screen, FILE01 to FILE10
+# have scrolled off, and get did not stop at scroll?.
+put @SPUN@ /dot/SPUN
+autostart .spun -s @HOST@ -p @PORT@ get many01
+autostart PRINT "SPUNMANYDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 150
+noreset 7.5
+key 16 y
+@SCREENS@
+screen 149 SPUNMANYDONE
