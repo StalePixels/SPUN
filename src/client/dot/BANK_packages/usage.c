@@ -28,7 +28,10 @@ void parse_page(char *text) {
 // Downloads and the screenshot cache are in C:/tmp, and an SD card can be without it
 void tmp_make(void) {
 #ifdef __ZXNEXT
+    errno = 0;
     esx_f_mkdir("C:/tmp");
+    if(errno == ESX_EEXIST) errno = 0;
+    file_check();
 #else
     card_mkdir("C:/tmp");
 #endif

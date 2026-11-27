@@ -13,23 +13,39 @@ static void cache_path(unsigned char *path, uint8_t index) {
     else sprintf(path, CACHE_DIR "/%s/shot%u", appid, index - SLOTS + 1);
 }
 
+// The handle is closed before .spun ends, and the first error is the one reported
+static void handle_close(uint8_t handle, int error) {
+    errno = 0;
+    esxdos_f_close(handle);
+    if(error) errno = error;
+    file_check();
+}
+
 static void cache_save(void) {
     unsigned char path[sizeof(cacheDir) + 20];
     uint8_t handle;
+    uint16_t got;
 
     cache_path(path, CACHE_SLOTS);
     errno = 0;
     handle = esxdos_f_open(path, ESXDOS_MODE_W | ESXDOS_MODE_CT);
-    if(errno) return;
-    esxdos_f_write(handle, cacheCrc, sizeof(cacheCrc));
-    esxdos_f_close(handle);
+    file_check();
+    got = esxdos_f_write(handle, cacheCrc, sizeof(cacheCrc));
+    handle_close(handle, errno ? errno : got != sizeof(cacheCrc) ? IO_ERROR : 0);
 }
 
 static void cache_unlink(uint8_t index) __z88dk_fastcall {
     unsigned char path[sizeof(cacheDir) + 20];
 
     cache_path(path, index);
-    esxdos_f_unlink(path);
+    remove_file(path);
+}
+
+static void cache_mkdir(unsigned char *dir) __z88dk_fastcall {
+    errno = 0;
+    esx_f_mkdir(dir);
+    if(errno == ESX_EEXIST) errno = 0;
+    file_check();
 }
 
 // A missing or short cache.crc counts as all zeros
@@ -41,9 +57,10 @@ void cache_load(void) {
     cache_path(path, CACHE_SLOTS);
     errno = 0;
     handle = esxdos_f_open(path, ESXDOS_MODE_R);
-    if(errno) return;
+    if(errno == NOT_FOUND) return;
+    file_check();
     if(esxdos_f_read(handle, cacheCrc, sizeof(cacheCrc)) != sizeof(cacheCrc)) memset(cacheCrc, 0, sizeof(cacheCrc));
-    esxdos_f_close(handle);
+    handle_close(handle, errno);
 }
 
 // Sets file_in to read the cached file, or file_out to write the download to it. A file that is
@@ -64,6 +81,7 @@ void cache_open(uint8_t index) {
             file_in = handle;
             return;
         }
+        if(errno != NOT_FOUND) file_check();
     }
     if(cacheCrc[index]) {
         cacheCrc[index] = 0;
@@ -71,22 +89,29 @@ void cache_open(uint8_t index) {
     }
 
     strcpy(nbnBuff, cacheDir);
-    esx_f_mkdir(nbnBuff);
+    cache_mkdir(nbnBuff);
     sprintf(nbnBuff, CACHE_DIR "/%s", appid);
-    esx_f_mkdir(nbnBuff);
+    cache_mkdir(nbnBuff);
     errno = 0;
     handle = esxdos_f_open(path, ESXDOS_MODE_W | ESXDOS_MODE_CT);
-    if(!errno) file_out = handle;
+    file_check();
+    file_out = handle;
 }
 
 // gui_get closes file_out itself if a write fails
 void cache_close(uint8_t index, bool complete) {
-    if(file_in) esxdos_f_close(file_in);
-    file_in = 0;
+    uint8_t handle;
+
+    if(file_in) {
+        handle = file_in;
+        file_in = 0;
+        handle_close(handle, 0);
+    }
     if(!file_out) return;
 
-    esxdos_f_close(file_out);
+    handle = file_out;
     file_out = 0;
+    handle_close(handle, 0);
     if(!complete) return;
     cacheCrc[index] = shotCrc[index];
     cache_save();
@@ -108,6 +133,9 @@ void cache_clear(void) {
 
     for(index = 0; index <= CACHE_SLOTS; index++) cache_unlink(index);
     sprintf(nbnBuff, CACHE_DIR "/%s", appid);
+    errno = 0;
     esx_f_rmdir(nbnBuff);
+    if(errno == NOT_FOUND) errno = 0;
+    file_check();
     memset(cacheCrc, 0, sizeof(cacheCrc));
 }

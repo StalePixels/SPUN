@@ -82,6 +82,22 @@ uint8_t parse_entry(void) {
     return at + 1;
 }
 
+// commit_catalogue removes the catalogue only after the temp file is closed, so a temp file alone
+// is complete and becomes the catalogue. Beside the catalogue it is from a crashed write
+static void recover_catalogue(void) {
+    if(open_in(catalogue)) {
+        close_in();
+        remove_file(catalogueTemp);
+        return;
+    }
+    if(!open_in(catalogueTemp)) return;
+    close_in();
+
+    errno = 0;
+    esx_f_rename(catalogueTemp, catalogue);
+    file_check();
+}
+
 // Every line is checked before anything is changed, so a bad line ends .spun with the file as it was
 int check_catalogue(char *id) {
     uint16_t line = 0;
@@ -89,6 +105,7 @@ int check_catalogue(char *id) {
     bool whole;
 
     installed = false;
+    recover_catalogue();
     if(!open_in(catalogue)) return 0;
 
     while(read_line()) {
@@ -125,7 +142,7 @@ static void commit_catalogue(void) {
 void write_catalogue(char *id) __z88dk_fastcall {
     bool found = false;
 
-    remove_file(catalogueTemp);
+    recover_catalogue();
     open_in(catalogue);
     create_out(catalogueTemp);
 

@@ -187,7 +187,9 @@ unsigned char *core_check(unsigned char *name, uint32_t need) {
 // NextZXOS keeps a dot command's own file open, which stops a get from deleting C:/dot/spun.
 // By main() the loader has read every bank, so .spun never needs it
 static void own_file_close(void) {
+    errno = 0;
     esx_f_close(esx_m_gethandle());
+    file_check();
 }
 #endif
 
