@@ -1,0 +1,15 @@
+# The install from the SPUN zip, with no spun.cat: the zip's files in
+# /apps/zip, where spun.bas starts. It runs that spun.dot with get spun
+# against the test server: y takes the suggested /apps/wifi/spun, and no
+# overwrite is asked. Then it erases spun.dot, and the menu waits.
+# mame-repair.sh checks spun.cat and the files after the run. No noreset:
+# NextZXOS runs from $0000 with ROM paged in at the LOAD and at the menu's
+# OPEN #4 of line 20, and neither is a reset.
+put @SPUN@ /apps/zip/spun.dot
+put @BAS@ /apps/zip/spun.bas
+autostart CD "c:/apps/zip"
+autostart LOAD "spun.bas"
+seconds 45
+key 18 y
+snap 15 18 21 24 30 44
+screen 44 Install an app

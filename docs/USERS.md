@@ -14,7 +14,7 @@ There are two ways. Both start on the front page of the SPUN site.
 
 It downloads `.spun` into the current directory, then runs it to install SPUN.
 
-**With the zip.** Use "Download the SPUN zip" on the front page, and unpack the zip on the SD card of your Next. Then run `spun.bas`. The menu moves `spun.dot` to `C:/dot/spun`, so `.spun` runs from any directory.
+**With the zip.** Use "Download the SPUN zip" on the front page, and unpack the zip on the SD card of your Next. Then run `spun.bas`. The menu runs `spun.dot` to install SPUN, which puts `.spun` in `C:/dot/`, so it runs from any directory.
 
 The browser needs core 3.02.00 or later.
 

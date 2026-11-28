@@ -75,6 +75,10 @@ extern bool overwriteAll;
 extern unsigned char *depWarning;
 // Where a new dependency with no suggested directory goes: the directory of the app that names it
 extern unsigned char parentDir[256];
+#ifdef SPUN_SELF_REPAIR
+// The app a get names, as typed; NULL for any other command
+extern char *getName;
+#endif
 
 bool choose_dir(void);
 unsigned char *core_check(unsigned char *name, uint32_t need);

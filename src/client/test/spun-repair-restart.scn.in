@@ -1,0 +1,15 @@
+# As spun-repair.scn.in, but the release's version is not the running .spun's.
+# After the repair .spun asks for a restart and ends, and info does not run.
+# mame-repair.sh checks the commands sent, spun.cat and the files after the
+# run.
+put @SPUN@ /dot/SPUN
+put @CAT@ /sys/spun.cat
+autostart .spun -p @PORT@ info @APP@
+autostart PRINT "SPUNREPAIRDONE"
+autostart FOR i=0 TO 1 STEP 0: NEXT i
+seconds 45
+noreset 7.5
+snap 15 21 25 30 44
+screen 44 Repairing SPUN...
+screen 44 SPUN was updated, please restart
+screen 44 SPUNREPAIRDONE

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.3 - Unreleased
+## 0.9.3 - 20261128
 
 ### CMS
 
@@ -14,6 +14,10 @@
   title.
 - The browser's list shows the release date in place of the download
   count, and a checkmark on installed apps.
+- A crash while `.spun` saves its list of installed apps no longer loses
+  the list.
+- Spun detects when it's not installed correctly, or the catalogue is
+  corrupted, and automatically repairs itself.
 
 ## 0.9.2 - 20261123
 

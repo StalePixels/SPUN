@@ -40,6 +40,9 @@ uint32_t minCore;
 bool overwriteAll;
 unsigned char *depWarning;
 unsigned char parentDir[256];
+#ifdef SPUN_SELF_REPAIR
+char *getName;
+#endif
 
 static unsigned char defaultServer[] = SPUN_SERVER;
 static unsigned char defaultPort[] = SPUN_PORT;
@@ -187,9 +190,7 @@ unsigned char *core_check(unsigned char *name, uint32_t need) {
 // NextZXOS keeps a dot command's own file open, which stops a get from deleting C:/dot/spun.
 // By main() the loader has read every bank, so .spun never needs it
 static void own_file_close(void) {
-    errno = 0;
     esx_f_close(esx_m_gethandle());
-    file_check();
 }
 #endif
 
@@ -303,6 +304,9 @@ int main(int argc, char** argv) {
     netServer = customServer ? argv[customServer] : (char *)defaultServer;
     netPort = customPort ? argv[customPort] : (char *)defaultPort;
     _far(BANK_NET, (far_fn_t)net_open);
+#ifdef SPUN_SELF_REPAIR
+    if(commandArg && stricmp(argv[commandArg], "get") == 0) getName = argv[valueArg];
+#endif
     _farWithPointer(BANK_PACKAGES, (far_ptr_fn_t)self_update, updateId);
 
     if (commandArg && stricmp(argv[commandArg], "get") == 0) {

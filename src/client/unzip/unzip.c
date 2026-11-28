@@ -331,9 +331,7 @@ unsigned char unzip(const char *zip_path, const char *dir_path, unsigned char fl
 
     error = errno;
     unzip_pages_free(&job, pages);
-    errno = 0;
     esx_f_close(zip);
-    if (r == UNZIP_OK && errno) return UNZIP_E_READ;
     errno = r ? error : 0;
     return r;
 }
@@ -356,9 +354,7 @@ unsigned char unzip_view(const char *zip_path, unsigned char flags, void (*entry
         entry(path + 1, get32(hdr + 24));
     }
     error = errno;
-    errno = 0;
     esx_f_close(zip);
-    if (r == UNZIP_OK && errno) return UNZIP_E_READ;
     errno = r ? error : 0;
     return r;
 }

@@ -22,9 +22,9 @@ SPUN is the dot command @{b}.spun@{ub}. It must be in @{i}C:/dot@{ui} with the n
 @{r}SPUN
 @{c}@{h1}The SPUN menu
 
-Run @{b}spun.bas@{ub} to open the SPUN menu. When it starts, it moves
-@{i}spun.dot@{ui} from its own directory to @{i}C:/dot/spun@{ui}, if the file is
-there.
+Run @{b}spun.bas@{ub} to open the SPUN menu. When it starts, it runs
+@{i}spun.dot@{ui} from its own directory, if the file is there, to install SPUN,
+then erases it.
 
 @{b}Browse the catalogue@{ub}
     Opens the SPUN browser, where you can find and install apps.

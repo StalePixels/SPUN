@@ -10,6 +10,8 @@ UNZIP_BANK ?= 33
 #   THEME_COLOUR  the 8-bit colour that takes the place of the SPUN blue in PALETTE (default 0x02, the FoaK
 #                 blue). The CMS's web theme takes the same byte, as THEME_COLOUR in docker/.env
 #   PALETTE       the tilemap's paper and ink pairs, in 8-bit colour, for the ATTR_ values in gui/gui.h
+#   SELF_REPAIR   1: a .spun with no line of its own in the catalogue installs itself at start (default:
+#                 1 for the spun build only, 0 for every other)
 -include .env.$(NAME)
 DISPLAY_NAME ?= $(shell echo '$(NAME)' | tr a-z A-Z)
 SERVER ?= s1.zx.immo
@@ -17,6 +19,8 @@ PORT ?= 48128
 UPDATE_ID ?= $(NAME)
 THEME_COLOUR ?= 0x02
 PALETTE ?= $(THEME_COLOUR),0xFF,$(THEME_COLOUR),0xFC,0xFF,$(THEME_COLOUR),0xFF,0xE0,0xE3,0xE3,0xFF,0x00,0x49,0x92
+SELF_REPAIR ?= $(if $(filter spun,$(NAME)),1,0)
+REPAIR_DEFINE := $(if $(filter 1,$(SELF_REPAIR)),-DSPUN_SELF_REPAIR)
 
 # A build for a server given on the command line goes to BUILD-dev, so it never overwrites the release build
 ifeq ($(filter command line,$(origin SERVER) $(origin PORT)),)
@@ -53,7 +57,7 @@ Z88DK_RUN = docker run --rm --user $(shell id -u):$(shell id -g) -e HOME=/tmp -v
 ZOPT ?= --max-allocs-per-node200000
 CC=$(call Z88DK_RUN,$(CURDIR)) zcc
 CCFLAGS=+zxn -vn -startup=$(CRT) -clib=sdcc_iy -SO3 $(ZOPT) --opt-code-size -pragma-include:$(CURDIR)/zpragma.inc '-DSPUN_VERSION="$(VERSION)"' '-DSPUN_NAME="$(NAME)"' \
-	'-DSPUN_DISPLAY="$(DISPLAY_NAME)"' '-DSPUN_UPDATE_ID="$(UPDATE_ID)"' '-DSPUN_PALETTE=$(PALETTE)'
+	'-DSPUN_DISPLAY="$(DISPLAY_NAME)"' '-DSPUN_UPDATE_ID="$(UPDATE_ID)"' '-DSPUN_PALETTE=$(PALETTE)' $(REPAIR_DEFINE)
 LDFLAGS=-m
 # Main ends below the stack, which starts at $BFD8 (zpragma.inc) with 1K reserved;
 # above it are the mouse variables and the IM2 table (gui/isr.asm).
@@ -69,7 +73,7 @@ POSIX_DIR ?= ./BUILD-posix
 POSIX_CC ?= cc
 POSIX_CFLAGS ?= -O2 -Wall -Wno-pointer-sign
 POSIX_DEFINES='-DSPUN_SERVER="$(SERVER)"' '-DSPUN_PORT="$(PORT)"' '-DSPUN_VERSION="$(VERSION)"' '-DSPUN_NAME="$(NAME)"' \
-	'-DSPUN_DISPLAY="$(DISPLAY_NAME)"' '-DSPUN_UPDATE_ID="$(UPDATE_ID)"'
+	'-DSPUN_DISPLAY="$(DISPLAY_NAME)"' '-DSPUN_UPDATE_ID="$(UPDATE_ID)"' $(REPAIR_DEFINE)
 POSIX_SRC := spun.c common/file.c $(filter-out BANK_net/gui_%.c,$(wildcard BANK_net/*.c)) BANK_packages/catalogue.c BANK_packages/install.c BANK_packages/usage.c BANK_deps/deps.c \
 	unzip_posix.c $(COMMON)/nbn.c $(COMMON)/nbn_pages.c $(COMMON)/net_posix.c $(COMMON)/posix.c
 POSIX_LIBZIP := $(shell pkg-config --cflags --libs libzip)

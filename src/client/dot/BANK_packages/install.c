@@ -309,6 +309,29 @@ unsigned char *spun_update(void) {
     return NULL;
 }
 
+static void restart(void) {
+    printf(SPUN_DISPLAY " was updated, please restart " SPUN_DISPLAY " to resume\n");
+    exit(0);
+}
+
+#ifdef SPUN_SELF_REPAIR
+// A .spun copied into C:/dot by hand has no catalogue line, so it never updates. It installs
+// itself as a get would; only a get of SPUN itself, the first install, goes on without the line
+static void self_repair(char *name) {
+    unsigned char result;
+
+    if(getName && (!strcmp(getName, name) || !strcmp(getName, appid))) return;
+    if(!quiet) printf("Repairing " SPUN_DISPLAY "...\n");
+    sprintf(installDir, "C:%s", suggestDir);
+    dir_make();
+    check_install_drive();
+    if((result = install(appid, true))) NBN_Fail(unzipErrors[result - 1]);
+    if(!strcmp(version, SPUN_VERSION)) return;
+    gui_end();
+    restart();
+}
+#endif
+
 // An old .spun may misread a newer server, so a newer SPUN goes in before any other request.
 // name is in main memory, where BANK_NET can read it; the new file runs only from a fresh start
 void self_update(char *name) {
@@ -324,11 +347,13 @@ void self_update(char *name) {
     if(error) NBN_Fail(error);
 
     check_catalogue(appid);
+#ifdef SPUN_SELF_REPAIR
+    if(!installed) self_repair(name);
+#endif
     if(!installed || serial <= installedSerial) return;
 
     gui_end();
     check_install_drive();
     if((result = install(appid, true))) NBN_Fail(unzipErrors[result - 1]);
-    printf(SPUN_DISPLAY " was updated, please restart " SPUN_DISPLAY " to resume\n");
-    exit(0);
+    restart();
 }
